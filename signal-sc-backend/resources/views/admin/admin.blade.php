@@ -51,12 +51,13 @@
     <div class="flex justify-between items-center mb-3">
       <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400">📊 Google Sheets Live Two-Way Sync</h3>
       <div class="flex gap-2 items-center">
-        <button type="button" @click="testGoogleSheetsConnection()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-all shadow">🧪 Test Connection</button>
-        <button type="button" @click="syncFromGoogleSheets()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-all shadow">🔄 Sync Now</button>
+        <button type="button" @click="manualFetchFromGoogleSheets()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-all shadow">🔄 Sync Now</button>
+        <button type="button" @click="showGsSettings = !showGsSettings" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-bold text-xs flex items-center justify-center" x-text="showGsSettings ? '-' : '+'">-</button>
       </div>
     </div>
-    <div class="text-xs mt-2" style="color: var(--text-muted);">
-      <span class="text-emerald-400 font-semibold">● Auto-Sync Active</span> — Signal updates push to Google Sheets automatically. Use Sync Now to pull changes from the sheet.
+    <div x-show="showGsSettings" x-transition class="form-group mt-2">
+      <label>Google Apps Script Web App URL</label>
+      <input type="text" x-model="gsUrl" @input="saveGsUrl()" placeholder="https://script.google.com/macros/s/...">
     </div>
   </div>
 
@@ -272,6 +273,11 @@ function adminApp() {
     loadSettings() {
       this.tgToken = localStorage.getItem('sx_tg_token') || '';
       this.tgChatId = localStorage.getItem('sx_tg_chat') || '';
+      this.gsUrl = localStorage.getItem('sx_gs_url') || this.gsUrl || 'https://script.google.com/macros/s/AKfycbyq70qX27BMYZzV2bv5wTq6wHy8anSrV53FE5EIdeXu9Baomo_qpJEdAi8p6aYWcVsA/exec';
+    },
+
+    saveGsUrl() {
+      localStorage.setItem('sx_gs_url', this.gsUrl);
     },
 
     async saveBalances() {
@@ -643,42 +649,35 @@ function adminApp() {
       } catch(err) { this.showToast('Failed to send summary to Telegram', 'error'); }
     },
 
-    async testGoogleSheetsConnection() {
-      this.showToast('Testing Google Sheets connection...');
-      try {
-        const resp = await fetch('{{ route("admin.gs.test") }}');
-        const data = await resp.json();
-        if (data.ok) {
-          this.showToast(`✓ Connected — ${data.count ?? 0} rows in sheet`);
-        } else {
-          this.showToast(data.message || data.error || 'Connection failed', 'error');
-        }
-      } catch(err) {
-        this.showToast('Connection test failed', 'error');
-      }
-    },
-
-    async syncFromGoogleSheets() {
+    async manualFetchFromGoogleSheets() {
+      const url = this.gsUrl.trim();
+      if (!url) { this.showToast('Please enter Google Apps Script URL first!', 'error'); return; }
       this.showToast('Syncing from Google Sheets...');
       try {
-        const resp = await fetch('{{ route("admin.gs.sync") }}', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
-          }
-        });
+        const resp = await fetch(url);
         const data = await resp.json();
-        if (resp.ok && data.ok) {
-          this.showToast(`✓ Synced ${data.count} trades from Google Sheets`);
-          setTimeout(() => window.location.reload(), 800);
+        if (Array.isArray(data)) {
+          const importResp = await fetch('{{ route("admin.trades.import") }}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': '{{ csrf_token() }}',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ trades: data })
+          });
+          const result = await importResp.json();
+          if (importResp.ok) {
+            this.showToast(`✓ Synced ${result.count} trades from Google Sheets`);
+            this.saveGsUrl();
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            this.showToast('Sync failed', 'error');
+          }
         } else {
-          this.showToast(data.message || 'Sync failed', 'error');
+          this.showToast('Invalid data from Google Sheets', 'error');
         }
-      } catch(err) {
-        this.showToast('Sync failed', 'error');
-      }
+      } catch(err) { this.showToast('Failed to fetch from Google Sheets', 'error'); }
     },
 
     async sendToGoogleSheets(rec, hitType) {
