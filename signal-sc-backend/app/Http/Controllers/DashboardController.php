@@ -15,33 +15,31 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $isAdmin = $user->role === 'admin';
 
-        $totalTrades = Trade::where('user_id', $user->id)->count();
-        $wins = Trade::where('user_id', $user->id)->where('result', 'win')->count();
-        $losses = Trade::where('user_id', $user->id)->where('result', 'loss')->count();
-        $bes = Trade::where('user_id', $user->id)->where('result', 'BE')->count();
-        $totalProfit = (float) Trade::where('user_id', $user->id)->sum('profit');
-        $winRate = $totalTrades > 0 ? round(($wins / $totalTrades) * 100, 2) : 0;
+        $query = $isAdmin ? Trade::query() : Trade::where('user_id', $user->id);
 
-        $balance = AccountBalance::where('user_id', $user->id)->first();
-        $currentBalance = $balance
-            ? (float) $balance->start_balance + (float) $balance->deposit_balance - (float) $balance->withdraw_balance + $totalProfit
-            : 0;
+        $totalTrades = (clone $query)->count();
+        $wins = (clone $query)->where('result', 'WIN')->count();
+        $losses = (clone $query)->where('result', 'LOSS')->count();
+        $bes = (clone $query)->where('result', 'BE')->count();
+        $totalProfit = (float) (clone $query)->sum('profit');
+        $netPips = (float) (clone $query)->sum('pips');
+        $lossPips = (float) (clone $query)->where('pips', '<', 0)->sum('pips');
+        $winRate = $totalTrades > 0 ? round(($wins / $totalTrades) * 100, 1) : 0;
 
-        $recentTrades = Trade::where('user_id', $user->id)
+        $balanceQuery = $isAdmin ? AccountBalance::query() : AccountBalance::where('user_id', $user->id);
+        $balance = (clone $balanceQuery)->first();
+        $startBalance = $balance ? (float) $balance->start_balance : 1000;
+        $depositBalance = $balance ? (float) $balance->deposit_balance : 0;
+        $withdrawBalance = $balance ? (float) $balance->withdraw_balance : 0;
+        $currentBalance = $startBalance + $depositBalance - $withdrawBalance + $totalProfit;
+
+        $recentTrades = (clone $query)
             ->latest('date')
-            ->limit(10)
+            ->latest('id')
+            ->limit(20)
             ->get();
-
-        $chartData = Trade::where('user_id', $user->id)
-            ->selectRaw('date, SUM(profit) as daily_profit')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->map(fn ($row) => [
-                'date' => $row->date->format('Y-m-d'),
-                'profit' => (float) $row->daily_profit,
-            ]);
 
         return view('dashboard', compact(
             'totalTrades',
@@ -52,7 +50,11 @@ class DashboardController extends Controller
             'currentBalance',
             'winRate',
             'recentTrades',
-            'chartData'
+            'netPips',
+            'lossPips',
+            'startBalance',
+            'depositBalance',
+            'withdrawBalance'
         ));
     }
 }

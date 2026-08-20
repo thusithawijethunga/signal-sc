@@ -11,12 +11,12 @@ class SignalManageController extends Controller
     {
         $signals = Signal::latest('date')->paginate(20);
 
-        return view('admin.signals.index', compact('signals'));
+        return view('signals.index', compact('signals'));
     }
 
     public function create()
     {
-        return view('admin.signals.create');
+        return view('signals.create');
     }
 
     public function store(Request $request)
@@ -50,7 +50,7 @@ class SignalManageController extends Controller
 
     public function edit(Signal $signal)
     {
-        return view('admin.signals.edit', compact('signal'));
+        return view('signals.edit', compact('signal'));
     }
 
     public function update(Request $request, Signal $signal)
