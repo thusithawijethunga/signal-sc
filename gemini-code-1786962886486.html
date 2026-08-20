@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGNAL XPRESS — Unified Master Trading & IB Partner Admin Portal</title>
+
+<!-- External Fonts, Scripts & Styles -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+  :root {
+    --bg-deep: #0a0e0c;
+    --bg-card-solid: #121815;
+    --border: #2a3a32;
+    --border-hover: #3e5449;
+    --text-primary: #ffffff;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --green: #00B050;
+    --green-light: #92D050;
+    --green-glow: rgba(0, 176, 80, 0.2);
+    --red: #ff3b3b;
+    --red-glow: rgba(255, 59, 59, 0.2);
+    --gold: #d4a04c;
+    --gold-glow: rgba(212, 160, 76, 0.2);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212,160,76,0.1), transparent 50%);
+    background-attachment: fixed;
+    padding-bottom: 2rem;
+  }
+
+  .nav-pills-custom .nav-link {
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card-solid);
+    color: var(--text-secondary);
+  }
+  .nav-pills-custom .nav-link.active {
+    background: var(--gold);
+    color: #0a0e0c;
+    border-color: var(--gold);
+    box-shadow: 0 0 15px var(--gold-glow);
+  }
+
+  .period-btn {
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: 12px;
+    border-radius: 7px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-deep);
+    color: var(--text-secondary);
+  }
+  .period-btn.active {
+    background: var(--gold);
+    color: #0a0e0c;
+    border-color: var(--gold);
+    box-shadow: 0 0 10px var(--gold-glow);
+  }
+
+  .star-container {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 9999; overflow: hidden;
+  }
+
+  .dynamic-banner-text { animation: changeColor 6s linear infinite; }
+  @keyframes changeColor {
+    0% { color: #fbbf24; } 20% { color: #f87171; }
+    40% { color: #34d399; } 60% { color: #22d3ee; }
+    80% { color: #c084fc; } 100% { color: #fbbf24; }
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .card-admin { background: var(--bg-card-solid); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 11px; color: #d1d5db; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .form-group input, .form-group select {
+    background: #000000; border: 1px solid var(--border); color: #ffffff;
+    padding: 8px 12px; border-radius: 7px; font-family: inherit; font-size: 13px;
+  }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--green); }
+
+  .toast-custom {
+    position: fixed; bottom: 24px; right: 24px; background: var(--bg-card-solid);
+    border: 1px solid var(--green); color: var(--green-light); padding: 14px 20px;
+    border-radius: 10px; font-size: 13px; font-weight: 500;
+    transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 10000;
+  }
+  .toast-custom.show { transform: translateY(0); opacity: 1; }
+  .toast-custom.error { border-color: var(--red); color: var(--red); }
+
+  .custom-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10005;
+  }
+  .custom-modal-box {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--gold);
+    box-shadow: 0 0 25px var(--gold-glow);
+    border-radius: 14px;
+    width: 90%; max-width: 380px;
+    padding: 24px;
+  }
+
+  /* IB Partner System Custom Styles */
+  .card-ib, .sec-ib { 
+    background-color: #162032; 
+    border: 1px solid #2a3a52; 
+    border-radius: 16px; 
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  }
+
+  .form-control-ib, .form-select-ib { 
+    background-color: #0b1329 !important; 
+    border: 1px solid #334155 !important; 
+    color: #fff !important; 
+    border-radius: 8px; 
+  }
+  .form-control-ib:focus, .form-select-ib:focus { 
+    background-color: #0b1329 !important; 
+    color: #fff !important; 
+    border-color: #3b82f6 !important; 
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+  }
+
+  .upload-box {
+    background: #0f1320; 
+    border: 2px dashed #2a3a52; 
+    border-radius: 14px; 
+    padding: 2rem; 
+    text-align: center; 
+    cursor: pointer; 
+    transition: all 0.2s; 
+    position: relative;
+  }
+  .upload-box:hover { border-color: #3b82f6; background: #111825; }
+  .upload-box.ready { border-color: #00e5a0; border-style: solid; background: #0a1f18; }
+  .upload-box.ready .up-icon { color: #00e5a0; }
+  .up-icon { font-size: 38px; color: #3b82f6; margin-bottom: 8px; display: block; }
+  .up-title { font-size: 18px; font-weight: 600; color: #f8fafc; margin-bottom: 4px; }
+  .up-sub { font-size: 13px; color: #9ca3af; }
+  .up-fname { font-size: 14px; color: #00e5a0; margin-top: 8px; font-family: monospace; font-weight: bold; }
+  .up-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+  .btn-run { 
+    background: #0a1f18; 
+    color: #00e5a0; 
+    border: 1px solid #00e5a0; 
+    border-radius: 8px; 
+    padding: 12px 24px; 
+    font-size: 16px; 
+    font-weight: bold;
+    cursor: pointer; 
+    width: 100%; 
+    margin-top: 1.25rem;
+    margin-bottom: 1.25rem; 
+    transition: all 0.2s;
+  }
+  .btn-run:hover { background: #0f2d20; box-shadow: 0 0 15px rgba(0, 229, 160, 0.3); }
+  .btn-run:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+  .metrics-ib { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .mc { background: #151a28; border: 1px solid #1e2130; border-radius: 12px; padding: 0.9rem 1.1rem; position: relative; overflow: hidden; }
+  .mc-accent { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .mc-label { font-size: 11px; color: #5a6480; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .mc-val { font-size: 22px; font-weight: 600; }
+  .mc-sub { font-size: 11px; color: #5a6480; margin-top: 2px; }
+
+  .table-container { background-color: #162032 !important; border-radius: 8px; }
+  .table-dark-custom { color: #f8fafc !important; background-color: #162032 !important; margin-bottom: 0; }
+  .table-dark-custom th { 
+    background-color: #0b1329 !important; 
+    color: #94a3b8 !important; 
+    border-bottom: 2px solid #2a3a52 !important; 
+    font-weight: 600; position: sticky; top: 0; z-index: 10;
+  }
+  .table-dark-custom td { background-color: #162032 !important; color: #f8fafc !important; border-bottom: 1px solid #2a3a52 !important; vertical-align: middle; }
+  .table-dark-custom tbody tr:hover td { background-color: #1e2d42 !important; }
+
+  .top10-list { display: flex; flex-direction: column; gap: 8px; }
+  .top10-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #13192a; border-radius: 10px; border: 1px solid #1e2130; }
+
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 1.1rem; flex-wrap: wrap; }
+  .sub-tab { padding: 7px 16px; font-size: 14px; border: 1px solid #1e2130; border-radius: 8px; cursor: pointer; background: #151a28; color: #5a6480; transition: all 0.15s; }
+  .sub-tab.on { background: #0a1f18; color: #00e5a0; border-color: #00e5a040; }
+
+  @media(max-width: 768px){
+    .metrics-ib { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body class="p-3 p-md-4">
+
+<div class="star-container" id="starContainer"></div>
+
+<div class="max-w-7xl mx-auto relative z-10">
+  
+  <!-- Navigation Header Bar -->
+  <div class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-800 gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 bg-gradient-to-br from-[#d4a04c] to-[#f5c46d] rounded-xl flex items-center justify-center font-bold text-black text-xl shadow-lg">SX</div>
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-tight">SIGNAL XPRESS</h1>
+        <p class="text-xs text-gray-300 font-mono">Master Trading Portal & Unified Admin System</p>
+      </div>
+    </div>
+    <ul class="nav nav-pills nav-pills-custom flex flex-wrap gap-2 m-0 p-0 border-0" id="mainTab" role="tablist">
+      <li class="nav-item m-0">
+        <button class="nav-link active" id="btn-tab-dashboard" onclick="switchTab('dashboard')">📊 Main Dashboard</button>
+      </li>
+      <li class="nav-item m-0">
+        <button class="nav-link" id="btn-tab-admin" onclick="switchTab('admin')">⚙️ Admin Panel</button>
+      </li>
+      <li class="nav-item m-0">
+        <button class="nav-link" id="btn-tab-ib-partner" onclick="switchTab('ib-partner')">🛡️ IB Partner System</button>
+      </li>
+      <li class="nav-item m-0">
+        <button class="nav-link" id="btn-tab-csv-analytics" onclick="switchTab('csv-analytics')">📈 Trading CSV Analytics</button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- SECTION 1: MAIN DASHBOARD -->
+  <div id="section-dashboard">
+    <div class="w-full text-center py-6 mb-0 bg-gradient-to-r from-[#1f242c] via-[#bd2828]/25 to-[#10b981]/25 border border-[#30363d] rounded-t-xl shadow-lg flex flex-col gap-3">
+      <h2 class="dynamic-banner-text text-2xl md:text-3xl font-black tracking-[0.2em] uppercase font-mono">🔥 GET RISK WIN YOUR LIFE 🔥</h2>
+      <p class="dynamic-banner-text text-lg md:text-xl font-bold tracking-wider">"අවදානමක් ගන්න ජිවිතේ දිනන්න"</p>
+      <div class="mt-1 flex flex-col items-center gap-1">
+        <a href="https://t.me/signalxpress_official" target="_blank" class="flex items-center gap-2 bg-[#229ED9]/20 hover:bg-[#229ED9]/30 text-[#229ED9] border border-[#229ED9]/50 px-4 py-1.5 rounded-full text-sm font-bold transition-all shadow-[0_0_15px_rgba(34,158,217,0.25)]">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15.82-.7 3.32-.98 4.79-.12.63-.36.84-.58.86-.49.04-.86-.33-1.33-.64-.74-.48-1.16-.78-1.88-1.25-.83-.54-.29-.84.18-1.33.12-.13 2.27-2.08 2.31-2.27.01-.02.01-.11-.04-.16-.05-.05-.12-.03-.18-.02-.07.01-1.28.81-3.6 2.38-.34.23-.65.35-.93.34-.31 0-.91-.17-1.36-.32-.55-.18-.99-.28-.95-.59.02-.16.24-.33.67-.51 2.62-1.14 4.37-1.89 5.25-2.25 2.5-1.02 3.02-1.2 3.36-1.2.07 0 .24.02.35.1.09.07.12.17.13.25-.01.08 0 .26-.02.34z"/></svg>
+          Signal Xpress Official Telegram Channel ➔
+        </a>
+      </div>
+    </div>
+
+    <div class="w-full overflow-hidden bg-[#161b22] border-x border-b border-[#30363d] rounded-b-xl py-2 mb-8 shadow-inner flex items-center">
+      <div class="whitespace-nowrap flex gap-8 animate-[marquee_30s_linear_infinite]">
+        <span class="text-sm text-gray-200">🚀 Welcome to SIGNALXPRESS (PRIVATE) LIMITED | 💎 VIP Forex & Gold Signals | 📊 SMC Indicators | 🤖 Auto Trading Bots | 📞 Call 0753773228</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4 bg-[#161b22] p-4 rounded-xl border border-[#30363d]">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-1.5 bg-black p-1 rounded-lg border border-gray-800">
+          <button type="button" id="btn-period-all" onclick="filterByPeriod('ALL')" class="period-btn active">All Time</button>
+          <button type="button" id="btn-period-thisweek" onclick="filterByPeriod('THIS_WEEK')" class="period-btn">This Week</button>
+          <button type="button" id="btn-period-lastweek" onclick="filterByPeriod('LAST_WEEK')" class="period-btn">Last Week</button>
+          <button type="button" id="btn-period-lastmonth" onclick="filterByPeriod('LAST_MONTH')" class="period-btn">Last Month</button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label for="date-filter" class="text-xs font-semibold uppercase text-gold">📅 Calendar:</label>
+          <input type="date" id="date-filter" onchange="filterByDate()" class="bg-black text-white border border-gray-700 px-3 py-1.5 rounded-lg outline-none cursor-pointer [color-scheme:dark]">
+          <button onclick="clearDateFilter()" class="text-xs bg-red-950/60 text-red-300 hover:bg-red-900/80 px-2.5 py-1.5 rounded border border-red-800">Clear Filter</button>
+        </div>
+      </div>
+      <div class="flex gap-4 text-sm text-gray-300">
+        <div>Start Balance: <span id="display-start-bal" class="text-amber-400 font-bold">$1,000.00</span></div>
+        <div>Status: <span class="text-green-400 font-semibold">● Auto-Sync Active</span></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
+      <div class="card-admin p-5">
+        <span class="text-xs text-gray-300 uppercase font-semibold">Start Balance</span>
+        <div id="start-balance-val" class="text-2xl font-bold text-amber-400 mt-2">$1,000.00</div>
+      </div>
+      <div class="card-admin p-5 border-l-4 border-l-sky-500">
+        <span class="text-xs text-gray-300 uppercase font-semibold">Deposit Balance</span>
+        <div id="deposit-balance" class="text-2xl font-bold text-sky-400 mt-2">$0.00</div>
+      </div>
+      <div class="card-admin p-5 border-l-4 border-l-rose-500">
+        <span class="text-xs text-gray-300 uppercase font-semibold">Withdraw Balance</span>
+        <div id="withdraw-balance" class="text-2xl font-bold text-rose-400 mt-2">$0.00</div>
+      </div>
+      <div class="card-admin p-5 border-l-4 border-l-blue-500">
+        <span class="text-xs text-gray-300 uppercase font-semibold">Net Profit (<span id="filter-mode-label" class="text-gold">All Time</span>)</span>
+        <div id="total-profit" class="text-2xl font-bold text-blue-400 mt-2">$0.00</div>
+      </div>
+      <div class="card-admin p-5 border-l-4 border-l-emerald-500">
+        <span class="text-xs text-gray-300 uppercase font-semibold">Current Balance</span>
+        <div id="current-balance" class="text-2xl font-bold text-emerald-400 mt-2">$1,000.00</div>
+      </div>
+      <div class="card-admin p-5 border-l-4 border-l-purple-500">
+        <span class="text-xs text-gray-300 uppercase font-semibold">Win Rate (<span id="filter-mode-label-2" class="text-gold">All Time</span>)</span>
+        <div id="win-rate" class="text-2xl font-bold text-white mt-2">0%</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+      <div class="card-admin p-4"><span class="text-xs text-gray-300 uppercase">Total Trades</span><div id="total-trades" class="text-xl font-bold text-gray-100 mt-1">0</div></div>
+      <div class="card-admin p-4 border-b-2 border-b-green-500"><span class="text-xs text-green-400 uppercase font-semibold">Wins</span><div id="win-count" class="text-xl font-bold text-green-400 mt-1">0</div></div>
+      <div class="card-admin p-4 border-b-2 border-b-red-500"><span class="text-xs text-red-400 uppercase font-semibold">Losses</span><div id="loss-count" class="text-xl font-bold text-red-400 mt-1">0</div></div>
+      <div class="card-admin p-4 border-b-2 border-b-amber-500"><span class="text-xs text-amber-400 uppercase font-semibold">BE Trades</span><div id="be-count" class="text-xl font-bold text-amber-400 mt-1">0</div></div>
+      <div class="card-admin p-4"><span class="text-xs text-purple-400 uppercase font-semibold">Net Pips Gain</span><div id="net-pips" class="text-xl font-bold text-purple-400 mt-1">0</div></div>
+      <div class="card-admin p-4 border-l-2 border-l-red-500"><span class="text-xs text-red-400 uppercase font-semibold">Total Loss Pips</span><div id="loss-pips" class="text-xl font-bold text-red-400 mt-1">0</div></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div class="card-admin lg:col-span-2">
+        <h3 class="text-base font-semibold text-white mb-4">Account Growth History Curve</h3>
+        <div style="position: relative; height:280px;"><canvas id="equityChart"></canvas></div>
+      </div>
+      <div class="card-admin">
+        <h3 class="text-base font-semibold text-white mb-4">Win vs Loss vs BE Distribution</h3>
+        <div style="position: relative; height:280px;" class="flex justify-center items-center"><canvas id="distributionChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card-admin">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base font-semibold text-white">Signal Ledger Database</h3>
+        <div class="flex gap-2">
+          <button onclick="filterResult('ALL')" class="px-3 py-1 text-xs rounded bg-gray-700 text-white font-bold">All</button>
+          <button onclick="filterResult('WIN')" class="px-3 py-1 text-xs rounded bg-green-950 text-green-300 font-bold border border-green-800">Wins</button>
+          <button onclick="filterResult('LOSS')" class="px-3 py-1 text-xs rounded bg-red-950 text-red-300 font-bold border border-red-800">Losses</button>
+          <button onclick="filterResult('BE')" class="px-3 py-1 text-xs rounded bg-amber-950 text-amber-300 font-bold border border-amber-800">BE</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-200">
+          <thead class="bg-[#1f242c] text-xs uppercase text-gray-100 font-bold">
+            <tr>
+              <th class="p-3">#</th>
+              <th class="p-3">Date</th>
+              <th class="p-3">Pair</th>
+              <th class="p-3">Direction</th>
+              <th class="p-3">Entry 1 / 2</th>
+              <th class="p-3">SL</th>
+              <th class="p-3">TP 1-4</th>
+              <th class="p-3 text-right">Pips</th>
+              <th class="p-3 text-right">Profit ($)</th>
+              <th class="p-3 text-center">Result</th>
+            </tr>
+          </thead>
+          <tbody id="trades-table-body" class="font-mono"></tbody>
+        </table>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t border-gray-800 gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-300">Rows per page:</span>
+          <select id="rows-per-page-select" onchange="changeRowsPerPage()" class="bg-black text-white border border-gray-700 px-2.5 py-1 rounded-lg text-xs outline-none cursor-pointer [color-scheme:dark]">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="ALL">All</option>
+          </select>
+        </div>
+        <div id="pagination-info" class="text-xs text-gray-300">Showing 0-0 of 0 trades</div>
+        <div class="flex items-center gap-1" id="pagination-controls"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: ADMIN PANEL -->
+  <div id="section-admin" style="display:none;">
+    <div class="flex justify-between items-center mb-6">
+      <div class="text-lg font-bold text-gold">⚙️ Trade Ledger Administration</div>
+      <div class="flex gap-2">
+        <input type="file" id="file-input" accept=".json" style="display:none">
+        <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs font-bold border border-gray-700" onclick="document.getElementById('file-input').click()">📂 Load JSON</button>
+        <button class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded text-xs font-bold" onclick="downloadJSON()">⬇ Download JSON</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <div class="card-admin lg:col-span-3 border border-amber-500/40 bg-amber-950/20">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400">💰 Manual Balance Configuration (Start, Deposit & Withdraw)</h3>
+          <button type="button" onclick="toggleCardBody('balance-settings-body', 'balance-toggle-btn')" id="balance-toggle-btn" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-bold text-xs flex items-center justify-center">-</button>
+        </div>
+        <div id="balance-settings-body" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          <div class="form-group"><label>Start Balance ($)</label><input type="number" id="manual-start-bal" step="0.01" value="1000.00" oninput="updateManualBalances()"></div>
+          <div class="form-group"><label>Deposit Balance ($)</label><input type="number" id="manual-deposit-bal" step="0.01" value="0.00" oninput="updateManualBalances()"></div>
+          <div class="form-group"><label>Withdraw Balance ($)</label><input type="number" id="manual-withdraw-bal" step="0.01" value="0.00" oninput="updateManualBalances()"></div>
+        </div>
+      </div>
+
+      <div class="card-admin lg:col-span-3 border border-blue-500/40 bg-blue-950/20">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-blue-400">🤖 Telegram Bot Settings</h3>
+          <div class="flex gap-2 items-center flex-wrap">
+            <button type="button" onclick="testTelegramConnection()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-all shadow">🧪 Test Bot Connection</button>
+            <div class="flex items-center gap-1 bg-black p-1 rounded border border-blue-500/40">
+              <select id="summary-type-select" class="bg-black text-xs text-white border border-gray-700 rounded px-2 py-1 outline-none">
+                <option value="DAILY">Daily Summary</option>
+                <option value="WEEKLY">Weekly Summary</option>
+                <option value="MONTHLY">Monthly Summary</option>
+              </select>
+              <input type="date" id="summary-date-picker" class="bg-transparent text-xs text-white outline-none [color-scheme:dark]">
+              <button type="button" onclick="sendSummaryToTelegram()" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black rounded text-xs font-bold transition-all shadow">📊 Send Summary</button>
+            </div>
+            <button type="button" onclick="toggleCardBody('tg-settings-body', 'tg-toggle-btn')" id="tg-toggle-btn" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-bold text-xs flex items-center justify-center">-</button>
+          </div>
+        </div>
+        <div id="tg-settings-body" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div class="form-group"><label>Bot Token</label><input type="text" id="tg-token" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" oninput="saveStorage()"></div>
+          <div class="form-group"><label>Chat ID / Channel Username</label><input type="text" id="tg-chatid" placeholder="@signalxpress_official or -100xxxxxxxxxx" oninput="saveStorage()"></div>
+        </div>
+      </div>
+
+      <div class="card-admin lg:col-span-3 border border-emerald-500/40 bg-emerald-950/20">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400">📊 Google Sheets Live Two-Way Sync</h3>
+          <div class="flex gap-2 items-center">
+            <button type="button" onclick="manualFetchFromGoogleSheets()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-all shadow">🔄 Sync Now</button>
+            <button type="button" onclick="toggleCardBody('gs-settings-body', 'gs-toggle-btn')" id="gs-toggle-btn" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-bold text-xs flex items-center justify-center">-</button>
+          </div>
+        </div>
+        <div id="gs-settings-body" class="form-group mt-2">
+          <label>Google Apps Script Web App URL</label>
+          <input type="text" id="gs-url" value="https://script.google.com/macros/s/AKfycbzNrtioyMKrzB_id2mF378Mvj5gxFJ6UIVVsxZxDny_mMZBC7XYxr5U_5ZQhEBsubRt/exec" oninput="saveStorage()">
+        </div>
+      </div>
+
+      <!-- Edit / Add Form -->
+      <div class="card-admin lg:col-span-3">
+        <div class="flex justify-between items-center mb-4">
+          <h3 id="form-title" class="text-sm font-bold uppercase tracking-wider text-amber-400">Add New Trade / Balance Entry</h3>
+          <!-- QUICK HIT BUTTONS IN FORM -->
+          <div id="form-hit-buttons" class="hidden flex gap-1 items-center bg-black p-1.5 rounded-lg border border-gray-800">
+            <span class="text-[10px] text-gray-300 uppercase font-bold mr-1">Quick Hit:</span>
+            <button type="button" onclick="formHitAction('TP1')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">TP1 Hit</button>
+            <button type="button" onclick="formHitAction('TP2')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">TP2 Hit</button>
+            <button type="button" onclick="formHitAction('TP3')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">TP3 Hit</button>
+            <button type="button" onclick="formHitAction('TP4')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">TP4 Hit</button>
+            <button type="button" onclick="formHitAction('BE')" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold">BE Hit</button>
+            <button type="button" onclick="formHitAction('SL')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">SL Hit</button>
+          </div>
+        </div>
+
+        <form id="trade-form" class="flex flex-col gap-4">
+          <input type="hidden" id="f-num">
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="form-group"><label>Date</label><input type="date" id="f-date" required class="[color-scheme:dark]"></div>
+            <div class="form-group"><label>Pair / Type</label><input type="text" id="f-pair" value="XAU/USD"></div>
+            <div class="form-group">
+              <label>Direction / Action</label>
+              <select id="f-direction">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+                <option value="BUY LIMIT">BUY LIMIT</option>
+                <option value="SELL LIMIT">SELL LIMIT</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Channel</label>
+              <select id="f-channel"><option value="VIP">VIP</option><option value="FREE">FREE</option></select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="form-group"><label>Entry 1</label><input type="number" id="f-entry1" step="0.01" placeholder="2350.00"></div>
+            <div class="form-group"><label>Entry 2</label><input type="number" id="f-entry2" step="0.01" placeholder="2345.00"></div>
+            <div class="form-group"><label>Stop Loss (SL)</label><input type="number" id="f-sl" step="0.01" placeholder="2330.00"></div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="form-group"><label>TP 1</label><input type="number" id="f-tp1" step="0.01" placeholder="2360.00"></div>
+            <div class="form-group"><label>TP 2</label><input type="number" id="f-tp2" step="0.01" placeholder="2370.00"></div>
+            <div class="form-group"><label>TP 3</label><input type="number" id="f-tp3" step="0.01" placeholder="2380.00"></div>
+            <div class="form-group"><label>TP 4</label><input type="number" id="f-tp4" step="0.01" placeholder="2390.00"></div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="form-group"><label>Pips</label><input type="number" id="f-pips" step="0.1"></div>
+            <div class="form-group"><label>Profit ($)</label><input type="number" id="f-profit" step="0.01"></div>
+            <div class="form-group">
+              <label>Result</label>
+              <select id="f-result">
+                <option value="WIN">WIN</option>
+                <option value="LOSS">LOSS</option>
+                <option value="BE">BE</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 mt-2 bg-[#161b22] p-3 rounded-lg border border-gray-800">
+            <input type="checkbox" id="send-to-telegram" class="w-4 h-4 accent-amber-500 cursor-pointer" checked>
+            <label for="send-to-telegram" class="text-xs text-amber-300 font-bold uppercase cursor-pointer">🚀 Send updated signal directly to Telegram on save</label>
+          </div>
+
+          <div class="flex gap-2 mt-2">
+            <button type="submit" id="submit-btn" class="flex-1 bg-green-600 hover:bg-green-500 text-black font-bold py-2.5 rounded text-xs uppercase">Save Trade & Send</button>
+            <button type="button" onclick="resetForm()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 rounded text-xs font-bold">Reset</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Manage Saved Trades Table -->
+      <div class="card-admin lg:col-span-3 overflow-x-auto">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-200 mb-4">Manage Saved Trades</h3>
+        <table class="w-full text-left text-xs text-gray-200">
+          <thead class="bg-[#1f242c] uppercase text-gray-100 font-bold">
+            <tr>
+              <th class="p-2">#</th>
+              <th class="p-2">Date</th>
+              <th class="p-2">Dir</th>
+              <th class="p-2">Entry 1/2</th>
+              <th class="p-2">SL</th>
+              <th class="p-2">TPs</th>
+              <th class="p-2">Pips</th>
+              <th class="p-2">Profit</th>
+              <th class="p-2">Result</th>
+              <th class="p-2">Quick Hit Status / Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-rows" class="font-mono"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: IB PARTNER SYSTEM -->
+  <div id="section-ib-partner" style="display:none;">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+      <div class="d-flex align-items-center gap-3">
+        <div class="p-2 rounded-3 bg-dark border border-primary">
+          <i class="fa-solid fa-user-shield text-primary fs-3"></i>
+        </div>
+        <div>
+          <h3 class="m-0 text-white fw-bold fs-4">IB Partner & Trading Analytics System</h3>
+          <small class="text-secondary">Google Sheet Dynamic Sync & Member Registration Database</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <input type="text" id="ib-gs-url" class="form-control form-control-ib form-control-sm text-xs" style="width: 280px;" placeholder="Google Web App URL for IB Partner" onchange="saveIbGsUrl()">
+        <button class="btn btn-sm btn-outline-primary text-white" onclick="loadData()">
+          <i class="fa-solid fa-rotate me-1"></i> Refresh Sheet
+        </button>
+        <span id="syncStatus" class="badge bg-warning text-dark">Connecting...</span>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Search Card -->
+      <div class="col-12">
+        <div class="card-ib p-4">
+          <h5 class="text-white mb-3">
+            <i class="fa-solid fa-magnifying-glass text-primary me-2"></i>සෙවීම (Search by SX ID / Account ID / NIC)
+          </h5>
+          <div class="input-group">
+            <input type="text" id="searchInput" class="form-control form-control-ib form-control-lg" onkeyup="searchUser()" placeholder="SX ID (උදා: 1012 හෝ SX1012), Account ID හෝ NIC එක ඇතුළත් කරන්න...">
+            <button class="btn btn-primary px-4" onclick="searchUser()">
+              <i class="fa-solid fa-search me-1"></i> Search
+            </button>
+          </div>
+          <div id="searchResult" class="mt-3"></div>
+        </div>
+      </div>
+
+      <!-- Form: Add Member -->
+      <div class="col-lg-5">
+        <div class="card-ib p-4 h-100">
+          <h5 class="text-white mb-3">
+            <i class="fa-solid fa-user-plus text-success me-2"></i>අලුත් සාමාජිකයෙක් ඇතුළත් කිරීම
+          </h5>
+          <form id="addForm" onsubmit="saveMember(event)">
+            <div class="mb-2">
+              <label>නම (Name)</label>
+              <input type="text" id="name" class="form-control form-control-ib" placeholder="සාමාජිකයාගේ නම" required>
+            </div>
+            
+            <div class="row mb-2">
+              <div class="col-6">
+                <label>Broker Name</label>
+                <input type="text" id="broker" class="form-control form-control-ib" value="XM">
+              </div>
+              <div class="col-6">
+                <label>Account ID</label>
+                <input type="text" id="accountId" class="form-control form-control-ib" placeholder="Account ID" required>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label>NIC / Passport Number</label>
+              <input type="text" id="nic" class="form-control form-control-ib" placeholder="ID නම්‍බර් එක" required>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-6">
+                <label>WhatsApp Number</label>
+                <input type="text" id="whatsapp" class="form-control form-control-ib" placeholder="07XXXXXXXX">
+              </div>
+              <div class="col-6">
+                <label>Telegram Username</label>
+                <input type="text" id="telegram" class="form-control form-control-ib" placeholder="@username">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label>Partner Name</label>
+              <div class="input-group">
+                <select id="partnerSelect" class="form-select form-select-ib">
+                  <option value="Tharindu">Tharindu</option>
+                  <option value="Malaka">Malaka</option>
+                  <option value="Asanka">Asanka</option>
+                  <option value="Wajira">Wajira</option>
+                  <option value="Nadun">Nadun</option>
+                  <option value="Wijenayaka Sir">Wijenayaka Sir</option>
+                  <option value="Tharanga Akka">Tharanga Akka</option>
+                  <option value="Menala">Menala</option>
+                </select>
+                <button type="button" class="btn btn-outline-secondary text-white" onclick="addPartner()">+ Partner</button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 py-2 mt-2" id="saveBtn">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Save Member
+            </button>
+          </form>
+          <div id="status" class="mt-3"></div>
+        </div>
+      </div>
+
+      <!-- Database Members Table -->
+      <div class="col-lg-7">
+        <div class="card-ib p-4 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-white m-0">
+              <i class="fa-solid fa-list-ul text-info me-2"></i>සාමාජිකයින් ලැයිස්තුව
+            </h5>
+            <span id="totalBadge" class="badge bg-secondary fs-6">Total: 0</span>
+          </div>
+          <div class="table-responsive table-container" style="max-height: 480px; overflow-y: auto;">
+            <table class="table table-dark-custom">
+              <thead>
+                <tr>
+                  <th>SX ID</th>
+                  <th>Name</th>
+                  <th>Account ID</th>
+                  <th>Partner</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td colspan="4" class="text-center text-muted py-4">Google Sheet එකෙන් දත්ත Load වෙමින් පවතී...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: TRADING CSV ANALYTICS -->
+  <div id="section-csv-analytics" style="display:none;">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+      <div class="d-flex align-items-center gap-3">
+        <div class="p-2 rounded-3 bg-dark border border-info">
+          <i class="fa-solid fa-chart-line text-info fs-3"></i>
+        </div>
+        <div>
+          <h3 class="m-0 text-white fw-bold fs-4">Trading Trades CSV Analytics</h3>
+          <small class="text-secondary">Direct CSV Data Processing & Affiliate Partner Metrics</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Single Upload Box (Trading CSV Only) -->
+    <div class="row">
+      <div class="col-12">
+        <div class="upload-box" id="box2">
+          <input type="file" class="up-input" accept=".csv" id="f2" onchange="handleFile2(this)">
+          <i class="ti ti-receipt up-icon" id="ic2"></i>
+          <div class="up-title">Trading Trades CSV File එක මෙතැනට Upload කරන්න</div>
+          <div class="up-sub">Trades & Commission data අඩංගු CSV එක upload කළ පසු Direct Analysis සිදු වේ</div>
+          <div class="up-fname" id="fn2"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-run" id="runBtn" onclick="processData()" disabled>
+      <i class="ti ti-player-play me-2"></i> Trading CSV එක Analysis කර Analytics Dashboard එක ලබාගන්න
+    </button>
+
+    <!-- CSV Results Section -->
+    <div id="results" style="display:none">
+      
+      <div class="metrics-ib">
+        <div class="mc"><div class="mc-accent" style="background:#00e5a0"></div><div class="mc-label">Partners</div><div class="mc-val" id="m1" style="color:#00e5a0">—</div><div class="mc-sub">Total Partners</div></div>
+        <div class="mc"><div class="mc-accent" style="background:#6a8aff"></div><div class="mc-label">Active traders</div><div class="mc-val" id="m2" style="color:#6a8aff">—</div><div class="mc-sub">With trade records</div></div>
+        <div class="mc"><div class="mc-accent" style="background:#f5c842"></div><div class="mc-label">Total trades</div><div class="mc-val" id="m3" style="color:#f5c842">—</div><div class="mc-sub">All positions</div></div>
+        <div class="mc"><div class="mc-accent" style="background:#00cfff"></div><div class="mc-label">Total lots</div><div class="mc-val" id="m4" style="color:#00cfff">—</div><div class="mc-sub">All trades combined</div></div>
+        <div class="mc"><div class="mc-accent" style="background:#a06af0"></div><div class="mc-label">Total commission</div><div class="mc-val" id="m5" style="color:#a06af0">—</div><div class="mc-sub">Affiliate earned</div></div>
+      </div>
+
+      <!-- TOP 10 & CHARTS SECTION -->
+      <div class="row g-3 mb-4">
+        <!-- Top 10 List -->
+        <div class="col-lg-4">
+          <div class="sec-ib h-100 p-3">
+            <div class="sec-title text-secondary mb-3"><i class="ti ti-trophy me-1"></i> Top 10 — Lots අනුව</div>
+            <div id="top10list" class="top10-list"></div>
+          </div>
+        </div>
+
+        <!-- Chart 1: Partner Match Status (Doughnut Chart) -->
+        <div class="col-lg-4">
+          <div class="sec-ib h-100 p-3">
+            <div class="sec-title text-secondary mb-3 text-center"><i class="ti ti-chart-donut me-1"></i> Partner Match Status</div>
+            <div style="height:270px; position:relative;">
+              <canvas id="c1"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 2: Traded Currencies / Pairs (Horizontal Bar Chart) -->
+        <div class="col-lg-4">
+          <div class="sec-ib h-100 p-3">
+            <div class="sec-title text-secondary mb-3 text-center"><i class="ti ti-chart-bar me-1"></i> Traded Currencies / Pairs (Lots)</div>
+            <div style="height:270px; position:relative;">
+              <canvas id="c2"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-tabs">
+        <div class="sub-tab on" onclick="showT('partners',this)"><i class="ti ti-id-badge me-1"></i> Partner directory</div>
+        <div class="sub-tab" onclick="showT('trades',this)"><i class="ti ti-receipt me-1"></i> Trades by account</div>
+        <div class="sub-tab" onclick="showT('nomatch',this)"><i class="ti ti-alert-triangle me-1"></i> No account match</div>
+      </div>
+
+      <!-- Partner Directory -->
+      <div id="t-partners">
+        <div class="sec-ib p-3">
+          <div class="sec-title text-secondary mb-2"><i class="ti ti-search me-1"></i> Partner search</div>
+          <input class="form-control form-control-ib mb-3" id="srch" placeholder="Name, SX ID, Account ID, Broker..." oninput="filterP()">
+          <div class="table-responsive">
+            <table class="table table-dark-custom">
+              <thead>
+                <tr>
+                  <th style="width:40px">#</th>
+                  <th style="width:90px">SX ID</th>
+                  <th>Name</th>
+                  <th style="width:80px">Broker</th>
+                  <th style="width:120px">Account ID</th>
+                  <th style="width:100px">Partner</th>
+                  <th style="width:70px">Trades</th>
+                  <th style="width:90px">Lots</th>
+                  <th style="width:110px">Commission</th>
+                  <th style="width:90px">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tb-p"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trades by Account -->
+      <div id="t-trades" style="display:none">
+        <div class="sec-ib p-3">
+          <div class="sec-title text-secondary mb-2"><i class="ti ti-receipt me-1"></i> Account summary</div>
+          <div class="table-responsive">
+            <table class="table table-dark-custom">
+              <thead>
+                <tr>
+                  <th>Account ID</th>
+                  <th>Matched Partner</th>
+                  <th>SX ID</th>
+                  <th>Trades</th>
+                  <th>Total Lots</th>
+                  <th>Commission</th>
+                </tr>
+              </thead>
+              <tbody id="tb-t"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- No Account Match -->
+      <div id="t-nomatch" style="display:none">
+        <div class="sec-ib p-3">
+          <div class="sec-title text-secondary mb-2"><i class="ti ti-alert-triangle me-1"></i> Unmatched trades from CSV</div>
+          <div class="table-responsive">
+            <table class="table table-dark-custom">
+              <thead>
+                <tr>
+                  <th>Account ID</th>
+                  <th>Trades</th>
+                  <th>Total Lots</th>
+                  <th>Commission</th>
+                </tr>
+              </thead>
+              <tbody id="tb-n"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Popup -->
+<div id="hitPipsModal" class="custom-modal-overlay" style="display: none;">
+  <div class="custom-modal-box">
+    <h3 id="modal-title" class="text-base font-bold text-amber-400 uppercase tracking-wider mb-3">Target Hit Update</h3>
+    <p id="modal-desc" class="text-xs text-gray-200 mb-4">Enter Pips amount & Dollar Profit for this trade.</p>
+
+    <div class="form-group mb-3">
+      <label class="text-xs text-gray-200 uppercase">Pips Amount</label>
+      <input type="number" id="pop-pips" step="0.1" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-sm outline-none focus:border-amber-500" placeholder="e.g. 50">
+    </div>
+
+    <div class="form-group mb-5">
+      <label class="text-xs text-gray-200 uppercase">Profit Dollar ($)</label>
+      <input type="number" id="pop-profit" step="0.01" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-sm outline-none focus:border-amber-500" placeholder="e.g. 20.00">
+    </div>
+
+    <div class="flex gap-2">
+      <button type="button" id="modal-btn-submit" class="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded text-xs uppercase">Submit</button>
+      <button type="button" id="modal-btn-cancel" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-custom" id="toast"></div>
+
+<script>
+/* ----------------------------------------------------
+   1. MASTER NAVIGATION SYSTEM & TAB SWITCHING
+---------------------------------------------------- */
+function switchTab(tab) {
+  document.getElementById('section-dashboard').style.display = tab === 'dashboard' ? 'block' : 'none';
+  document.getElementById('section-admin').style.display = tab === 'admin' ? 'block' : 'none';
+  document.getElementById('section-ib-partner').style.display = tab === 'ib-partner' ? 'block' : 'none';
+  document.getElementById('section-csv-analytics').style.display = tab === 'csv-analytics' ? 'block' : 'none';
+
+  document.getElementById('btn-tab-dashboard').classList.toggle('active', tab === 'dashboard');
+  document.getElementById('btn-tab-admin').classList.toggle('active', tab === 'admin');
+  document.getElementById('btn-tab-ib-partner').classList.toggle('active', tab === 'ib-partner');
+  document.getElementById('btn-tab-csv-analytics').classList.toggle('active', tab === 'csv-analytics');
+
+  if (tab === 'ib-partner') {
+    loadData();
+  }
+}
+
+/* ----------------------------------------------------
+   2. IB PARTNER SYSTEM SCRIPT (GOOGLE SHEETS INTEGRATION)
+---------------------------------------------------- */
+const IB_GS_URL_KEY = 'sx_ib_gs_url';
+let membersData = [];
+
+function saveIbGsUrl() {
+  const url = document.getElementById('ib-gs-url').value.trim();
+  localStorage.setItem(IB_GS_URL_KEY, url);
+  toast('IB Google Sheet URL Saved!');
+}
+
+function loadIbGsUrl() {
+  const savedUrl = localStorage.getItem(IB_GS_URL_KEY);
+  if (savedUrl) {
+    document.getElementById('ib-gs-url').value = savedUrl;
+  }
+}
+
+async function loadData() {
+  const url = document.getElementById('ib-gs-url').value.trim();
+  const statusBadge = document.getElementById('syncStatus');
+  const tableBody = document.getElementById('tableBody');
+
+  if (!url) {
+    statusBadge.className = "badge bg-danger text-white";
+    statusBadge.innerText = "No URL Provided";
+    tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-warning py-4">Please input your Google Web App URL above to load data.</td></tr>`;
+    return;
+  }
+
+  statusBadge.className = "badge bg-warning text-dark";
+  statusBadge.innerText = "Connecting...";
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (Array.isArray(data)) {
+      membersData = data;
+      renderIbTable(membersData);
+      document.getElementById('totalBadge').innerText = `Total: ${membersData.length}`;
+      statusBadge.className = "badge bg-success text-white";
+      statusBadge.innerText = "● Connected & Synced";
+    } else {
+      throw new Error("Invalid format");
+    }
+  } catch (err) {
+    console.error("IB Data Fetch Error:", err);
+    statusBadge.className = "badge bg-danger text-white";
+    statusBadge.innerText = "Sync Failed";
+    tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Google Sheet එකෙන් දත්ත ලබාගැනීමට අපොහොසත් විය. URL එක නිවැරදිදැයි බලන්න.</td></tr>`;
+  }
+}
+
+function renderIbTable(data) {
+  const tableBody = document.getElementById('tableBody');
+  if (data.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">සාමාජිකයින් කිසිවෙකු සොයාගත නොහැකි විය.</td></tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = data.map(m => `
+    <tr>
+      <td><span class="badge bg-primary font-mono">${m.sxId || m.sx_id || '—'}</span></td>
+      <td class="fw-bold">${m.name || '—'}</td>
+      <td class="font-mono text-info">${m.accountId || m.account_id || m.account || '—'}</td>
+      <td><span class="badge bg-secondary">${m.partner || '—'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function searchUser() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const resultDiv = document.getElementById('searchResult');
+
+  if (!query) {
+    resultDiv.innerHTML = '';
+    renderIbTable(membersData);
+    return;
+  }
+
+  const filtered = membersData.filter(m => {
+    const sxId = String(m.sxId || m.sx_id || '').toLowerCase();
+    const accId = String(m.accountId || m.account_id || m.account || '').toLowerCase();
+    const nic = String(m.nic || '').toLowerCase();
+    const name = String(m.name || '').toLowerCase();
+
+    return sxId.includes(query) || accId.includes(query) || nic.includes(query) || name.includes(query);
+  });
+
+  renderIbTable(filtered);
+
+  if (filtered.length > 0) {
+    const u = filtered[0];
+    resultDiv.innerHTML = `
+      <div class="search-card p-3 mt-2">
+        <div class="row text-sm">
+          <div class="col-md-3"><span class="lbl">SX ID:</span> <span class="val-blue font-mono font-bold">${u.sxId || u.sx_id || '—'}</span></div>
+          <div class="col-md-3"><span class="lbl">Name:</span> <span class="val-white font-bold">${u.name || '—'}</span></div>
+          <div class="col-md-3"><span class="lbl">Account ID:</span> <span class="val-green font-mono">${u.accountId || u.account_id || u.account || '—'}</span></div>
+          <div class="col-md-3"><span class="lbl">Partner:</span> <span class="val-white">${u.partner || '—'}</span></div>
+        </div>
+      </div>
+    `;
+  } else {
+    resultDiv.innerHTML = `<div class="alert alert-dark border-danger text-danger mt-2 py-2 text-sm">❌ කිසිදු සාමාජිකයෙකු හමු නොවීය.</div>`;
+  }
+}
+
+async function saveMember(e) {
+  e.preventDefault();
+  const url = document.getElementById('ib-gs-url').value.trim();
+  const statusEl = document.getElementById('status');
+  const saveBtn = document.getElementById('saveBtn');
+
+  if (!url) {
+    toast('Please enter Google Apps Script URL first!', 'error');
+    return;
+  }
+
+  saveBtn.disabled = true;
+  statusEl.innerHTML = `<span class="text-warning text-sm">නව සාමාජිකයා ඇතුළත් වෙමින් පවතී...</span>`;
+
+  const payload = {
+    action: 'addMember',
+    name: document.getElementById('name').value,
+    broker: document.getElementById('broker').value,
+    accountId: document.getElementById('accountId').value,
+    nic: document.getElementById('nic').value,
+    whatsapp: document.getElementById('whatsapp').value,
+    telegram: document.getElementById('telegram').value,
+    partner: document.getElementById('partnerSelect').value
+  };
+
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    toast('✓ Member Saved Successfully!');
+    statusEl.innerHTML = `<span class="text-success text-sm">✓ සාමාජිකයා සාර්ථකව Google Sheet එකට ඇතුළත් විය!</span>`;
+    document.getElementById('addForm').reset();
+    
+    setTimeout(() => {
+      loadData();
+      statusEl.innerHTML = '';
+    }, 1500);
+
+  } catch (err) {
+    console.error(err);
+    toast('Failed to save member to Google Sheet', 'error');
+    statusEl.innerHTML = `<span class="text-danger text-sm">❌ සාමාජිකයා ඇතුළත් කිරීමට අපොහොසත් විය.</span>`;
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+function addPartner() {
+  const pName = prompt("නව Partner ගේ නම ඇතුළත් කරන්න:");
+  if (pName) {
+    const select = document.getElementById('partnerSelect');
+    const opt = document.createElement('option');
+    opt.value = pName;
+    opt.textContent = pName;
+    opt.selected = true;
+    select.appendChild(opt);
+  }
+}
+
+/* ----------------------------------------------------
+   3. TRADING PORTAL & SIGNAL LEDGER SCRIPT
+---------------------------------------------------- */
+const initialData = [
+  { "no": 1, "date": "2026-01-02", "pair": "XAU/USD", "direction": "SELL LIMIT", "entry1": 2350, "entry2": 2355, "sl": 2365, "tp1": 2340, "tp2": 2330, "tp3": 2320, "tp4": 2310, "pips": 870.0, "profit": 84.0, "result": "WIN", "channel": "FREE" },
+  { "no": 2, "date": "2026-01-02", "pair": "XAU/USD", "direction": "BUY", "entry1": 2360, "entry2": "", "sl": 2350, "tp1": 2370, "tp2": 2380, "tp3": "", "tp4": "", "pips": 130.0, "profit": 13.0, "result": "WIN", "channel": "VIP" },
+  { "no": 3, "date": "2026-01-02", "pair": "XAU/USD", "direction": "BUY LIMIT", "entry1": 2340, "entry2": 2335, "sl": 2325, "tp1": 2350, "tp2": 2360, "tp3": 2370, "tp4": "", "pips": 158.0, "profit": 15.0, "result": "WIN", "channel": "VIP" }
+];
+
+const STORAGE_KEY = 'sx_unified_trades';
+const TG_TOKEN_KEY = 'sx_tg_token';
+const TG_CHAT_KEY = 'sx_tg_chat';
+const GS_URL_KEY = 'sx_gs_url';
+const START_BAL_KEY = 'sx_manual_start_bal';
+const DEPOSIT_BAL_KEY = 'sx_manual_deposit_bal';
+const WITHDRAW_BAL_KEY = 'sx_manual_withdraw_bal';
+
+let trades = [];
+let editingNum = null;
+let currentFilteredData = [];
+let currentActivePeriod = 'ALL';
+let distributionChartInstance = null;
+let equityChartInstance = null;
+
+let currentPage = 1;
+let rowsPerPage = 10;
+
+function cleanEditedText(text) {
+  if (!text) return "";
+  return text.replace(/\(edited\)/gi, '').replace(/\bedited\b/gi, '').trim();
+}
+
+function getSriLankaDateString(dateObj = new Date()) {
+  const options = { timeZone: "Asia/Colombo", year: "numeric", month: "2-digit", day: "2-digit" };
+  const formatter = new Intl.DateTimeFormat("en-CA", options);
+  return formatter.format(dateObj);
+}
+
+function parseToSriLankaDateString(dateInput) {
+  if (!dateInput) return getSriLankaDateString();
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return String(dateInput).trim().split('T')[0];
+  return getSriLankaDateString(d);
+}
+
+function toggleCardBody(bodyId, btnId) {
+  const bodyEl = document.getElementById(bodyId);
+  const btnEl = document.getElementById(btnId);
+  if (bodyEl.style.display === 'none') {
+    bodyEl.style.display = bodyEl.dataset.display || 'grid';
+    btnEl.innerText = '-';
+  } else {
+    bodyEl.dataset.display = window.getComputedStyle(bodyEl).display;
+    bodyEl.style.display = 'none';
+    btnEl.innerText = '+';
+  }
+}
+
+function loadStorage() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try { trades = JSON.parse(saved); } catch(e) { trades = [...initialData]; }
+  } else {
+    trades = [...initialData];
+  }
+  
+  applyCurrentFilter();
+
+  if (localStorage.getItem(TG_TOKEN_KEY)) {
+    document.getElementById('tg-token').value = localStorage.getItem(TG_TOKEN_KEY);
+  }
+  if (localStorage.getItem(TG_CHAT_KEY)) {
+    document.getElementById('tg-chatid').value = localStorage.getItem(TG_CHAT_KEY);
+  }
+  
+  const savedGsUrl = localStorage.getItem(GS_URL_KEY);
+  if (savedGsUrl) {
+    document.getElementById('gs-url').value = savedGsUrl;
+  }
+
+  document.getElementById('manual-start-bal').value = localStorage.getItem(START_BAL_KEY) || '1000.00';
+  document.getElementById('manual-deposit-bal').value = localStorage.getItem(DEPOSIT_BAL_KEY) || '0.00';
+  document.getElementById('manual-withdraw-bal').value = localStorage.getItem(WITHDRAW_BAL_KEY) || '0.00';
+
+  loadIbGsUrl();
+}
+
+function saveStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+  localStorage.setItem(TG_TOKEN_KEY, document.getElementById('tg-token').value);
+  localStorage.setItem(TG_CHAT_KEY, document.getElementById('tg-chatid').value);
+  localStorage.setItem(GS_URL_KEY, document.getElementById('gs-url').value);
+  
+  applyCurrentFilter();
+  renderAll();
+}
+
+function updateManualBalances() {
+  localStorage.setItem(START_BAL_KEY, document.getElementById('manual-start-bal').value);
+  localStorage.setItem(DEPOSIT_BAL_KEY, document.getElementById('manual-deposit-bal').value);
+  localStorage.setItem(WITHDRAW_BAL_KEY, document.getElementById('manual-withdraw-bal').value);
+  renderAll();
+}
+
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast-custom show' + (type === 'error' ? ' error' : '');
+  setTimeout(() => el.className = 'toast-custom', 2500);
+}
+
+function renderAll() {
+  updateMetrics(currentFilteredData);
+  renderDashboardTable(currentFilteredData);
+  renderAdminTable();
+}
+
+function updateMetrics(data) {
+  let totalTrades = data.length;
+  let wins = data.filter(t => t.result && t.result.toUpperCase() === 'WIN').length;
+  let losses = data.filter(t => t.result && t.result.toUpperCase() === 'LOSS').length;
+  let bes = data.filter(t => t.result && t.result.toUpperCase() === 'BE').length;
+  let totalProfit = data.reduce((acc, t) => acc + (Number(t.profit) || 0), 0);
+  let totalPips = data.reduce((acc, t) => acc + (Number(t.pips) || 0), 0);
+  let lossPips = data.filter(t => t.pips < 0).reduce((acc, t) => acc + Number(t.pips), 0);
+  let winPips = data.filter(t => t.pips > 0).reduce((acc, t) => acc + Number(t.pips), 0);
+  
+  let startBal = Number(document.getElementById('manual-start-bal').value) || 0;
+  let depositBal = Number(document.getElementById('manual-deposit-bal').value) || 0;
+  let withdrawBal = Number(document.getElementById('manual-withdraw-bal').value) || 0;
+  
+  let currentBalance = startBal + depositBal - withdrawBal + totalProfit;
+  let winRateStr = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) + '%' : '0%';
+  
+  document.getElementById('total-trades').innerText = totalTrades;
+  document.getElementById('win-count').innerText = wins;
+  document.getElementById('loss-count').innerText = losses;
+  document.getElementById('be-count').innerText = bes;
+  document.getElementById('win-rate').innerText = winRateStr;
+  
+  document.getElementById('start-balance-val').innerText = '$' + startBal.toFixed(2);
+  document.getElementById('display-start-bal').innerText = '$' + startBal.toFixed(2);
+  document.getElementById('deposit-balance').innerText = '$' + depositBal.toFixed(2);
+  document.getElementById('withdraw-balance').innerText = '$' + withdrawBal.toFixed(2);
+  document.getElementById('total-profit').innerText = (totalProfit >= 0 ? '$' : '-$') + Math.abs(totalProfit).toFixed(2);
+  document.getElementById('current-balance').innerText = '$' + currentBalance.toFixed(2);
+  document.getElementById('net-pips').innerText = (totalPips >= 0 ? '+' : '') + totalPips;
+  document.getElementById('loss-pips').innerText = lossPips;
+
+  let labelText = 'All Time';
+  if (currentActivePeriod === 'THIS_WEEK') labelText = 'This Week';
+  else if (currentActivePeriod === 'LAST_WEEK') labelText = 'Last Week';
+  else if (currentActivePeriod === 'LAST_MONTH') labelText = 'Last Month';
+  else if (currentActivePeriod === 'CUSTOM_DATE') {
+    const filterVal = document.getElementById('date-filter').value;
+    labelText = filterVal ? `Selected Date: ${filterVal}` : 'All Time';
+  }
+  document.getElementById('filter-mode-label').innerText = labelText;
+  document.getElementById('filter-mode-label-2').innerText = labelText;
+
+  renderCharts(data, wins, losses, bes, winRateStr, winPips, lossPips, startBal, depositBal, withdrawBal);
+}
+
+function changeRowsPerPage() {
+  const val = document.getElementById('rows-per-page-select').value;
+  rowsPerPage = val === 'ALL' ? 'ALL' : Number(val);
+  currentPage = 1;
+  renderDashboardTable(currentFilteredData);
+}
+
+function changePage(page) {
+  currentPage = page;
+  renderDashboardTable(currentFilteredData);
+}
+
+function renderDashboardTable(data) {
+  const tbody = document.getElementById('trades-table-body');
+  tbody.innerHTML = '';
+  
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-gray-400">No records found for selected period/filter.</td></tr>`;
+    document.getElementById('pagination-info').innerText = 'Showing 0-0 of 0 trades';
+    document.getElementById('pagination-controls').innerHTML = '';
+    return;
+  }
+
+  let reversedData = [...data].reverse();
+  let paginatedData = [];
+  let totalPages = 1;
+
+  if (rowsPerPage === 'ALL') {
+    paginatedData = reversedData;
+    totalPages = 1;
+    currentPage = 1;
+  } else {
+    totalPages = Math.ceil(reversedData.length / rowsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    
+    let startIdx = (currentPage - 1) * rowsPerPage;
+    let endIdx = startIdx + rowsPerPage;
+    paginatedData = reversedData.slice(startIdx, endIdx);
+  }
+
+  paginatedData.forEach(t => {
+    let resClass = t.result === 'WIN' ? 'bg-green-900/60 text-green-300 border border-green-700' : 
+                   t.result === 'LOSS' ? 'bg-red-900/60 text-red-300 border border-red-700' : 
+                   'bg-amber-900/60 text-amber-300 border border-amber-700';
+    let dirClass = t.direction.includes('BUY') ? 'text-blue-400' : 'text-amber-400';
+    
+    let entries = [t.entry1, t.entry2].filter(Boolean).join(' / ') || '—';
+    let slVal = t.sl !== undefined && t.sl !== '' ? t.sl : '—';
+    let tps = [t.tp1, t.tp2, t.tp3, t.tp4].filter(Boolean).join(', ') || '—';
+
+    let displayDate = parseToSriLankaDateString(t.date);
+
+    tbody.innerHTML += `<tr class="border-b border-gray-800 hover:bg-gray-800/40">
+      <td class="p-3 text-white font-bold">${t.no}</td>
+      <td class="p-3 text-xs text-gray-200">${displayDate}</td>
+      <td class="p-3 text-white font-bold">${t.pair}</td>
+      <td class="p-3 font-bold ${dirClass}">${t.direction}</td>
+      <td class="p-3 text-xs text-gray-200">${entries}</td>
+      <td class="p-3 text-xs text-red-400 font-bold">${slVal}</td>
+      <td class="p-3 text-xs text-gray-200">${tps}</td>
+      <td class="p-3 text-right text-gray-100 font-semibold">${t.pips}</td>
+      <td class="p-3 text-right text-white font-bold">$${t.profit}</td>
+      <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${resClass}">${t.result}</span></td>
+    </tr>`;
+  });
+
+  let showingStart = rowsPerPage === 'ALL' ? 1 : ((currentPage - 1) * rowsPerPage) + 1;
+  let showingEnd = rowsPerPage === 'ALL' ? reversedData.length : Math.min(currentPage * rowsPerPage, reversedData.length);
+  document.getElementById('pagination-info').innerText = `Showing ${showingStart}-${showingEnd} of ${reversedData.length} trades`;
+
+  const controlsEl = document.getElementById('pagination-controls');
+  controlsEl.innerHTML = '';
+
+  if (rowsPerPage !== 'ALL' && totalPages > 1) {
+    controlsEl.innerHTML += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled class="px-2.5 py-1 rounded bg-black text-gray-600 border border-gray-800 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded bg-black text-gray-200 border border-gray-700 hover:bg-gray-800"'}>Prev</button>`;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        controlsEl.innerHTML += `<button onclick="changePage(${i})" class="px-2.5 py-1 rounded ${i === currentPage ? 'bg-gold text-black font-bold border border-gold shadow' : 'bg-black text-gray-200 border border-gray-700 hover:bg-gray-800'}">${i}</button>`;
+      } else if (i === currentPage - 2 || i === currentPage + 2) {
+        controlsEl.innerHTML += `<span class="px-1 text-gray-400">...</span>`;
+      }
+    }
+
+    controlsEl.innerHTML += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled class="px-2.5 py-1 rounded bg-black text-gray-600 border border-gray-800 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded bg-black text-gray-200 border border-gray-700 hover:bg-gray-800"'}>Next</button>`;
+  }
+}
+
+function renderAdminTable() {
+  const tbody = document.getElementById('admin-rows');
+  tbody.innerHTML = [...trades].reverse().map(t => {
+    let entries = [t.entry1, t.entry2].filter(Boolean).join('/') || '—';
+    let slVal = t.sl !== undefined && t.sl !== '' ? t.sl : '—';
+    let tps = [t.tp1, t.tp2, t.tp3, t.tp4].filter(Boolean).join(',') || '—';
+    let displayDate = parseToSriLankaDateString(t.date);
+
+    return `
+    <tr class="border-b border-gray-800 hover:bg-gray-800/20">
+      <td class="p-2 text-white font-bold">${t.no}</td>
+      <td class="p-2 text-gray-200">${displayDate}</td>
+      <td class="p-2 font-bold ${t.direction.includes('BUY') ? 'text-blue-400' : 'text-amber-400'}">${t.direction}</td>
+      <td class="p-2 text-xs text-gray-200">${entries}</td>
+      <td class="p-2 text-xs text-red-400 font-bold">${slVal}</td>
+      <td class="p-2 text-xs text-gray-200">${tps}</td>
+      <td class="p-2 text-gray-100">${t.pips}</td>
+      <td class="p-2 text-white font-bold">$${t.profit}</td>
+      <td class="p-2"><span class="${t.result === 'WIN' ? 'text-green-400' : t.result === 'LOSS' ? 'text-red-400' : 'text-amber-400'} font-bold">${t.result}</span></td>
+      <td class="p-2">
+        <div class="flex flex-wrap gap-1 mb-1">
+          <button type="button" onclick="hitAction(${t.no}, 'TP1')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">TP1 Hit</button>
+          <button type="button" onclick="hitAction(${t.no}, 'TP2')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">TP2 Hit</button>
+          <button type="button" onclick="hitAction(${t.no}, 'TP3')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">TP3 Hit</button>
+          <button type="button" onclick="hitAction(${t.no}, 'TP4')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">TP4 Hit</button>
+          <button type="button" onclick="hitAction(${t.no}, 'BE')" class="bg-amber-600 hover:bg-amber-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">BE Hit</button>
+          <button type="button" onclick="hitAction(${t.no}, 'SL')" class="bg-red-600 hover:bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">SL Hit</button>
+        </div>
+        <div class="flex gap-1">
+          <button type="button" onclick="editTrade(${t.no})" class="bg-amber-500/30 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded text-[10px] font-bold">Edit</button>
+          <button type="button" onclick="deleteTrade(${t.no})" class="bg-red-500/30 text-red-300 border border-red-500/50 px-2 py-0.5 rounded text-[10px] font-bold">Del</button>
+        </div>
+      </td>
+    </tr>
+  `;
+  }).join('');
+}
+
+function openHitModal(actionType, defaultPips, defaultProfit) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('hitPipsModal');
+    const title = document.getElementById('modal-title');
+    const desc = document.getElementById('modal-desc');
+    const pipsInput = document.getElementById('pop-pips');
+    const profitInput = document.getElementById('pop-profit');
+    const submitBtn = document.getElementById('modal-btn-submit');
+    const cancelBtn = document.getElementById('modal-btn-cancel');
+
+    title.innerText = `🎯 ${actionType} HIT DETAILS`;
+    desc.innerText = `Enter Pips and Dollar Profit for Trade ${actionType}`;
+    pipsInput.value = defaultPips;
+    profitInput.value = defaultProfit;
+
+    modal.style.display = 'flex';
+
+    const cleanup = () => {
+      modal.style.display = 'none';
+      submitBtn.onclick = null;
+      cancelBtn.onclick = null;
+    };
+
+    submitBtn.onclick = () => {
+      const pVal = pipsInput.value !== '' ? Number(pipsInput.value) : defaultPips;
+      const dVal = profitInput.value !== '' ? Number(profitInput.value) : defaultProfit;
+      cleanup();
+      resolve({ pips: pVal, profit: dVal });
+    };
+
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+  });
+}
+
+async function hitAction(no, actionType) {
+  const t = trades.find(x => x.no === no);
+  if (!t) return;
+
+  let defaultPips = actionType === 'BE' ? 0 : actionType === 'SL' ? -30 : actionType === 'TP1' ? 30 : actionType === 'TP2' ? 60 : actionType === 'TP3' ? 100 : 150;
+  let defaultProfit = actionType === 'BE' ? 0 : actionType === 'SL' ? -10 : actionType === 'TP1' ? 10 : actionType === 'TP2' ? 20 : actionType === 'TP3' ? 35 : 50;
+
+  const modalResult = await openHitModal(actionType, t.pips || defaultPips, t.profit || defaultProfit);
+  if (!modalResult) return;
+
+  t.pips = modalResult.pips;
+  t.profit = modalResult.profit;
+
+  if (actionType === 'SL') {
+    t.result = 'LOSS';
+  } else if (actionType === 'BE') {
+    t.result = 'BE';
+  } else {
+    t.result = 'WIN';
+  }
+
+  saveStorage();
+  toast(`✓ Trade #${no} marked as ${actionType} Hit!`);
+
+  await sendToGoogleSheets(t);
+  await sendToTelegramWithHit(t, actionType);
+}
+
+async function formHitAction(actionType) {
+  if (!editingNum) return;
+  const t = trades.find(x => x.no === editingNum);
+  if (!t) return;
+
+  let defaultPips = actionType === 'BE' ? 0 : actionType === 'SL' ? -30 : actionType === 'TP1' ? 30 : actionType === 'TP2' ? 60 : actionType === 'TP3' ? 100 : 150;
+  let defaultProfit = actionType === 'BE' ? 0 : actionType === 'SL' ? -10 : actionType === 'TP1' ? 10 : actionType === 'TP2' ? 20 : actionType === 'TP3' ? 35 : 50;
+
+  const currentFormPips = document.getElementById('f-pips').value || defaultPips;
+  const currentFormProfit = document.getElementById('f-profit').value || defaultProfit;
+
+  const modalResult = await openHitModal(actionType, currentFormPips, currentFormProfit);
+  if (!modalResult) return;
+
+  t.pips = modalResult.pips;
+  t.profit = modalResult.profit;
+  document.getElementById('f-pips').value = modalResult.pips;
+  document.getElementById('f-profit').value = modalResult.profit;
+
+  if (actionType === 'SL') {
+    t.result = 'LOSS';
+    document.getElementById('f-result').value = 'LOSS';
+  } else if (actionType === 'BE') {
+    t.result = 'BE';
+    document.getElementById('f-result').value = 'BE';
+  } else {
+    t.result = 'WIN';
+    document.getElementById('f-result').value = 'WIN';
+  }
+
+  saveStorage();
+  toast(`✓ Trade #${editingNum} marked as ${actionType} Hit!`);
+
+  await sendToGoogleSheets(t);
+  await sendToTelegramWithHit(t, actionType);
+}
+
+async function testTelegramConnection() {
+  const token = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  
+  if (!token || !chatId) {
+    toast('Please enter Bot Token and Chat ID first!', 'error');
+    return;
+  }
+
+  let message = `📢 *SIGNAL XPRESS වෙත සාදරයෙන් පිළිගනිමු!*\n` +
+                `ඔබ දැන් SIGNAL XPRESS Trading Community එකේ සාමාජිකයෙකි.\n\n` +
+                `⚠️ *වැදගත් අවවාදය*\n` +
+                `Trading කියන්නේ ඉක්මනින් සල්ලි හොයන ක්‍රමයක් නොවෙයි. ලාභ ලැබෙන වගේම පාඩුත් ලැබිය හැකියි. ඔබට අහිමි වුවහොත් දරාගත හැකි මුදලක් පමණක් ආයෝජනය කරන්න. Risk Management පිළිපදින්න, හැඟීම් මත නොව සැලසුමකට අනුව Trade කරන්න.\n\n` +
+                `SIGNAL XPRESS මඟින් ලබාදෙන Signals සහ සේවාවන් ඔබගේ Trading තීරණ සඳහා සහායක් පමණි. අවසාන Trading තීරණය සහ එහි වගකීම ඔබ සතුය.\n\n` +
+                `ඔබගේ Trading ගමනට සුභ පැතුම්! 🚀`;
+
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  
+  try {
+    toast('Sending test message...', 'success');
+    let response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: cleanEditedText(message),
+        parse_mode: 'Markdown'
+      })
+    });
+    let data = await response.json();
+    if (data.ok) {
+      toast('✓ Test Message Sent Successfully!');
+    } else {
+      toast('Telegram Error: ' + data.description, 'error');
+    }
+  } catch(err) {
+    toast('Failed to reach Telegram API', 'error');
+  }
+}
+
+async function sendSummaryToTelegram() {
+  const token = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  const selectedDateStr = document.getElementById('summary-date-picker').value;
+  const summaryType = document.getElementById('summary-type-select').value;
+
+  if (!token || !chatId) {
+    toast('Please enter Bot Token and Chat ID first!', 'error');
+    return;
+  }
+
+  if (!selectedDateStr) {
+    toast('Please select a date first!', 'error');
+    return;
+  }
+
+  const baseDate = new Date(selectedDateStr);
+  let targetTrades = [];
+  let titleHeader = "";
+  let periodText = "";
+
+  if (summaryType === 'DAILY') {
+    titleHeader = "DAILY SUMMARY";
+    periodText = `📅 *Date:* ${selectedDateStr}`;
+    targetTrades = trades.filter(t => {
+      if (!t.date) return false;
+      return parseToSriLankaDateString(t.date) === selectedDateStr;
+    });
+  } else if (summaryType === 'WEEKLY') {
+    titleHeader = "WEEKLY SUMMARY";
+    const day = baseDate.getDay();
+    const diffToMonday = baseDate.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(baseDate.setDate(diffToMonday));
+    monday.setHours(0,0,0,0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23,59,59,999);
+
+    const monStr = parseToSriLankaDateString(monday);
+    const sunStr = parseToSriLankaDateString(sunday);
+    periodText = `🗓 *Period:* ${monStr} to ${sunStr}`;
+
+    targetTrades = trades.filter(t => {
+      if (!t.date) return false;
+      const tDate = new Date(t.date);
+      return tDate >= monday && tDate <= sunday;
+    });
+  } else if (summaryType === 'MONTHLY') {
+    titleHeader = "MONTHLY SUMMARY";
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    firstDay.setHours(0,0,0,0);
+    const lastDay = new Date(year, month + 1, 0);
+    lastDay.setHours(23,59,59,999);
+
+    const monthName = baseDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    periodText = `🗓 *Month:* ${monthName}`;
+
+    targetTrades = trades.filter(t => {
+      if (!t.date) return false;
+      const tDate = new Date(t.date);
+      return tDate >= firstDay && tDate <= lastDay;
+    });
+  }
+
+  if (targetTrades.length === 0) {
+    toast(`No trades found for selected ${summaryType.toLowerCase()} period!`, 'error');
+    return;
+  }
+
+  let wins = targetTrades.filter(t => t.result && t.result.toUpperCase() === 'WIN').length;
+  let losses = targetTrades.filter(t => t.result && t.result.toUpperCase() === 'LOSS').length;
+  let bes = targetTrades.filter(t => t.result && t.result.toUpperCase() === 'BE').length;
+  let totalPips = targetTrades.reduce((acc, t) => acc + (Number(t.pips) || 0), 0);
+  let totalProfit = targetTrades.reduce((acc, t) => acc + (Number(t.profit) || 0), 0);
+  let winRate = targetTrades.length > 0 ? ((wins / targetTrades.length) * 100).toFixed(1) : 0;
+
+  let tradeDetailsList = targetTrades.map((t, idx) => {
+    let emoji = t.result === 'WIN' ? '✅' : t.result === 'LOSS' ? '❌' : '🪙';
+    return `${idx + 1}. ${emoji} *${t.pair}* (${t.direction})\n   └ Result: ${t.result} | ${t.pips >= 0 ? '+' : ''}${t.pips} Pips | $${t.profit}`;
+  }).join('\n\n');
+
+  let message = `📊 *SIGNAL XPRESS - ${titleHeader}* 📊\n` +
+                `${periodText}\n` +
+                `━━━━━━━━━━━━━━━━━━━\n\n` +
+                `🎯 *Total Signals:* ${targetTrades.length}\n` +
+                `✅ *Wins:* ${wins}\n` +
+                `❌ *Losses:* ${losses}\n` +
+                `🪙 *BE Trades:* ${bes}\n` +
+                `📈 *Win Rate:* ${winRate}%\n` +
+                `🌐 *Net Pips:* ${totalPips >= 0 ? '+' : ''}${totalPips} Pips\n` +
+                `💰 *Net Profit:* $${totalProfit.toFixed(2)}\n\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `📝 *TRADES BREAKDOWN:*\n\n` +
+                `${tradeDetailsList}\n\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `🔥 *GET RISK WIN YOUR LIFE* 🔥\n` +
+                `⚡️ Signal Xpress Official Trading Community`;
+
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+  try {
+    toast(`Sending ${summaryType} Summary...`, 'success');
+    let response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: cleanEditedText(message),
+        parse_mode: 'Markdown'
+      })
+    });
+    let data = await response.json();
+    if (data.ok) {
+      toast(`✓ ${summaryType} Summary Sent Successfully!`);
+    } else {
+      toast('Telegram Error: ' + data.description, 'error');
+    }
+  } catch(err) {
+    toast('Failed to send summary to Telegram', 'error');
+  }
+}
+
+async function sendToGoogleSheets(rec) {
+  const gsUrl = document.getElementById('gs-url').value.trim();
+  if (!gsUrl) return;
+
+  try {
+    await fetch(gsUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rec)
+    });
+  } catch (err) {
+    console.error('Google Sheets Sync Error:', err);
+  }
+}
+
+async function manualFetchFromGoogleSheets(isBackground = false) {
+  const gsUrl = document.getElementById('gs-url').value.trim();
+  if (!gsUrl) {
+    if (!isBackground) toast('Please enter Google Apps Script URL first!', 'error');
+    return;
+  }
+
+  try {
+    let response = await fetch(gsUrl);
+    let data = await response.json();
+    
+    if (Array.isArray(data)) {
+      trades = data;
+      saveStorage();
+      if (!isBackground) toast('✓ Successfully Synced with Google Sheets!');
+    }
+  } catch (err) {
+    console.error('Fetch from Sheets Error:', err);
+    if (!isBackground) toast('Failed to fetch from Google Sheets', 'error');
+  }
+}
+
+async function sendToTelegram(rec) {
+  const token = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  
+  if (!token || !chatId) {
+    toast('Telegram Token or Chat ID missing!', 'error');
+    return;
+  }
+
+  let entries = [rec.entry1, rec.entry2].filter(Boolean).join(' / ');
+  let slVal = rec.sl !== undefined && rec.sl !== '' ? rec.sl : 'N/A';
+
+  let message = `🚨 SIGNALXPRESS SIGNAL UPDATE 🚨\n\n` +
+                `💎 Pairs: ${rec.pair}\n` +
+                `📊 Type:  ${rec.direction}\n` +
+                `📥 Entry:  ${entries || 'N/A'}\n\n` +
+                `🎯 TP1:   ${rec.tp1 || 'N/A'}\n` +
+                `🎯 TP2:  ${rec.tp2 || 'N/A'}\n` +
+                `🎯 TP3:  ${rec.tp3 || 'N/A'}\n` +
+                `🎯 TP4:  ${rec.tp4 || 'N/A'}\n\n` +
+                `🛑 SL:   ${slVal}\n\n` +
+                `Follow Money Management🙏🙏🙏\n` +
+                `🔥 GET RISK WIN YOUR LIFE ?`;
+
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  
+  try {
+    let response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: cleanEditedText(message)
+      })
+    });
+    let data = await response.json();
+    if (data.ok) {
+      toast('✓ Signal Sent to Telegram!');
+    } else {
+      toast('Telegram Error: ' + data.description, 'error');
+    }
+  } catch(err) {
+    toast('Failed to reach Telegram API', 'error');
+  }
+}
+
+async function sendToTelegramWithHit(rec, hitName) {
+  const token = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  
+  if (!token || !chatId) return;
+
+  let entries = [rec.entry1, rec.entry2].filter(Boolean).join(' / ');
+
+  let message = `🎯 QUICK HIT: ${hitName} HIT! 🎯\n\n` +
+                `💎 Pairs: ${rec.pair}\n` +
+                `📊 Type: ${rec.direction}\n` +
+                `📥 Entry:  ${entries || 'N/A'}\n` +
+                `📈 Status: ${hitName} Achieved\n` +
+                `🏆 Result: ${rec.result} (${rec.pips} Pips | $${rec.profit})\n\n` +
+                `🔥 GET RISK WIN YOUR LIFE ?`;
+
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: cleanEditedText(message)
+      })
+    });
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+document.getElementById('trade-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  
+  const slInputValue = document.getElementById('f-sl').value;
+  
+  const rec = {
+    no: editingNum || (trades.length > 0 ? Math.max(...trades.map(t => t.no)) + 1 : 1),
+    date: document.getElementById('f-date').value,
+    pair: document.getElementById('f-pair').value || 'XAU/USD',
+    direction: document.getElementById('f-direction').value,
+    entry1: document.getElementById('f-entry1').value ? Number(document.getElementById('f-entry1').value) : '',
+    entry2: document.getElementById('f-entry2').value ? Number(document.getElementById('f-entry2').value) : '',
+    sl: slInputValue !== '' ? Number(slInputValue) : '',
+    tp1: document.getElementById('f-tp1').value ? Number(document.getElementById('f-tp1').value) : '',
+    tp2: document.getElementById('f-tp2').value ? Number(document.getElementById('f-tp2').value) : '',
+    tp3: document.getElementById('f-tp3').value ? Number(document.getElementById('f-tp3').value) : '',
+    tp4: document.getElementById('f-tp4').value ? Number(document.getElementById('f-tp4').value) : '',
+    pips: Number(document.getElementById('f-pips').value) || 0,
+    profit: Number(document.getElementById('f-profit').value) || 0,
+    result: document.getElementById('f-result').value,
+    channel: document.getElementById('f-channel').value
+  };
+
+  if (editingNum) {
+    const idx = trades.findIndex(t => t.no === editingNum);
+    trades[idx] = rec;
+    toast(`✓ Updated Trade #${editingNum}`);
+  } else {
+    trades.push(rec);
+    toast(`✓ Trade #${rec.no} Added`);
+  }
+  
+  saveStorage();
+
+  await sendToGoogleSheets(rec);
+
+  if (document.getElementById('send-to-telegram').checked) {
+    await sendToTelegram(rec);
+  }
+
+  resetForm();
+});
+
+function editTrade(no) {
+  const t = trades.find(x => x.no === no);
+  if (!t) return;
+  editingNum = no;
+  document.getElementById('f-num').value = t.no;
+  document.getElementById('f-date').value = parseToSriLankaDateString(t.date);
+  document.getElementById('f-pair').value = t.pair;
+  document.getElementById('f-direction').value = t.direction;
+  document.getElementById('f-entry1').value = t.entry1 !== undefined ? t.entry1 : '';
+  document.getElementById('f-entry2').value = t.entry2 !== undefined ? t.entry2 : '';
+  document.getElementById('f-sl').value = t.sl !== undefined ? t.sl : '';
+  document.getElementById('f-tp1').value = t.tp1 !== undefined ? t.tp1 : '';
+  document.getElementById('f-tp2').value = t.tp2 !== undefined ? t.tp2 : '';
+  document.getElementById('f-tp3').value = t.tp3 !== undefined ? t.tp3 : '';
+  document.getElementById('f-tp4').value = t.tp4 !== undefined ? t.tp4 : '';
+  document.getElementById('f-pips').value = t.pips;
+  document.getElementById('f-profit').value = t.profit;
+  document.getElementById('f-result').value = t.result;
+  document.getElementById('f-channel').value = t.channel;
+
+  document.getElementById('form-title').innerText = `Edit Trade #${no}`;
+  document.getElementById('submit-btn').innerText = 'Save Changes & Send';
+  document.getElementById('form-hit-buttons').classList.remove('hidden');
+
+  document.getElementById('trade-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function deleteTrade(no) {
+  if (!confirm(`Delete Trade #${no}?`)) return;
+  trades = trades.filter(t => t.no !== no);
+  saveStorage();
+  toast('Trade Deleted', 'error');
+}
+
+function resetForm() {
+  document.getElementById('trade-form').reset();
+  editingNum = null;
+  document.getElementById('form-title').innerText = 'Add New Trade';
+  document.getElementById('submit-btn').innerText = 'Save Trade & Send';
+  document.getElementById('f-date').value = getSriLankaDateString();
+  document.getElementById('send-to-telegram').checked = true;
+  document.getElementById('form-hit-buttons').classList.add('hidden');
+}
+
+function filterByPeriod(period) {
+  currentActivePeriod = period;
+  currentPage = 1;
+  document.getElementById('date-filter').value = '';
+
+  ['all', 'thisweek', 'lastweek', 'lastmonth'].forEach(p => {
+    const btn = document.getElementById(`btn-period-${p}`);
+    if (btn) btn.classList.remove('active');
+  });
+  const activeBtnMap = { 'ALL': 'all', 'THIS_WEEK': 'thisweek', 'LAST_WEEK': 'lastweek', 'LAST_MONTH': 'lastmonth' };
+  if (activeBtnMap[period]) {
+    document.getElementById(`btn-period-${activeBtnMap[period]}`).classList.add('active');
+  }
+
+  applyCurrentFilter();
+  renderAll();
+}
+
+function filterByDate() {
+  const val = document.getElementById('date-filter').value;
+  currentPage = 1;
+  if (val) {
+    currentActivePeriod = 'CUSTOM_DATE';
+    ['all', 'thisweek', 'lastweek', 'lastmonth'].forEach(p => {
+      const btn = document.getElementById(`btn-period-${p}`);
+      if (btn) btn.classList.remove('active');
+    });
+  } else {
+    currentActivePeriod = 'ALL';
+    document.getElementById('btn-period-all').classList.add('active');
+  }
+  applyCurrentFilter();
+  renderAll();
+}
+
+function applyCurrentFilter() {
+  const today = new Date();
+  
+  if (currentActivePeriod === 'ALL') {
+    currentFilteredData = [...trades];
+  } else if (currentActivePeriod === 'THIS_WEEK') {
+    const day = today.getDay();
+    const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diffToMonday));
+    monday.setHours(0,0,0,0);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23,59,59,999);
+
+    currentFilteredData = trades.filter(t => {
+      if (!t.date) return false;
+      const tDate = new Date(t.date);
+      return tDate >= monday && tDate <= sunday;
+    });
+  } else if (currentActivePeriod === 'LAST_WEEK') {
+    const day = today.getDay();
+    const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+    const thisMonday = new Date(today.setDate(diffToMonday));
+    
+    const lastMonday = new Date(thisMonday);
+    lastMonday.setDate(thisMonday.getDate() - 7);
+    lastMonday.setHours(0,0,0,0);
+
+    const lastSunday = new Date(thisMonday);
+    lastSunday.setDate(thisMonday.getDate() - 1);
+    lastSunday.setHours(23,59,59,999);
+
+    currentFilteredData = trades.filter(t => {
+      if (!t.date) return false;
+      const tDate = new Date(t.date);
+      return tDate >= lastMonday && tDate <= lastSunday;
+    });
+  } else if (currentActivePeriod === 'LAST_MONTH') {
+    const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    firstDayLastMonth.setHours(0,0,0,0);
+    
+    const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    lastDayLastMonth.setHours(23,59,59,999);
+
+    currentFilteredData = trades.filter(t => {
+      if (!t.date) return false;
+      const tDate = new Date(t.date);
+      return tDate >= firstDayLastMonth && tDate <= lastDayLastMonth;
+    });
+  } else if (currentActivePeriod === 'CUSTOM_DATE') {
+    const val = document.getElementById('date-filter').value;
+    if (!val) {
+      currentFilteredData = [...trades];
+    } else {
+      currentFilteredData = trades.filter(t => {
+        if (!t.date) return false;
+        const tradeDate = parseToSriLankaDateString(t.date);
+        return tradeDate === val;
+      });
+    }
+  }
+}
+
+function clearDateFilter() {
+  document.getElementById('date-filter').value = '';
+  filterByPeriod('ALL');
+}
+
+function filterResult(type) {
+  currentPage = 1;
+  let workData = trades;
+  if (currentActivePeriod === 'THIS_WEEK' || currentActivePeriod === 'LAST_WEEK' || currentActivePeriod === 'LAST_MONTH' || currentActivePeriod === 'CUSTOM_DATE') {
+    workData = currentFilteredData;
+  }
+  
+  currentFilteredData = type === 'ALL' ? [...workData] : workData.filter(t => t.result && t.result.toUpperCase() === type);
+  renderAll();
+}
+
+function renderCharts(data, wins, losses, bes, winRateStr, winPips, lossPips, startBal, depositBal, withdrawBal) {
+  if (distributionChartInstance) distributionChartInstance.destroy();
+  if (equityChartInstance) equityChartInstance.destroy();
+
+  const centerTextPlugin = {
+    id: 'centerText',
+    beforeDraw: function(chart) {
+      var width = chart.width, height = chart.height, ctx = chart.ctx;
+      ctx.restore();
+      var fontSize = (height / 180).toFixed(2);
+      ctx.font = "bold " + fontSize + "em sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#ffffff";
+      
+      var text = winRateStr,
+          textX = Math.round((width - ctx.measureText(text).width) / 2),
+          textY = (height / 2) + 10;
+      ctx.fillText(text, textX, textY);
+      
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillStyle = "#d1d5db";
+      var label = "WIN RATE",
+          labelX = Math.round((width - ctx.measureText(label).width) / 2),
+          labelY = textY - 22;
+      ctx.fillText(label, labelX, labelY);
+      ctx.save();
+    }
+  };
+
+  distributionChartInstance = new Chart(document.getElementById('distributionChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Wins', 'Losses', 'BE'],
+      datasets: [{ data: [wins, losses, bes], backgroundColor: ['#10b981', '#ef4444', '#f59e0b'], borderWidth: 0 }]
+    },
+    plugins: [centerTextPlugin],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#ffffff' } } }
+    }
+  });
+
+  let balance = startBal + depositBal - withdrawBal;
+  let balanceLabels = ['Start'];
+  let balancePoints = [balance];
+  
+  [...data].sort((a,b) => a.no - b.no).forEach(t => {
+    balance += (Number(t.profit) || 0);
+    balanceLabels.push('T' + t.no);
+    balancePoints.push(balance);
+  });
+
+  equityChartInstance = new Chart(document.getElementById('equityChart'), {
+    type: 'line',
+    data: {
+      labels: balanceLabels,
+      datasets: [{
+        label: 'Account Balance ($)',
+        data: balancePoints,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        fill: true, tension: 0.2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { 
+        x: { grid: { color: '#2a3a32' }, ticks: { color: '#d1d5db' } }, 
+        y: { grid: { color: '#2a3a32' }, ticks: { color: '#d1d5db' } } 
+      },
+      plugins: { legend: { labels: { color: '#ffffff' } } }
+    }
+  });
+}
+
+function downloadJSON() {
+  const blob = new Blob([JSON.stringify(trades, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'trades.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      trades = JSON.parse(ev.target.result);
+      saveStorage();
+      toast('✓ JSON File Loaded');
+    } catch (err) { toast('Invalid JSON', 'error'); }
+  };
+  reader.readAsText(file);
+});
+
+/* ----------------------------------------------------
+   4. TRADING CSV ANALYTICS HANDLER
+---------------------------------------------------- */
+let csvTradersData = [];
+let chart1Instance = null;
+let chart2Instance = null;
+
+function handleFile2(input) {
+  const file = input.files[0];
+  if (file) {
+    document.getElementById('fn2').innerText = file.name;
+    document.getElementById('box2').classList.add('ready');
+    document.getElementById('runBtn').disabled = false;
+  }
+}
+
+function processData() {
+  const fileInput = document.getElementById('f2');
+  if (!fileInput.files.length) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    parseCSVData(text);
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+function parseCSVData(text) {
+  const lines = text.split('\n').filter(l => l.trim() !== '');
+  if (lines.length < 2) return;
+
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  
+  let totalTrades = lines.length - 1;
+  let totalLots = 0;
+  let totalCommission = 0;
+  let accountsMap = {};
+  let currencyMap = {};
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    if (cols.length < 3) continue;
+
+    const accId = cols[0] || 'Unknown';
+    const symbol = cols[1] || 'Other';
+    const lots = parseFloat(cols[2]) || 0;
+    const comm = parseFloat(cols[3]) || 0;
+
+    totalLots += lots;
+    totalCommission += comm;
+
+    if (!accountsMap[accId]) {
+      accountsMap[accId] = { trades: 0, lots: 0, comm: 0 };
+    }
+    accountsMap[accId].trades += 1;
+    accountsMap[accId].lots += lots;
+    accountsMap[accId].comm += comm;
+
+    if (!currencyMap[symbol]) {
+      currencyMap[symbol] = 0;
+    }
+    currencyMap[symbol] += lots;
+  }
+
+  const uniqueTradersCount = Object.keys(accountsMap).length;
+
+  document.getElementById('m1').innerText = membersData.length || '0';
+  document.getElementById('m2').innerText = uniqueTradersCount;
+  document.getElementById('m3').innerText = totalTrades;
+  document.getElementById('m4').innerText = totalLots.toFixed(2);
+  document.getElementById('m5').innerText = '$' + totalCommission.toFixed(2);
+
+  renderCsvAnalyticsTables(accountsMap, currencyMap);
+  document.getElementById('results').style.display = 'block';
+}
+
+function renderCsvAnalyticsTables(accountsMap, currencyMap) {
+  let matchedCount = 0;
+  let unmatchedCount = 0;
+
+  const tbP = document.getElementById('tb-p');
+  tbP.innerHTML = membersData.map((m, idx) => {
+    const acc = accountsMap[m.accountId || m.account_id || m.account];
+    let tradesCount = 0, lotsCount = 0, commCount = 0, statusHtml = '';
+
+    if (acc) {
+      matchedCount++;
+      tradesCount = acc.trades;
+      lotsCount = acc.lots;
+      commCount = acc.comm;
+      statusHtml = '<span class="badge bg-success">Active</span>';
+    } else {
+      statusHtml = '<span class="badge bg-secondary">No Trades</span>';
+    }
+
+    return `
+      <tr>
+        <td>${idx + 1}</td>
+        <td><span class="badge bg-primary font-mono">${m.sxId || m.sx_id || '—'}</span></td>
+        <td class="fw-bold">${m.name || '—'}</td>
+        <td>${m.broker || 'XM'}</td>
+        <td class="font-mono text-info">${m.accountId || m.account_id || m.account || '—'}</td>
+        <td>${m.partner || '—'}</td>
+        <td>${tradesCount}</td>
+        <td>${lotsCount.toFixed(2)}</td>
+        <td class="text-success font-bold">$${commCount.toFixed(2)}</td>
+        <td>${statusHtml}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const tbT = document.getElementById('tb-t');
+  const tbN = document.getElementById('tb-n');
+  tbT.innerHTML = '';
+  tbN.innerHTML = '';
+
+  Object.keys(accountsMap).forEach(accId => {
+    const m = membersData.find(x => (x.accountId || x.account_id || x.account) == accId);
+    const acc = accountsMap[accId];
+
+    if (m) {
+      tbT.innerHTML += `
+        <tr>
+          <td class="font-mono text-info">${accId}</td>
+          <td class="fw-bold">${m.name || '—'}</td>
+          <td><span class="badge bg-primary font-mono">${m.sxId || m.sx_id || '—'}</span></td>
+          <td>${acc.trades}</td>
+          <td>${acc.lots.toFixed(2)}</td>
+          <td class="text-success font-bold">$${acc.comm.toFixed(2)}</td>
+        </tr>
+      `;
+    } else {
+      unmatchedCount++;
+      tbN.innerHTML += `
+        <tr>
+          <td class="font-mono text-warning">${accId}</td>
+          <td>${acc.trades}</td>
+          <td>${acc.lots.toFixed(2)}</td>
+          <td class="text-success font-bold">$${acc.comm.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+  });
+
+  const top10ListEl = document.getElementById('top10list');
+  const sortedAccounts = Object.keys(accountsMap)
+    .map(id => ({ id, ...accountsMap[id] }))
+    .sort((a, b) => b.lots - a.lots)
+    .slice(0, 10);
+
+  top10ListEl.innerHTML = sortedAccounts.map((item, index) => {
+    const member = membersData.find(x => (x.accountId || x.account_id || x.account) == item.id);
+    return `
+      <div class="top10-item">
+        <span class="badge bg-warning text-dark font-bold">#${index + 1}</span>
+        <div class="flex-grow-1">
+          <div class="text-white text-xs font-bold">${member ? member.name : 'Account: ' + item.id}</div>
+          <div class="text-muted text-[10px] font-mono">${item.id}</div>
+        </div>
+        <div class="text-end">
+          <div class="text-info text-xs font-bold">${item.lots.toFixed(2)} Lots</div>
+          <div class="text-success text-[10px] font-bold">$${item.comm.toFixed(2)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  renderCsvCharts(matchedCount, unmatchedCount, currencyMap);
+}
+
+function renderCsvCharts(matched, unmatched, currencyMap) {
+  if (chart1Instance) chart1Instance.destroy();
+  if (chart2Instance) chart2Instance.destroy();
+
+  chart1Instance = new Chart(document.getElementById('c1'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Matched Accounts', 'Unmatched CSV Accounts'],
+      datasets: [{
+        data: [matched, unmatched],
+        backgroundColor: ['#00e5a0', '#ff3b3b']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#ffffff' } } }
+    }
+  });
+
+  const pairLabels = Object.keys(currencyMap);
+  const pairLots = Object.values(currencyMap);
+
+  chart2Instance = new Chart(document.getElementById('c2'), {
+    type: 'bar',
+    data: {
+      labels: pairLabels,
+      datasets: [{
+        label: 'Lots Traded',
+        data: pairLots,
+        backgroundColor: '#3b82f6'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: { ticks: { color: '#ffffff' } },
+        y: { ticks: { color: '#ffffff' } }
+      },
+      plugins: { legend: { labels: { color: '#ffffff' } } }
+    }
+  });
+}
+
+function filterP() {
+  const query = document.getElementById('srch').value.toLowerCase();
+  const rows = document.querySelectorAll('#tb-p tr');
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+
+function showT(tabName, el) {
+  document.getElementById('t-partners').style.display = tabName === 'partners' ? 'block' : 'none';
+  document.getElementById('t-trades').style.display = tabName === 'trades' ? 'block' : 'none';
+  document.getElementById('t-nomatch').style.display = tabName === 'nomatch' ? 'block' : 'none';
+
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// Initial Setup Call
+window.addEventListener('DOMContentLoaded', () => {
+  loadStorage();
+  resetForm();
+});
+</script>
+</body>
+</html>

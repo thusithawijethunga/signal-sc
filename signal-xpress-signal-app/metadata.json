@@ -1,0 +1,6 @@
+{
+  "name": "Signal Xpress",
+  "description": "Forex & Gold Trading Signals, Analytics Ledger, Economic Calendar, and Traders Community Profit Sharing Hub",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
