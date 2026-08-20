@@ -273,7 +273,7 @@ function adminApp() {
     loadSettings() {
       this.tgToken = localStorage.getItem('sx_tg_token') || '';
       this.tgChatId = localStorage.getItem('sx_tg_chat') || '';
-      this.gsUrl = localStorage.getItem('sx_gs_url') || this.gsUrl || 'https://script.google.com/macros/s/AKfycbyq70qX27BMYZzV2bv5wTq6wHy8anSrV53FE5EIdeXu9Baomo_qpJEdAi8p6aYWcVsA/exec';
+      this.gsUrl = localStorage.getItem('sx_gs_url') || this.gsUrl || 'https://script.google.com/macros/s/AKfycbz16yaOghq_dKQpwQXl0BqOp_7jyvE3LsBmHarfKeglLZxurDOcUYsW-eu93aF2CpCb/exec';
     },
 
     saveGsUrl() {
