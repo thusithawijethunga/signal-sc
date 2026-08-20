@@ -15,6 +15,6 @@ class IbPartner extends Model
 
     public function members(): HasMany
     {
-        return $this->hasMany(IbMember::class);
+        return $this->hasMany(IbMember::class, 'partner_id');
     }
 }

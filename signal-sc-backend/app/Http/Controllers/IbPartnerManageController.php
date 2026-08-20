@@ -5,32 +5,42 @@ namespace App\Http\Controllers;
 use App\Models\IbMember;
 use App\Models\IbPartner;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class IbPartnerManageController extends Controller
 {
     public function index()
     {
-        $partners = IbPartner::with('members')->get();
-        $members = IbMember::with('partner')->latest()->paginate(20);
+        $partners = IbPartner::withCount('members')->get();
+        $members = IbMember::with('partner')->latest()->get();
 
-        return view('admin.ib-partners.index', compact('partners', 'members'));
+        return view('dashboard');
     }
 
     public function storeMember(Request $request)
     {
-        $validated = $request->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:255',
             'broker' => 'nullable|string|max:255',
             'account_id' => 'nullable|string|max:255',
             'nic' => 'nullable|string|max:255',
             'whatsapp' => 'nullable|string|max:50',
             'telegram' => 'nullable|string|max:100',
+            'partner' => 'nullable|string|max:255',
             'partner_id' => 'nullable|exists:ib_partners,id',
         ]);
 
-        IbMember::create($validated);
+        if (empty($data['partner_id']) && !empty($data['partner'])) {
+            $partner = IbPartner::where('name', $data['partner'])->first();
+            if ($partner) {
+                $data['partner_id'] = $partner->id;
+            }
+        }
+        unset($data['partner']);
 
-        return redirect()->route('admin.ib.index')->with('success', 'Member added successfully.');
+        IbMember::create($data);
+
+        return response()->json(['message' => 'Member saved successfully']);
     }
 
     public function storePartner(Request $request)
@@ -41,7 +51,7 @@ class IbPartnerManageController extends Controller
 
         IbPartner::create($validated);
 
-        return redirect()->route('admin.ib.index')->with('success', 'Partner added successfully.');
+        return response()->json(['message' => 'Partner added', 'partner' => IbPartner::latest()->first()]);
     }
 
     public function search(Request $request)
@@ -53,14 +63,13 @@ class IbPartnerManageController extends Controller
                 $q->where('name', 'like', "%{$query}%")
                   ->orWhere('sx_id', 'like', "%{$query}%")
                   ->orWhere('account_id', 'like', "%{$query}%")
+                  ->orWhere('nic', 'like', "%{$query}%")
                   ->orWhere('whatsapp', 'like', "%{$query}%")
                   ->orWhere('telegram', 'like', "%{$query}%");
             })
             ->latest()
-            ->paginate(20);
+            ->get();
 
-        $partners = IbPartner::with('members')->get();
-
-        return view('admin.ib-partners.index', compact('members', 'partners', 'query'));
+        return response()->json($members);
     }
 }

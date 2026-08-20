@@ -35,6 +35,6 @@ class IbMember extends Model
 
     public function partner(): BelongsTo
     {
-        return $this->belongsTo(IbPartner::class);
+        return $this->belongsTo(IbPartner::class, 'partner_id');
     }
 }
