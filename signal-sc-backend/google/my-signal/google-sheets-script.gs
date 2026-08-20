@@ -2,8 +2,22 @@
 // Columns: no, date, pair, direction, entry1, entry2, sl, tp1, tp2, tp3, tp4, pips, profit, result, channel
 
 function doPost(e) {
+  // Data එක JSON body (e.postData) හෝ form param (e.parameter.data) ලෙස එන්න පුළුවන්
+  var raw = null;
+  if (e && e.postData && e.postData.contents) {
+    raw = e.postData.contents;
+  } else if (e && e.parameter && e.parameter.data) {
+    raw = e.parameter.data;
+  }
+
+  if (!raw) {
+    return ContentService.createTextOutput(JSON.stringify({"status": "no data received"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var data = JSON.parse(raw);
+
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var data = JSON.parse(e.postData.contents);
 
   // දත්ත පෝලිමේ අදාළ කඳවුරු (Columns) වලට අදාළ අගයන් ලබා දීම
   var no = data.no || "";

@@ -88,12 +88,21 @@ class GoogleSheetsService
         }
 
         try {
-            Http::withHeaders(['Content-Type' => 'application/json'])
+            $response = Http::asForm()
                 ->timeout(20)
-                ->post($this->url, $payload);
+                ->post($this->url, ['data' => json_encode($payload)]);
 
-            Log::info('Google Sheets: trade synced', ['no' => $trade->no, 'hit_type' => $hitType]);
-            return true;
+            if ($response->successful()) {
+                Log::info('Google Sheets: trade synced', ['no' => $trade->no, 'hit_type' => $hitType]);
+                return true;
+            }
+
+            Log::error('Google Sheets: sync failed', [
+                'no' => $trade->no,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return false;
         } catch (\Throwable $e) {
             Log::error('Google Sheets sync error', ['error' => $e->getMessage()]);
             return false;
