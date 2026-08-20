@@ -277,10 +277,31 @@ function dashboardApp() {
     },
 
     init() {
-      this.applyInitialFilter();
       this.$watch('startBalance', () => this.renderCharts());
       this.$watch('depositBalance', () => this.renderCharts());
       this.$watch('withdrawBalance', () => this.renderCharts());
+      this.$nextTick(() => this.renderCharts());
+
+      window.onWsTrade = (d) => this.applyTradeUpdate(d);
+
+      setInterval(() => {
+        const last = window.wsStore?.lastTrade;
+        if (last && last._applied !== true) {
+          last._applied = true;
+          this.applyTradeUpdate(last);
+        }
+      }, 1000);
+    },
+
+    applyTradeUpdate(d) {
+      if (!d || !d.id) return;
+      const idx = this.trades.findIndex(t => t.id === d.id || t.no === d.no);
+      if (idx >= 0) {
+        this.trades[idx] = { ...this.trades[idx], pips: d.pips, profit: d.profit, result: d.result };
+        this.trades = [...this.trades];
+      } else if (d.type === 'trade' && d.action === 'created') {
+        this.trades = [d, ...this.trades];
+      }
       this.$nextTick(() => this.renderCharts());
     },
 
@@ -352,7 +373,7 @@ function dashboardApp() {
         id: 'centerText',
         beforeDraw: function(chart) {
           var width = chart.width, height = chart.height, ctx = chart.ctx;
-          ctx.restore();
+          ctx.save();
           var fontSize = (height / 180).toFixed(2);
           ctx.font = "bold " + fontSize + "em sans-serif";
           ctx.textBaseline = "middle";

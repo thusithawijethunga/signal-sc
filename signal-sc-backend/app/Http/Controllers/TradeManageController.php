@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Events\TradeCreated;
 use App\Events\TradeUpdated;
-use App\Events\TradeHit;
 use App\Models\Trade;
 use Illuminate\Http\Request;
 
@@ -34,7 +33,6 @@ class TradeManageController extends Controller
         $validated['user_id'] = $request->user()->id;
 
         $trade = Trade::create($validated);
-
         TradeCreated::dispatch($trade);
 
         return response()->json(['message' => 'Trade saved', 'trade' => $trade]);
@@ -62,18 +60,7 @@ class TradeManageController extends Controller
         ]);
 
         $trade->update($validated);
-
         TradeUpdated::dispatch($trade, $oldResult);
-
-        if ($oldResult !== $trade->result && $trade->result !== 'RUNNING') {
-            $hitType = match($trade->result) {
-                'WIN' => 'TP',
-                'LOSS' => 'SL',
-                'BE' => 'BE',
-                default => $trade->result,
-            };
-            TradeHit::dispatch($trade, $hitType);
-        }
 
         return response()->json(['message' => 'Trade updated', 'trade' => $trade]);
     }

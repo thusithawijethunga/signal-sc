@@ -301,6 +301,8 @@
 <!-- WebSocket Real-Time Updates -->
 <script src="https://unpkg.com/centrifuge@5.4.0/dist/centrifuge.js"></script>
 <script>
+window.wsStore = { signals: [], trades: [], news: [], community: [], lastTrade: null };
+
 (function() {
   const toast = document.getElementById('toast');
   function wsToast(msg, type) {
@@ -325,37 +327,38 @@
       const subCommunity = centrifuge.newSubscription(data.channels.community);
       const subBroadcast = centrifuge.newSubscription(data.channels.broadcast);
 
-      subTrading.on('publication', ctx => {
-        const d = ctx.data;
-        wsToast('📡 New Signal: ' + (d.pair || '') + ' ' + (d.direction || ''), 'success');
-        if (typeof window.onWsSignal === 'function') window.onWsSignal(d);
-      });
-
-      subTrades.on('publication', ctx => {
-        const d = ctx.data;
-        if (d.type === 'trade_hit') {
-          wsToast('🎯 ' + d.hit_type + ' Hit! ' + d.pair + ' | ' + d.pips + ' pips', 'success');
-        } else {
-          wsToast('📊 Trade ' + d.action + ': ' + d.pair + ' ' + d.direction, 'success');
-        }
-        if (typeof window.onWsTrade === 'function') window.onWsTrade(d);
-      });
-
-      subNews.on('publication', ctx => {
-        const d = ctx.data;
-        wsToast('📰 News: ' + d.currency + ' - ' + d.title, 'success');
-        if (typeof window.onWsNews === 'function') window.onWsNews(d);
-      });
-
-      subCommunity.on('publication', ctx => {
-        const d = ctx.data;
-        wsToast('💬 New post by ' + d.author_name, 'success');
-        if (typeof window.onWsCommunity === 'function') window.onWsCommunity(d);
-      });
-
-      subBroadcast.on('publication', ctx => {
-        const d = ctx.data;
-        wsToast('📢 ' + d.title + ': ' + d.body, 'success');
+      [subTrading, subTrades, subNews, subCommunity, subBroadcast].forEach(sub => {
+        sub.on('publication', ctx => {
+          const d = ctx.data;
+          const ch = sub.channel;
+          if (ch.includes('trading:signals')) {
+            wsToast('📡 New Signal: ' + (d.pair || '') + ' ' + (d.direction || ''), 'success');
+            window.wsStore.signals.push(d);
+            if (typeof window.onWsSignal === 'function') window.onWsSignal(d);
+          } else if (ch.includes('trading:trades')) {
+            window.wsStore.lastTrade = d;
+            window.wsStore.trades.push(d);
+            if (d.type === 'trade_hit') {
+              wsToast('🎯 ' + (d.action || 'TP') + ' Hit! ' + d.pair + ' | ' + d.pips + ' pips', 'success');
+            } else {
+              wsToast('📊 Trade ' + (d.action) + ': ' + d.pair + ' ' + d.direction, 'success');
+            }
+            if (typeof window.onWsTrade === 'function') window.onWsTrade(d);
+          } else if (ch.includes('trading:news')) {
+            wsToast('📰 News: ' + d.currency + ' - ' + d.title, 'success');
+            window.wsStore.news.push(d);
+            if (typeof window.onWsNews === 'function') window.onWsNews(d);
+          } else if (ch.includes('trading:community')) {
+            wsToast('💬 New post by ' + d.author_name, 'success');
+            window.wsStore.community.push(d);
+            if (typeof window.onWsCommunity === 'function') window.onWsCommunity(d);
+          } else if (ch.includes('notifications:broadcast')) {
+            wsToast('📢 ' + d.title + ': ' + d.body, 'success');
+          }
+        });
+        sub.on('subscribe', () => console.log('Subscribed:', sub.channel));
+        sub.on('error', err => console.error('Sub error:', sub.channel, err));
+        sub.subscribe();
       });
 
       centrifuge.on('connect', ctx => {
