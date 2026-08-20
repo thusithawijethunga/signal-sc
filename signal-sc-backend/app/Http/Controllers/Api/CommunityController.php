@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Events\CommunityPostCreated;
 use App\Models\CommunityComment;
 use App\Models\CommunityPost;
 use App\Models\CommunityReaction;
@@ -70,6 +71,8 @@ class CommunityController extends Controller
                 'card_theme' => $request->get('card_theme'),
                 'is_verified_trade' => $request->get('is_verified_trade', false),
             ]);
+
+            CommunityPostCreated::dispatch($post);
 
             return response()->json($post, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
