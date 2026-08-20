@@ -206,6 +206,7 @@ function csvAnalyticsApp() {
     csvMetrics: { partners: 0, activeTraders: 0, totalTrades: 0, totalLots: '0.00', totalCommission: '$0.00' },
     csvTop10: [],
     csvFilteredPartners: [],
+    csvFilteredPartnersSource: [],
     csvMatchedTrades: [],
     csvUnmatchedTrades: [],
     csvMembersData: @json($ibMembersJson),
@@ -290,6 +291,7 @@ function csvAnalyticsApp() {
           matched: !!acc
         };
       });
+      this.csvFilteredPartnersSource = [...this.csvFilteredPartners];
 
       this.csvMatchedTrades = [];
       this.csvUnmatchedTrades = [];
@@ -364,11 +366,15 @@ function csvAnalyticsApp() {
 
     filterCsvPartners() {
       const q = this.csvSearchQuery.toLowerCase();
-      if (!q) return;
-      this.csvFilteredPartners = this.csvFilteredPartners.filter(row => {
+      if (!q) {
+        this.csvFilteredPartners = [...this.csvFilteredPartnersSource];
+        return;
+      }
+      this.csvFilteredPartners = this.csvFilteredPartnersSource.filter(row => {
         return (row.name || '').toLowerCase().includes(q) ||
                (row.sxId || '').toLowerCase().includes(q) ||
                (row.accountId || '').toLowerCase().includes(q) ||
+               (row.broker || '').toLowerCase().includes(q) ||
                (row.partner || '').toLowerCase().includes(q);
       });
     }

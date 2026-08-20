@@ -3,7 +3,7 @@
 <div x-data="adminApp()" class="flex justify-between items-center mb-6">
   <div class="text-lg font-bold" style="color: var(--gold)">⚙️ Trade Ledger Administration</div>
   <div class="flex gap-2">
-    <input type="file" id="file-input" accept=".json" style="display:none">
+    <input type="file" id="file-input" accept=".json" style="display:none" @change="importJSON($event)">
     <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs font-bold border border-gray-700" onclick="document.getElementById('file-input').click()">📂 Load JSON</button>
     <button class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded text-xs font-bold" @click="downloadJSON()">⬇ Download JSON</button>
   </div>
@@ -16,10 +16,11 @@
       <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400">💰 Manual Balance Configuration (Start, Deposit & Withdraw)</h3>
       <button type="button" @click="showBalance = !showBalance" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-bold text-xs flex items-center justify-center" x-text="showBalance ? '-' : '+'">-</button>
     </div>
-    <div x-show="showBalance" x-transition class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+    <div x-show="showBalance" x-transition class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
       <div class="form-group"><label>Start Balance ($)</label><input type="number" step="0.01" :value="startBalance" @input="startBalance = parseFloat($event.target.value) || 0"></div>
       <div class="form-group"><label>Deposit Balance ($)</label><input type="number" step="0.01" :value="depositBalance" @input="depositBalance = parseFloat($event.target.value) || 0"></div>
       <div class="form-group"><label>Withdraw Balance ($)</label><input type="number" step="0.01" :value="withdrawBalance" @input="withdrawBalance = parseFloat($event.target.value) || 0"></div>
+      <div class="form-group justify-end"><label>&nbsp;</label><button type="button" @click="saveBalances()" class="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded text-xs font-bold">💾 Save Balances</button></div>
     </div>
   </div>
 
@@ -272,7 +273,32 @@ function adminApp() {
     loadSettings() {
       this.tgToken = localStorage.getItem('sx_tg_token') || '';
       this.tgChatId = localStorage.getItem('sx_tg_chat') || '';
-      this.gsUrl = localStorage.getItem('sx_gs_url') || '';
+      this.gsUrl = localStorage.getItem('sx_gs_url') || 'https://script.google.com/macros/s/AKfycbyq70qX27BMYZzV2bv5wTq6wHy8anSrV53FE5EIdeXu9Baomo_qpJEdAi8p6aYWcVsA/exec';
+    },
+
+    async saveBalances() {
+      try {
+        const resp = await fetch('{{ route("admin.settings.update") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            start_balance: this.startBalance,
+            deposit_balance: this.depositBalance,
+            withdraw_balance: this.withdrawBalance
+          })
+        });
+        if (resp.ok) {
+          this.showToast('✓ Balances saved');
+        } else {
+          this.showToast('Failed to save balances', 'error');
+        }
+      } catch(err) {
+        this.showToast('Failed to save balances', 'error');
+      }
     },
 
     showToast(msg, type = 'success') {
@@ -354,6 +380,10 @@ function adminApp() {
         }
         if (resp.ok) {
           this.showToast(this.editingNum ? `✓ Updated Trade #${this.editingNum}` : `✓ Trade #${rec.no} Added`);
+          if (this.sendToTg) {
+            this.sendToTelegram(rec);
+          }
+          this.sendToGoogleSheets(rec);
           setTimeout(() => window.location.reload(), 500);
         } else {
           const err = await resp.json();
@@ -370,6 +400,37 @@ function adminApp() {
       }
       this.resetForm();
       this.$nextTick(() => this.renderCharts());
+    },
+
+    async sendToTelegram(rec) {
+      const token = this.tgToken.trim();
+      const chatId = this.tgChatId.trim();
+      if (!token || !chatId) return;
+
+      let entries = [rec.entry1, rec.entry2].filter(Boolean).join(' / ');
+      let slVal = rec.sl !== undefined && rec.sl !== '' ? rec.sl : 'N/A';
+
+      let message = `🚨 SIGNALXPRESS SIGNAL UPDATE 🚨\n\n` +
+        `💎 Pairs: ${rec.pair}\n` +
+        `📊 Type:  ${rec.direction}\n` +
+        `📥 Entry:  ${entries || 'N/A'}\n\n` +
+        `🎯 TP1:   ${rec.tp1 || 'N/A'}\n` +
+        `🎯 TP2:  ${rec.tp2 || 'N/A'}\n` +
+        `🎯 TP3:  ${rec.tp3 || 'N/A'}\n` +
+        `🎯 TP4:  ${rec.tp4 || 'N/A'}\n\n` +
+        `🛑 SL:   ${slVal}\n\n` +
+        `Follow Money Management🙏🙏🙏\n` +
+        `🔥 GET RISK WIN YOUR LIFE ?`;
+
+      try {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: message })
+        });
+      } catch(err) {
+        console.error('Telegram send failed:', err);
+      }
     },
 
     editTrade(no) {
@@ -446,8 +507,37 @@ function adminApp() {
         });
       } catch(e) {}
 
+      this.sendToTelegramWithHit(t, actionType);
+      this.sendToGoogleSheets(t);
+
       this.showToast(`✓ Trade #${no} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());
+    },
+
+    async sendToTelegramWithHit(rec, hitName) {
+      const token = this.tgToken.trim();
+      const chatId = this.tgChatId.trim();
+      if (!token || !chatId) return;
+
+      let entries = [rec.entry1, rec.entry2].filter(Boolean).join(' / ');
+
+      let message = `🎯 QUICK HIT: ${hitName} HIT! 🎯\n\n` +
+        `💎 Pairs: ${rec.pair}\n` +
+        `📊 Type: ${rec.direction}\n` +
+        `📥 Entry:  ${entries || 'N/A'}\n` +
+        `📈 Status: ${hitName} Achieved\n` +
+        `🏆 Result: ${rec.result} (${rec.pips} Pips | $${rec.profit})\n\n` +
+        `🔥 GET RISK WIN YOUR LIFE ?`;
+
+      try {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: message })
+        });
+      } catch(err) {
+        console.error('Telegram hit send failed:', err);
+      }
     },
 
     async formHitAction(actionType) {
@@ -468,6 +558,8 @@ function adminApp() {
       if (actionType === 'SL') { t.result = 'LOSS'; this.form.result = 'LOSS'; }
       else if (actionType === 'BE') { t.result = 'BE'; this.form.result = 'BE'; }
       else { t.result = 'WIN'; this.form.result = 'WIN'; }
+
+      this.sendToGoogleSheets(t);
 
       this.showToast(`✓ Trade #${this.editingNum} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());
@@ -556,21 +648,108 @@ function adminApp() {
     async manualFetchFromGoogleSheets() {
       const url = this.gsUrl.trim();
       if (!url) { this.showToast('Please enter Google Apps Script URL first!', 'error'); return; }
+      this.showToast('Syncing from Google Sheets...');
       try {
         const resp = await fetch(url);
         const data = await resp.json();
         if (Array.isArray(data)) {
-          this.showToast('✓ Successfully Synced with Google Sheets!');
+          const importResp = await fetch('{{ route("admin.trades.import") }}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': '{{ csrf_token() }}',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ trades: data })
+          });
+          const result = await importResp.json();
+          if (importResp.ok) {
+            this.showToast(`✓ Synced ${result.count} trades from Google Sheets`);
+            localStorage.setItem('sx_gs_url', url);
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            this.showToast('Sync failed', 'error');
+          }
+        } else {
+          this.showToast('Invalid data from Google Sheets', 'error');
         }
       } catch(err) { this.showToast('Failed to fetch from Google Sheets', 'error'); }
     },
 
+    async sendToGoogleSheets(rec) {
+      const url = this.gsUrl.trim();
+      if (!url) return;
+      try {
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rec)
+        });
+      } catch(err) {
+        console.error('Google Sheets sync error:', err);
+      }
+    },
+
     downloadJSON() {
-      const blob = new Blob([JSON.stringify(this.trades, null, 2)], { type: 'application/json' });
+      const clean = this.trades.map(t => ({
+        no: t.no,
+        date: t.date,
+        pair: t.pair,
+        direction: t.direction,
+        entry1: t.entry1 ?? '',
+        entry2: t.entry2 ?? '',
+        sl: t.sl ?? '',
+        tp1: t.tp1 ?? '',
+        tp2: t.tp2 ?? '',
+        tp3: t.tp3 ?? '',
+        tp4: t.tp4 ?? '',
+        pips: t.pips || 0,
+        profit: t.profit || 0,
+        result: t.result,
+        channel: t.channel || 'VIP'
+      }));
+      const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = 'trades.json'; a.click();
       URL.revokeObjectURL(url);
+    },
+
+    async importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!Array.isArray(data)) {
+            this.showToast('Invalid JSON: expected an array', 'error');
+            return;
+          }
+          this.showToast(`Importing ${data.length} trades...`);
+          const resp = await fetch('{{ route("admin.trades.import") }}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': '{{ csrf_token() }}',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ trades: data })
+          });
+          const result = await resp.json();
+          if (resp.ok) {
+            this.showToast(`✓ ${result.count} trades imported`);
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            this.showToast(result.message || 'Import failed', 'error');
+          }
+        } catch (err) {
+          this.showToast('Invalid JSON file', 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
     }
   };
 }

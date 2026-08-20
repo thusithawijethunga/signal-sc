@@ -113,16 +113,17 @@
               </tr>
             </thead>
             <tbody>
-              @forelse($ibMembers as $member)
+              <template x-for="m in ibFilteredMembers" :key="m.sx_id || m.name">
                 <tr>
-                  <td><span class="badge bg-primary font-mono">{{ $member->sx_id ?? $member->id }}</span></td>
-                  <td class="fw-bold">{{ $member->name }}</td>
-                  <td class="font-mono text-info">{{ $member->account_id }}</td>
-                  <td><span class="badge bg-secondary">{{ $member->partner->name ?? $member->partner_name ?? '—' }}</span></td>
+                  <td><span class="badge bg-primary font-mono" x-text="m.sx_id || m.id || '—'"></span></td>
+                  <td class="fw-bold" x-text="m.name || '—'"></td>
+                  <td class="font-mono text-info" x-text="m.account_id || m.accountId || '—'"></td>
+                  <td><span class="badge bg-secondary" x-text="m.partner || '—'"></span></td>
                 </tr>
-              @empty
-                <tr><td colspan="4" class="text-center text-muted py-4">Google Sheet එකෙන් දත්ත Load වෙමින් පවතී...</td></tr>
-              @endforelse
+              </template>
+              <tr x-show="ibFilteredMembers.length === 0">
+                <td colspan="4" class="text-center text-muted py-4">සාමාජිකයින් කිසිවෙකු සොයාගත නොහැකි විය.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -264,12 +265,29 @@ function ibPartnerApp() {
       }
     },
 
-    addIbPartner() {
+    async addIbPartner() {
       const pName = prompt("නව Partner ගේ නම ඇතුළත් කරන්න:");
-      if (pName) {
-        const opt = document.createElement('option');
-        opt.value = pName; opt.textContent = pName; opt.selected = true;
-        this.ibForm.partner = pName;
+      if (!pName) return;
+      try {
+        const resp = await fetch('{{ route("admin.ib.partner.store") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ name: pName })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          this.showToast('✓ Partner added: ' + pName);
+          this.ibForm.partner = pName;
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          this.showToast(data.message || 'Failed to add partner', 'error');
+        }
+      } catch(err) {
+        this.showToast('Failed to add partner', 'error');
       }
     }
   };

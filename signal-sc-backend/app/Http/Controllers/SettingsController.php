@@ -27,7 +27,20 @@ class SettingsController extends Controller
             'telegram_bot_token' => 'nullable|string|max:255',
             'telegram_chat_id' => 'nullable|string|max:255',
             'google_sheets_url' => 'nullable|url|max:500',
+            'start_balance' => 'nullable|numeric',
+            'deposit_balance' => 'nullable|numeric',
+            'withdraw_balance' => 'nullable|numeric',
         ]);
+
+        // Save balances to DB
+        if ($request->hasAny(['start_balance', 'deposit_balance', 'withdraw_balance'])) {
+            $balance = AccountBalance::firstOrCreate(['user_id' => $request->user()->id]);
+            $balance->update([
+                'start_balance' => $request->input('start_balance', $balance->start_balance),
+                'deposit_balance' => $request->input('deposit_balance', $balance->deposit_balance),
+                'withdraw_balance' => $request->input('withdraw_balance', $balance->withdraw_balance),
+            ]);
+        }
 
         $envPath = base_path('.env');
 
@@ -48,6 +61,10 @@ class SettingsController extends Controller
                 }
                 file_put_contents($envPath, $envContent);
             }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Settings updated successfully']);
         }
 
         return redirect()->route('admin.settings.index')->with('success', 'Settings updated successfully.');

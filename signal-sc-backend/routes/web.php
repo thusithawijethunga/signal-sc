@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
 
     // Trade CRUD (used by admin panel)
     Route::post('/admin/trades', [TradeManageController::class, 'store'])->name('admin.trades.store');
+    Route::post('/admin/trades/import', [TradeManageController::class, 'import'])->name('admin.trades.import');
     Route::put('/admin/trades/{trade}', [TradeManageController::class, 'update'])->name('admin.trades.update');
     Route::delete('/admin/trades/{trade}', [TradeManageController::class, 'destroy'])->name('admin.trades.destroy');
 
