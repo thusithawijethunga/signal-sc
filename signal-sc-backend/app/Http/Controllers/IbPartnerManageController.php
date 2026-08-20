@@ -6,6 +6,7 @@ use App\Models\IbMember;
 use App\Models\IbPartner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class IbPartnerManageController extends Controller
 {
@@ -15,6 +16,28 @@ class IbPartnerManageController extends Controller
         $members = IbMember::with('partner')->latest()->get();
 
         return view('dashboard');
+    }
+
+    public function syncMembers(Request $request)
+    {
+        $url = $request->input('url') ?: config('services.ib_google_sheets.url', '');
+
+        if (! $url) {
+            return response()->json(['ok' => false, 'message' => 'IB Google Sheets URL not configured'], 400);
+        }
+
+        try {
+            $response = Http::timeout(20)->get($url);
+            $data = $response->json();
+
+            if (! is_array($data)) {
+                return response()->json(['ok' => false, 'message' => 'Invalid response from Google Sheets'], 400);
+            }
+
+            return response()->json(['ok' => true, 'members' => $data]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function storeMember(Request $request)

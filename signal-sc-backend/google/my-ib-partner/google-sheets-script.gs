@@ -3,13 +3,27 @@ function doPost(e) {
   lock.tryLock(10000);
 
   try {
+    // Data එක JSON body (e.postData) හෝ form param (e.parameter.data) ලෙස එන්න පුළුවන්
+    var raw = null;
+    if (e && e.postData && e.postData.contents) {
+      raw = e.postData.contents;
+    } else if (e && e.parameter && e.parameter.data) {
+      raw = e.parameter.data;
+    }
+
+    if (!raw) {
+      return ContentService.createTextOutput(JSON.stringify({ 'result': 'error', 'error': 'no data received' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = JSON.parse(raw);
+
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var data = JSON.parse(e.postData.contents);
-    
+
     // 1. Column J (SX ID Column) එකේ තියෙන සියලුම Data ගන්න
     var lastRow = sheet.getLastRow();
     var sxColumnValues = sheet.getRange(1, 10, lastRow > 0 ? lastRow : 1, 1).getValues();
-    
+
     var maxNumber = 1000; // Default base ID
 
     // 2. අන්තිමටම තියෙන ලොකුම SX Number එක සොයාගැනීම
@@ -30,7 +44,7 @@ function doPost(e) {
 
     var timestamp = new Date();
 
-    // 4. Data append කිරීම (My Partner column එක අයින් කර ඇත)
+    // 4. Data append කිරීම
     sheet.appendRow([
       timestamp,          // Column A: Timestamp
       data.name,          // Column B: Name
@@ -57,4 +71,29 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Google Sheets එකෙන් Members ලබා ගැනීමට (GET)
+function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var rows = sheet.getDataRange().getValues();
+  var data = [];
+
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    if (String(row[1] || "") !== "") { // Name column (B) එකේ data තිබේ නම්
+      data.push({
+        sxId: row[9],      // Column J: SX ID
+        name: row[1],      // Column B: Name
+        broker: row[2],    // Column C: Broker
+        accountId: row[3], // Column D: Account ID
+        telegram: row[4],  // Column E: Telegram
+        whatsapp: row[5],  // Column F: WhatsApp
+        nic: row[8],       // Column I: NIC
+        partner: row[11]   // Column L: Partner
+      });
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }

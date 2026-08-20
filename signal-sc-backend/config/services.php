@@ -44,4 +44,8 @@ return [
         'url' => env('GOOGLE_SHEETS_URL', ''),
     ],
 
+    'ib_google_sheets' => [
+        'url' => env('IB_GOOGLE_SHEETS_URL', ''),
+    ],
+
 ];
