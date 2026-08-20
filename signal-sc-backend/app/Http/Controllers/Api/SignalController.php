@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Events\SignalCreated;
 use App\Models\Signal;
 use App\Models\SignalReaction;
 use Illuminate\Http\JsonResponse;
@@ -67,12 +68,14 @@ class SignalController extends Controller
                 'tp4' => $request->get('tp4'),
                 'pips' => $request->get('pips'),
                 'profit' => $request->get('profit'),
-                'result' => $request->get('result', 'PENDING'),
+                'result' => $request->get('result', 'RUNNING'),
                 'channel' => $request->get('channel'),
                 'hit_level' => $request->get('hit_level'),
                 'status' => $request->get('status', 'active'),
                 'user_id' => $request->user()->id,
             ]);
+
+            SignalCreated::dispatch($signal);
 
             return response()->json($signal, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {

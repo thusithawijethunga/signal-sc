@@ -190,31 +190,32 @@
       </tbody>
     </table>
   </div>
-</div>
 
-<div x-show="modal.show" x-transition class="custom-modal-overlay" style="display: none;" @click.self="modal.show = false">
-  <div class="custom-modal-box">
-    <h3 class="text-base font-bold text-amber-400 uppercase tracking-wider mb-3" x-text="'🎯 ' + modal.title + ' HIT DETAILS'"></h3>
-    <p class="text-xs text-gray-200 mb-4" x-text="'Enter Pips and Dollar Profit for Trade ' + modal.title"></p>
+  <div x-show="modal.show" x-transition class="custom-modal-overlay" style="display: none;" @click.self="modal.show = false">
+    <div class="custom-modal-box">
+      <h3 class="text-base font-bold text-amber-400 uppercase tracking-wider mb-3" x-text="'🎯 ' + modal.title + ' HIT DETAILS'"></h3>
+      <p class="text-xs text-gray-200 mb-4" x-text="'Enter Pips and Dollar Profit for Trade ' + modal.title"></p>
 
-    <div class="form-group mb-3">
-      <label class="text-xs text-gray-200 uppercase">Pips Amount</label>
-      <input type="number" x-model="modal.pips" step="0.1" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-sm outline-none focus:border-amber-500" placeholder="e.g. 50">
-    </div>
+      <div class="form-group mb-3">
+        <label class="text-xs text-gray-200 uppercase">Pips Amount</label>
+        <input type="number" x-model="modal.pips" step="0.1" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-sm outline-none focus:border-amber-500" placeholder="e.g. 50">
+      </div>
 
-    <div class="form-group mb-5">
-      <label class="text-xs text-gray-200 uppercase">Profit Dollar ($)</label>
-      <input type="number" x-model="modal.profit" step="0.01" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-sm outline-none focus:border-amber-500" placeholder="e.g. 20.00">
-    </div>
+      <div class="form-group mb-5">
+        <label class="text-xs text-gray-200 uppercase">Profit Dollar ($)</label>
+        <input type="number" x-model="modal.profit" step="0.01" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-sm outline-none focus:border-amber-500" placeholder="e.g. 20.00">
+      </div>
 
-    <div class="flex gap-2">
-      <button type="button" @click="modalResolve({ pips: modal.pips, profit: modal.profit })" class="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded text-xs uppercase">Submit</button>
-      <button type="button" @click="modalResolve(null)" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold">Cancel</button>
+      <div class="flex gap-2">
+        <button type="button" @click="modalResolve({ pips: modal.pips, profit: modal.profit })" class="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded text-xs uppercase">Submit</button>
+        <button type="button" @click="modalResolve(null)" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold">Cancel</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="toast-custom" id="toast" :class="{ 'show': toastVisible, 'error': toastType === 'error' }" x-text="toastMsg"></div>
+  <div class="toast-custom" :class="{ 'show': toastVisible, 'error': toastType === 'error' }" x-text="toastMsg"></div>
+
+</div>
 
 <script>
 function adminApp() {
@@ -339,29 +340,33 @@ function adminApp() {
         channel: this.form.channel
       };
 
+      const csrf = '{{ csrf_token() }}';
+      const headers = { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' };
+
       try {
-        const resp = await fetch('{{ route("admin.trades.store") }}', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(rec)
-        });
+        let resp;
+        if (this.editingNum) {
+          const trade = this.trades.find(t => t.no === this.editingNum);
+          const tradeId = trade ? (trade.id || trade.no) : this.editingNum;
+          resp = await fetch(`/admin/trades/${tradeId}`, { method: 'PUT', headers, body: JSON.stringify(rec) });
+        } else {
+          resp = await fetch('{{ route("admin.trades.store") }}', { method: 'POST', headers, body: JSON.stringify(rec) });
+        }
         if (resp.ok) {
           this.showToast(this.editingNum ? `✓ Updated Trade #${this.editingNum}` : `✓ Trade #${rec.no} Added`);
           setTimeout(() => window.location.reload(), 500);
+        } else {
+          const err = await resp.json();
+          this.showToast(err.message || 'Save failed', 'error');
         }
       } catch(e) {
-        this.showToast('Trade saved locally', 'success');
-      }
-
-      if (this.editingNum) {
-        const idx = this.trades.findIndex(t => t.no === this.editingNum);
-        if (idx >= 0) this.trades[idx] = rec;
-      } else {
-        this.trades.push(rec);
+        if (this.editingNum) {
+          const idx = this.trades.findIndex(t => t.no === this.editingNum);
+          if (idx >= 0) this.trades[idx] = rec;
+        } else {
+          this.trades.push(rec);
+        }
+        this.showToast('Saved locally', 'success');
       }
       this.resetForm();
       this.$nextTick(() => this.renderCharts());
@@ -385,10 +390,19 @@ function adminApp() {
       this.form.profit = t.profit;
       this.form.result = t.result;
       this.form.channel = t.channel;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
-    deleteTrade(no) {
+    async deleteTrade(no) {
       if (!confirm(`Delete Trade #${no}?`)) return;
+      const trade = this.trades.find(t => t.no === no);
+      const tradeId = trade ? (trade.id || trade.no) : no;
+      try {
+        await fetch(`/admin/trades/${tradeId}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+        });
+      } catch(e) {}
       this.trades = this.trades.filter(t => t.no !== no);
       this.showToast('Trade Deleted', 'error');
       this.$nextTick(() => this.renderCharts());
@@ -422,6 +436,15 @@ function adminApp() {
       if (actionType === 'SL') t.result = 'LOSS';
       else if (actionType === 'BE') t.result = 'BE';
       else t.result = 'WIN';
+
+      const tradeId = t.id || t.no;
+      try {
+        await fetch(`/admin/trades/${tradeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+          body: JSON.stringify({ date: t.date, pair: t.pair, direction: t.direction, entry1: t.entry1, entry2: t.entry2, sl: t.sl, tp1: t.tp1, tp2: t.tp2, tp3: t.tp3, tp4: t.tp4, pips: t.pips, profit: t.profit, result: t.result, channel: t.channel })
+        });
+      } catch(e) {}
 
       this.showToast(`✓ Trade #${no} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());

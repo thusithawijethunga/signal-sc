@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Events\TradeCreated;
+use App\Events\TradeUpdated;
+use App\Events\TradeHit;
 use App\Models\AccountBalance;
 use App\Models\Trade;
 use Illuminate\Http\JsonResponse;
@@ -82,12 +85,8 @@ class TradeController extends Controller
         try {
             $request->validate([
                 'pair' => 'required|string',
-                'direction' => 'required|string|in:BUY,SELL',
-                'entry1' => 'required|numeric',
-                'sl' => 'required|numeric',
-                'tp1' => 'required|numeric',
+                'direction' => 'required|string',
                 'date' => 'required|date',
-                'result' => 'required|string|in:WIN,LOSS,BREAKEVEN',
             ]);
 
             $trade = Trade::create([
@@ -95,19 +94,21 @@ class TradeController extends Controller
                 'date' => $request->date,
                 'pair' => $request->pair,
                 'direction' => $request->direction,
-                'entry1' => $request->entry1,
+                'entry1' => $request->get('entry1'),
                 'entry2' => $request->get('entry2'),
-                'sl' => $request->sl,
-                'tp1' => $request->tp1,
+                'sl' => $request->get('sl'),
+                'tp1' => $request->get('tp1'),
                 'tp2' => $request->get('tp2'),
                 'tp3' => $request->get('tp3'),
                 'tp4' => $request->get('tp4'),
-                'pips' => $request->get('pips'),
-                'profit' => $request->get('profit'),
-                'result' => $request->result,
-                'channel' => $request->get('channel'),
+                'pips' => $request->get('pips', 0),
+                'profit' => $request->get('profit', 0),
+                'result' => $request->get('result', 'RUNNING'),
+                'channel' => $request->get('channel', 'VIP'),
                 'user_id' => $request->user()->id,
             ]);
+
+            TradeCreated::dispatch($trade);
 
             return response()->json($trade, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -120,11 +121,21 @@ class TradeController extends Controller
     public function update(Request $request, Trade $trade): JsonResponse
     {
         try {
+            $oldResult = $trade->result;
             $trade->update($request->only([
                 'pair', 'direction', 'entry1', 'entry2', 'sl',
                 'tp1', 'tp2', 'tp3', 'tp4', 'pips', 'profit',
                 'result', 'channel', 'date',
             ]));
+
+            TradeUpdated::dispatch($trade, $oldResult);
+
+            if ($oldResult !== $trade->result && $trade->result !== 'RUNNING') {
+                $hitType = match($trade->result) {
+                    'WIN' => 'TP', 'LOSS' => 'SL', 'BE' => 'BE', default => $trade->result,
+                };
+                TradeHit::dispatch($trade, $hitType);
+            }
 
             return response()->json($trade);
         } catch (\Exception $e) {

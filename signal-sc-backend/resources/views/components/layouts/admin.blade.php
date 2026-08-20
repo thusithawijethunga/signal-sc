@@ -298,5 +298,84 @@
 <!-- Toast Notification -->
 <div id="toast" class="toast-custom"></div>
 
+<!-- WebSocket Real-Time Updates -->
+<script src="https://cdn.jsdelivr.net/npm/centrifuge@5.4.0/dist/centrifuge.umd.js"></script>
+<script>
+(function() {
+  const toast = document.getElementById('toast');
+  function wsToast(msg, type) {
+    toast.textContent = msg;
+    toast.className = 'toast-custom show' + (type === 'error' ? ' error' : '');
+    setTimeout(() => toast.className = 'toast-custom', 3000);
+  }
+
+  async function connectWebSocket() {
+    try {
+      const resp = await fetch('/api/websocket/token');
+      const data = await resp.json();
+      if (!data.token) return;
+
+      const centrifuge = new Centrifuge('wss://socket.signalxpress.com/connection/websocket', {
+        token: data.token
+      });
+
+      const subTrading = centrifuge.newSubscription(data.channels.trading);
+      const subTrades = centrifuge.newSubscription(data.channels.trades);
+      const subNews = centrifuge.newSubscription(data.channels.news);
+      const subCommunity = centrifuge.newSubscription(data.channels.community);
+      const subBroadcast = centrifuge.newSubscription(data.channels.broadcast);
+
+      subTrading.on('publication', ctx => {
+        const d = ctx.data;
+        wsToast('📡 New Signal: ' + (d.pair || '') + ' ' + (d.direction || ''), 'success');
+        if (typeof window.onWsSignal === 'function') window.onWsSignal(d);
+      });
+
+      subTrades.on('publication', ctx => {
+        const d = ctx.data;
+        if (d.type === 'trade_hit') {
+          wsToast('🎯 ' + d.hit_type + ' Hit! ' + d.pair + ' | ' + d.pips + ' pips', 'success');
+        } else {
+          wsToast('📊 Trade ' + d.action + ': ' + d.pair + ' ' + d.direction, 'success');
+        }
+        if (typeof window.onWsTrade === 'function') window.onWsTrade(d);
+      });
+
+      subNews.on('publication', ctx => {
+        const d = ctx.data;
+        wsToast('📰 News: ' + d.currency + ' - ' + d.title, 'success');
+        if (typeof window.onWsNews === 'function') window.onWsNews(d);
+      });
+
+      subCommunity.on('publication', ctx => {
+        const d = ctx.data;
+        wsToast('💬 New post by ' + d.author_name, 'success');
+        if (typeof window.onWsCommunity === 'function') window.onWsCommunity(d);
+      });
+
+      subBroadcast.on('publication', ctx => {
+        const d = ctx.data;
+        wsToast('📢 ' + d.title + ': ' + d.body, 'success');
+      });
+
+      centrifuge.on('connect', ctx => {
+        console.log('WebSocket connected', ctx);
+      });
+
+      centrifuge.on('disconnect', ctx => {
+        console.log('WebSocket disconnected', ctx);
+        setTimeout(connectWebSocket, 5000);
+      });
+
+      centrifuge.connect();
+    } catch(e) {
+      console.log('WebSocket init failed:', e);
+    }
+  }
+
+  connectWebSocket();
+})();
+</script>
+
 </body>
 </html>

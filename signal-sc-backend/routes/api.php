@@ -9,7 +9,10 @@ use App\Http\Controllers\Api\VipController;
 use App\Http\Controllers\Api\IbPartnerController;
 use App\Http\Controllers\Api\CsvController;
 use App\Http\Controllers\Api\SyncController;
+use App\Http\Controllers\Api\WebSocketController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/websocket/token', [WebSocketController::class, 'token']);
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
