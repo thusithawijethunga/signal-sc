@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'google_sheets' => [
+        'url' => env('GOOGLE_SHEETS_URL', ''),
+    ],
+
 ];

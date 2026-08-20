@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\IbPartnerPageController;
 use App\Http\Controllers\CsvAnalyticsController;
+use App\Http\Controllers\GoogleSheetsController;
 use App\Http\Controllers\IbPartnerManageController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TradeManageController;
@@ -38,6 +39,10 @@ Route::middleware('auth')->group(function () {
 
     // Settings
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
+
+    // Google Sheets sync (server-side)
+    Route::get('/admin/google-sheets/test', [GoogleSheetsController::class, 'test'])->name('admin.gs.test');
+    Route::post('/admin/google-sheets/sync', [GoogleSheetsController::class, 'sync'])->name('admin.gs.sync');
 });
 
 require __DIR__.'/auth.php';

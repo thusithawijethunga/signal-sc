@@ -51,13 +51,12 @@
     <div class="flex justify-between items-center mb-3">
       <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400">📊 Google Sheets Live Two-Way Sync</h3>
       <div class="flex gap-2 items-center">
-        <button type="button" @click="manualFetchFromGoogleSheets()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-all shadow">🔄 Sync Now</button>
-        <button type="button" @click="showGsSettings = !showGsSettings" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-bold text-xs flex items-center justify-center" x-text="showGsSettings ? '-' : '+'">-</button>
+        <button type="button" @click="testGoogleSheetsConnection()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-all shadow">🧪 Test Connection</button>
+        <button type="button" @click="syncFromGoogleSheets()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-all shadow">🔄 Sync Now</button>
       </div>
     </div>
-    <div x-show="showGsSettings" x-transition class="form-group mt-2">
-      <label>Google Apps Script Web App URL</label>
-      <input type="text" x-model="gsUrl" placeholder="https://script.google.com/macros/s/...">
+    <div class="text-xs mt-2" style="color: var(--text-muted);">
+      <span class="text-emerald-400 font-semibold">● Auto-Sync Active</span> — Signal updates push to Google Sheets automatically. Use Sync Now to pull changes from the sheet.
     </div>
   </div>
 
@@ -233,7 +232,6 @@ function adminApp() {
     tgChatId: '',
     summaryType: 'DAILY',
     summaryDate: '',
-    gsUrl: '',
 
     trades: @json($tradesJson),
     editingNum: null,
@@ -273,7 +271,6 @@ function adminApp() {
     loadSettings() {
       this.tgToken = localStorage.getItem('sx_tg_token') || '';
       this.tgChatId = localStorage.getItem('sx_tg_chat') || '';
-      this.gsUrl = localStorage.getItem('sx_gs_url') || 'https://script.google.com/macros/s/AKfycbyq70qX27BMYZzV2bv5wTq6wHy8anSrV53FE5EIdeXu9Baomo_qpJEdAi8p6aYWcVsA/exec';
     },
 
     async saveBalances() {
@@ -383,7 +380,6 @@ function adminApp() {
           if (this.sendToTg) {
             this.sendToTelegram(rec);
           }
-          this.sendToGoogleSheets(rec);
           setTimeout(() => window.location.reload(), 500);
         } else {
           const err = await resp.json();
@@ -503,12 +499,11 @@ function adminApp() {
         await fetch(`/admin/trades/${tradeId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-          body: JSON.stringify({ date: t.date, pair: t.pair, direction: t.direction, entry1: t.entry1, entry2: t.entry2, sl: t.sl, tp1: t.tp1, tp2: t.tp2, tp3: t.tp3, tp4: t.tp4, pips: t.pips, profit: t.profit, result: t.result, channel: t.channel })
+          body: JSON.stringify({ date: t.date, pair: t.pair, direction: t.direction, entry1: t.entry1, entry2: t.entry2, sl: t.sl, tp1: t.tp1, tp2: t.tp2, tp3: t.tp3, tp4: t.tp4, pips: t.pips, profit: t.profit, result: t.result, channel: t.channel, hit_type: actionType })
         });
       } catch(e) {}
 
       this.sendToTelegramWithHit(t, actionType);
-      this.sendToGoogleSheets(t);
 
       this.showToast(`✓ Trade #${no} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());
@@ -558,8 +553,6 @@ function adminApp() {
       if (actionType === 'SL') { t.result = 'LOSS'; this.form.result = 'LOSS'; }
       else if (actionType === 'BE') { t.result = 'BE'; this.form.result = 'BE'; }
       else { t.result = 'WIN'; this.form.result = 'WIN'; }
-
-      this.sendToGoogleSheets(t);
 
       this.showToast(`✓ Trade #${this.editingNum} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());
@@ -645,49 +638,41 @@ function adminApp() {
       } catch(err) { this.showToast('Failed to send summary to Telegram', 'error'); }
     },
 
-    async manualFetchFromGoogleSheets() {
-      const url = this.gsUrl.trim();
-      if (!url) { this.showToast('Please enter Google Apps Script URL first!', 'error'); return; }
-      this.showToast('Syncing from Google Sheets...');
+    async testGoogleSheetsConnection() {
+      this.showToast('Testing Google Sheets connection...');
       try {
-        const resp = await fetch(url);
+        const resp = await fetch('{{ route("admin.gs.test") }}');
         const data = await resp.json();
-        if (Array.isArray(data)) {
-          const importResp = await fetch('{{ route("admin.trades.import") }}', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-TOKEN': '{{ csrf_token() }}',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ trades: data })
-          });
-          const result = await importResp.json();
-          if (importResp.ok) {
-            this.showToast(`✓ Synced ${result.count} trades from Google Sheets`);
-            localStorage.setItem('sx_gs_url', url);
-            setTimeout(() => window.location.reload(), 800);
-          } else {
-            this.showToast('Sync failed', 'error');
-          }
+        if (data.ok) {
+          this.showToast(`✓ Connected — ${data.count ?? 0} rows in sheet`);
         } else {
-          this.showToast('Invalid data from Google Sheets', 'error');
+          this.showToast(data.message || data.error || 'Connection failed', 'error');
         }
-      } catch(err) { this.showToast('Failed to fetch from Google Sheets', 'error'); }
+      } catch(err) {
+        this.showToast('Connection test failed', 'error');
+      }
     },
 
-    async sendToGoogleSheets(rec) {
-      const url = this.gsUrl.trim();
-      if (!url) return;
+    async syncFromGoogleSheets() {
+      this.showToast('Syncing from Google Sheets...');
       try {
-        await fetch(url, {
+        const resp = await fetch('{{ route("admin.gs.sync") }}', {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(rec)
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+          }
         });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          this.showToast(`✓ Synced ${data.count} trades from Google Sheets`);
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          this.showToast(data.message || 'Sync failed', 'error');
+        }
       } catch(err) {
-        console.error('Google Sheets sync error:', err);
+        this.showToast('Sync failed', 'error');
       }
     },
 

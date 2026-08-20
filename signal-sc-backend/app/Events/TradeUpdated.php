@@ -13,5 +13,6 @@ class TradeUpdated
     public function __construct(
         public Trade $trade,
         public ?string $oldResult = null,
+        public ?string $hitType = null,
     ) {}
 }

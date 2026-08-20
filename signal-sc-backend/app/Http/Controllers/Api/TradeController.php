@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Events\TradeCreated;
 use App\Events\TradeUpdated;
-use App\Events\TradeHit;
 use App\Models\AccountBalance;
 use App\Models\Trade;
 use Illuminate\Http\JsonResponse;
@@ -128,14 +127,7 @@ class TradeController extends Controller
                 'result', 'channel', 'date',
             ]));
 
-            TradeUpdated::dispatch($trade, $oldResult);
-
-            if ($oldResult !== $trade->result && $trade->result !== 'RUNNING') {
-                $hitType = match($trade->result) {
-                    'WIN' => 'TP', 'LOSS' => 'SL', 'BE' => 'BE', default => $trade->result,
-                };
-                TradeHit::dispatch($trade, $hitType);
-            }
+            TradeUpdated::dispatch($trade, $oldResult, $request->input('hit_type'));
 
             return response()->json($trade);
         } catch (\Exception $e) {

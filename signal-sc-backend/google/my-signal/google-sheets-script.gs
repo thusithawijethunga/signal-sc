@@ -21,6 +21,7 @@ function doPost(e) {
   var profit = data.profit || "";
   var result = data.result || "";
   var channel = data.channel || "";
+  var hit_type = data.hit_type || ""; // TP1 / TP2 / TP3 / TP4 / SL / BE
 
   // මීට පෙර එකතු කළ trade එකක් නම් එය Update කිරීම, නැතහොත් අලුතින් එකතු කිරීම
   var rows = sheet.getDataRange().getValues();
@@ -44,29 +45,43 @@ function doPost(e) {
     targetRow = sheet.getLastRow();
   }
 
-  // Result අනුව Row එක Highlight කිරීම
-  applyHighlight(sheet, targetRow, result);
+  // Hit වුනු cell එක පමණක් Highlight කිරීම
+  if (hit_type) {
+    highlightHitCell(sheet, targetRow, hit_type);
+  }
 
   return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Row Highlight (WIN = green, LOSS = red, BE = gold)
-function applyHighlight(sheet, row, result) {
-  var r = String(result || "").toUpperCase();
-  var range = sheet.getRange(row, 1, 1, 15);
+// Hit වුනු cell එක (TP/SL/BE column) පමණක් Highlight කිරීම
+function highlightHitCell(sheet, row, hitType) {
+  var h = String(hitType || "").toUpperCase();
 
-  if (r === "WIN") {
-    range.setBackground("#0a3d2e");
-    range.setFontColor("#92D050");
-  } else if (r === "LOSS") {
-    range.setBackground("#3d0a0a");
-    range.setFontColor("#ff6b6b");
-  } else if (r === "BE") {
-    range.setBackground("#3d2e0a");
-    range.setFontColor("#d4a04c");
+  // Column map (1-based): sl=7, tp1=8, tp2=9, tp3=10, tp4=11, result=14
+  var colMap = {
+    "SL": 7,
+    "TP1": 8,
+    "TP2": 9,
+    "TP3": 10,
+    "TP4": 11,
+    "BE": 14
+  };
+
+  var col = colMap[h];
+  if (!col) return;
+
+  var cell = sheet.getRange(row, col);
+
+  if (h === "SL") {
+    cell.setBackground("#ff3b3b");
+    cell.setFontColor("#ffffff");
+  } else if (h === "BE") {
+    cell.setBackground("#d4a04c");
+    cell.setFontColor("#0a0e0c");
   } else {
-    range.setBackground(null);
-    range.setFontColor("#ffffff");
+    // TP1 - TP4
+    cell.setBackground("#00B050");
+    cell.setFontColor("#0a0e0c");
   }
 }
 

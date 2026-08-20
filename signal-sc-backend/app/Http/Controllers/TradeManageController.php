@@ -119,10 +119,13 @@ class TradeManageController extends Controller
             'profit' => 'nullable|numeric',
             'result' => 'nullable|string|max:10',
             'channel' => 'nullable|string|max:10',
+            'hit_type' => 'nullable|string|max:10',
         ]);
 
+        $hitType = $request->input('hit_type');
+
         $trade->update($validated);
-        TradeUpdated::dispatch($trade, $oldResult);
+        TradeUpdated::dispatch($trade, $oldResult, $hitType);
 
         return response()->json(['message' => 'Trade updated', 'trade' => $trade]);
     }
