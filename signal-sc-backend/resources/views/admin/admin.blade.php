@@ -42,8 +42,8 @@
       </div>
     </div>
     <div x-show="showTgSettings" x-transition class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-      <div class="form-group"><label>Bot Token</label><input type="text" x-model="tgToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"></div>
-      <div class="form-group"><label>Chat ID / Channel Username</label><input type="text" x-model="tgChatId" placeholder="@signalxpress_official or -100xxxxxxxxxx"></div>
+      <div class="form-group"><label>Bot Token</label><input type="text" x-model="tgToken" @input="saveTgSettings()" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"></div>
+      <div class="form-group"><label>Chat ID / Channel Username</label><input type="text" x-model="tgChatId" @input="saveTgSettings()" placeholder="@signalxpress_official or -100xxxxxxxxxx"></div>
     </div>
   </div>
 
@@ -229,8 +229,8 @@ function adminApp() {
     showTgSettings: true,
     showGsSettings: true,
 
-    tgToken: '',
-    tgChatId: '',
+    tgToken: '{{ $tgToken ?? '' }}',
+    tgChatId: '{{ $tgChatId ?? '' }}',
     summaryType: 'DAILY',
     summaryDate: '',
     gsUrl: '{{ $gsUrl ?? '' }}',
@@ -271,13 +271,18 @@ function adminApp() {
     },
 
     loadSettings() {
-      this.tgToken = localStorage.getItem('sx_tg_token') || '';
-      this.tgChatId = localStorage.getItem('sx_tg_chat') || '';
-      this.gsUrl = localStorage.getItem('sx_gs_url') || this.gsUrl || 'https://script.google.com/macros/s/AKfycbz16yaOghq_dKQpwQXl0BqOp_7jyvE3LsBmHarfKeglLZxurDOcUYsW-eu93aF2CpCb/exec';
+      this.tgToken = localStorage.getItem('sx_tg_token') || this.tgToken;
+      this.tgChatId = localStorage.getItem('sx_tg_chat') || this.tgChatId;
+      this.gsUrl = localStorage.getItem('sx_gs_url') || this.gsUrl;
     },
 
     saveGsUrl() {
       localStorage.setItem('sx_gs_url', this.gsUrl);
+    },
+
+    saveTgSettings() {
+      localStorage.setItem('sx_tg_token', this.tgToken);
+      localStorage.setItem('sx_tg_chat', this.tgChatId);
     },
 
     async saveBalances() {

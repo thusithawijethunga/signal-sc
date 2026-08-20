@@ -39,6 +39,10 @@ class AdminPanelController extends Controller
         return view('admin.admin', compact(
             'trades', 'tradesJson',
             'startBalance', 'depositBalance', 'withdrawBalance'
-        ))->with('gsUrl', config('services.google_sheets.url', ''));
+        ))->with([
+            'gsUrl' => config('services.google_sheets.url', ''),
+            'tgToken' => config('services.telegram.bot_token', ''),
+            'tgChatId' => config('services.telegram.chat_id', ''),
+        ]);
     }
 }
