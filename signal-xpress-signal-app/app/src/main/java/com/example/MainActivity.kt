@@ -36,12 +36,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.BuildConfig
 import com.example.data.SignalEntity
 import com.example.ui.components.AddNewsDialog
 import com.example.ui.components.AddSignalDialog
 import com.example.ui.components.GeminiAnalysisDialog
 import com.example.ui.screens.AnalyticsSummaryScreen
 import com.example.ui.screens.CommunityScreen
+import com.example.ui.screens.DeveloperSettingsScreen
 import com.example.ui.screens.MarketNewsScreen
 import com.example.ui.screens.SignalsFeedScreen
 import com.example.ui.screens.VipLeaderboardScreen
@@ -61,53 +63,70 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE
-        )
+        applyScreenshotPolicy()
         enableEdgeToEdge()
 
         setContent {
             SignalXpressTheme {
                 var currentTab by remember { mutableStateOf(NavTab.SIGNALS) }
+                var showDeveloperSettings by remember { mutableStateOf(false) }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    containerColor = DarkBackground,
-                    bottomBar = {
-                        BottomNavBar(
-                            currentTab = currentTab,
-                            onTabSelected = { currentTab = it }
-                        )
-                    }
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        when (currentTab) {
-                            NavTab.SIGNALS -> SignalsFeedScreen(
-                                viewModel = viewModel
+                if (showDeveloperSettings) {
+                    DeveloperSettingsScreen(
+                        viewModel = viewModel,
+                        onBack = { showDeveloperSettings = false }
+                    )
+                } else {
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = DarkBackground,
+                        bottomBar = {
+                            BottomNavBar(
+                                currentTab = currentTab,
+                                onTabSelected = { currentTab = it }
                             )
+                        }
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                        ) {
+                            when (currentTab) {
+                                NavTab.SIGNALS -> SignalsFeedScreen(
+                                    viewModel = viewModel,
+                                    onTitleTap = { showDeveloperSettings = true }
+                                )
 
-                            NavTab.SUMMARY -> AnalyticsSummaryScreen(viewModel = viewModel)
+                                NavTab.SUMMARY -> AnalyticsSummaryScreen(viewModel = viewModel)
 
-                            NavTab.NEWS -> MarketNewsScreen(
-                                viewModel = viewModel
-                            )
+                                NavTab.NEWS -> MarketNewsScreen(
+                                    viewModel = viewModel
+                                )
 
-                            NavTab.COMMUNITY -> CommunityScreen(
-                                viewModel = viewModel
-                            )
+                                NavTab.COMMUNITY -> CommunityScreen(
+                                    viewModel = viewModel
+                                )
 
-                            NavTab.VIP_LEADERBOARD -> VipLeaderboardScreen(
-                                viewModel = viewModel
-                            )
+                                NavTab.VIP_LEADERBOARD -> VipLeaderboardScreen(
+                                    viewModel = viewModel
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    private fun applyScreenshotPolicy() {
+        if (BuildConfig.SCREENSHOT_DISABLED) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
 }

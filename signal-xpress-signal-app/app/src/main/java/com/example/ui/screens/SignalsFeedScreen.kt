@@ -25,6 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +47,12 @@ import com.example.ui.theme.TextSecondary
 
 @Composable
 fun SignalsFeedScreen(
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onTitleTap: (() -> Unit)? = null
 ) {
     val signals by viewModel.filteredSignals.collectAsState()
     val selectedPair by viewModel.selectedPairFilter.collectAsState()
+    var tapCount by remember { mutableIntStateOf(0) }
 
     val pairs = listOf("ALL", "XAU/USD", "EUR/USD", "GBP/JPY")
 
@@ -73,7 +78,18 @@ fun SignalsFeedScreen(
                     color = PrimarySky,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.then(
+                        if (onTitleTap != null) {
+                            Modifier.clickable {
+                                tapCount++
+                                if (tapCount >= 5) {
+                                    tapCount = 0
+                                    onTitleTap()
+                                }
+                            }
+                        } else Modifier
+                    )
                 )
                 Text(
                     text = "Official Forex & Gold Signals Feed",

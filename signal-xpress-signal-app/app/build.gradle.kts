@@ -21,6 +21,10 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // Developer Mode: Set to "true" to block screenshots (FLAG_SECURE), "false" to allow
+    buildConfigField("Boolean", "SCREENSHOT_DISABLED", "false")
+    buildConfigField("Boolean", "DEVELOPER_MODE", "false")
   }
 
   signingConfigs {

@@ -770,6 +770,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // VIP Members Top 10 StateFlows & Web Sync
     private val prefs = application.getSharedPreferences("signal_xpress_vip_prefs", android.content.Context.MODE_PRIVATE)
 
+    // ==========================================
+    // DEVELOPER MODE & SCREENSHOT CONTROL
+    // Controlled programmatically via BuildConfig fields
+    // in app/build.gradle.kts (not user-accessible)
+    // ==========================================
+
+    val isDeveloperMode: StateFlow<Boolean> = MutableStateFlow(BuildConfig.DEVELOPER_MODE).asStateFlow()
+    val isScreenshotDisabled: StateFlow<Boolean> = MutableStateFlow(BuildConfig.SCREENSHOT_DISABLED).asStateFlow()
+
     private val _vipWebUrl = MutableStateFlow(
         prefs.getString("vip_admin_web_url", "") ?: ""
     )
