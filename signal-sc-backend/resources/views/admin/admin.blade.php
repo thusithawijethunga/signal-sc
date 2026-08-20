@@ -576,6 +576,16 @@ function adminApp() {
 
       this.hitType = actionType;
 
+      const tradeId = t.id || t.no;
+      try {
+        await fetch(`/admin/trades/${tradeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+          body: JSON.stringify({ date: t.date, pair: t.pair, direction: t.direction, entry1: t.entry1, entry2: t.entry2, sl: t.sl, tp1: t.tp1, tp2: t.tp2, tp3: t.tp3, tp4: t.tp4, pips: t.pips, profit: t.profit, result: t.result, channel: t.channel, hit_type: actionType })
+        });
+      } catch(e) {}
+
+      this.sendToTelegramWithHit(t, actionType);
       this.sendToGoogleSheets(t, actionType);
 
       this.showToast(`✓ Trade #${this.editingNum} marked as ${actionType} Hit!`);
