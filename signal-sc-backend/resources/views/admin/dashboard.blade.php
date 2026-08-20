@@ -249,7 +249,7 @@ function dashboardApp() {
     },
 
     get paginatedData() {
-      const data = [...this.filteredData].reverse();
+      const data = [...this.filteredData];
       if (this.rowsPerPage === 'ALL') return data;
       const rpp = parseInt(this.rowsPerPage);
       const totalPages = Math.ceil(data.length / rpp);
@@ -259,7 +259,7 @@ function dashboardApp() {
     },
 
     get paginationInfo() {
-      const data = [...this.filteredData].reverse();
+      const data = [...this.filteredData];
       if (data.length === 0) return 'Showing 0-0 of 0 trades';
       const rpp = this.rowsPerPage === 'ALL' ? data.length : parseInt(this.rowsPerPage);
       const totalPages = Math.ceil(data.length / rpp);
@@ -270,7 +270,7 @@ function dashboardApp() {
     },
 
     get paginationPages() {
-      const data = [...this.filteredData].reverse();
+      const data = [...this.filteredData];
       if (this.rowsPerPage === 'ALL') return [];
       const rpp = parseInt(this.rowsPerPage);
       const totalPages = Math.ceil(data.length / rpp);
