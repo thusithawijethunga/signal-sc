@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/ib/member', [IbPartnerManageController::class, 'storeMember'])->name('admin.ib.member.store');
     Route::post('/admin/ib/partner', [IbPartnerManageController::class, 'storePartner'])->name('admin.ib.partner.store');
     Route::get('/admin/ib/search', [IbPartnerManageController::class, 'search'])->name('admin.ib.search');
+    Route::get('/admin/ib/sync', [IbPartnerManageController::class, 'syncMembers'])->name('admin.ib.sync');
 
     // Settings
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');

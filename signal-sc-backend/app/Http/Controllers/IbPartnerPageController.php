@@ -30,6 +30,7 @@ class IbPartnerPageController extends Controller
             'members_count' => $p->members_count,
         ])->toArray();
 
-        return view('admin.ib-partners', compact('ibPartners', 'ibMembers', 'ibMembersJson', 'ibPartnersJson'));
+        return view('admin.ib-partners', compact('ibPartners', 'ibMembers', 'ibMembersJson', 'ibPartnersJson'))
+            ->with('ibGsUrl', config('services.ib_google_sheets.url', ''));
     }
 }

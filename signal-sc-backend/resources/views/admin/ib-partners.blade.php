@@ -137,7 +137,7 @@
 <script>
 function ibPartnerApp() {
   return {
-    ibGsUrl: '',
+    ibGsUrl: '{{ $ibGsUrl ?? '' }}',
     ibSyncStatus: 'Connecting...',
     ibMembersData: @json($ibMembersJson),
     ibFilteredMembers: @json($ibMembersJson),
@@ -164,7 +164,11 @@ function ibPartnerApp() {
     },
 
     loadSettings() {
-      this.ibGsUrl = localStorage.getItem('sx_ib_gs_url') || '';
+      this.ibGsUrl = localStorage.getItem('sx_ib_gs_url') || this.ibGsUrl;
+    },
+
+    saveIbGsUrl() {
+      localStorage.setItem('sx_ib_gs_url', this.ibGsUrl);
     },
 
     showToast(msg, type = 'success') {
@@ -182,19 +186,19 @@ function ibPartnerApp() {
       }
       this.ibSyncStatus = 'Connecting...';
       try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        if (Array.isArray(data)) {
-          this.ibMembersData = data;
-          this.ibFilteredMembers = [...data];
+        const resp = await fetch('{{ route("admin.ib.sync") }}?url=' + encodeURIComponent(url));
+        const result = await resp.json();
+        if (result.ok && Array.isArray(result.members)) {
+          this.ibMembersData = result.members;
+          this.ibFilteredMembers = [...result.members];
           this.ibSyncStatus = '● Connected & Synced';
         } else {
-          throw new Error("Invalid format");
+          throw new Error(result.message || 'Invalid format');
         }
       } catch(err) {
         this.ibSyncStatus = 'Sync Failed';
       }
-      localStorage.setItem('sx_ib_gs_url', this.ibGsUrl);
+      this.saveIbGsUrl();
     },
 
     searchIbUser() {
@@ -230,6 +234,16 @@ function ibPartnerApp() {
       this.ibSaving = true;
       this.ibStatusHtml = '<span class="text-warning text-sm">නව සාමාජිකයා ඇතුළත් වෙමින් පවතී...</span>';
 
+      const payload = {
+        name: this.ibForm.name,
+        broker: this.ibForm.broker,
+        account_id: this.ibForm.accountId,
+        nic: this.ibForm.nic,
+        whatsapp: this.ibForm.whatsapp,
+        telegram: this.ibForm.telegram,
+        partner: this.ibForm.partner
+      };
+
       try {
         const resp = await fetch('{{ route("admin.ib.member.store") }}', {
           method: 'POST',
@@ -238,18 +252,11 @@ function ibPartnerApp() {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({
-            name: this.ibForm.name,
-            broker: this.ibForm.broker,
-            account_id: this.ibForm.accountId,
-            nic: this.ibForm.nic,
-            whatsapp: this.ibForm.whatsapp,
-            telegram: this.ibForm.telegram,
-            partner: this.ibForm.partner
-          })
+          body: JSON.stringify(payload)
         });
         const data = await resp.json();
         if (resp.ok) {
+          this.sendIbToGoogleSheets();
           this.showToast('✓ Member Saved Successfully!');
           this.ibStatusHtml = '<span class="text-success text-sm">✓ සාමාජිකයා සාර්ථකව ඇතුළත් විය!</span>';
           this.ibForm = { name: '', broker: 'XM', accountId: '', nic: '', whatsapp: '', telegram: '', partner: this.ibForm.partner };
@@ -262,6 +269,29 @@ function ibPartnerApp() {
         this.ibStatusHtml = '<span class="text-danger text-sm">❌ සාමාජිකයා ඇතුළත් කිරීමට අපොහොසත් විය.</span>';
       } finally {
         this.ibSaving = false;
+      }
+    },
+
+    sendIbToGoogleSheets() {
+      const url = this.ibGsUrl.trim();
+      if (!url) return;
+      try {
+        fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: this.ibForm.name,
+            broker: this.ibForm.broker,
+            accountId: this.ibForm.accountId,
+            telegram: this.ibForm.telegram,
+            whatsapp: this.ibForm.whatsapp,
+            nic: this.ibForm.nic,
+            partner: this.ibForm.partner
+          })
+        });
+      } catch(err) {
+        console.error('IB Google Sheets sync error:', err);
       }
     },
 
