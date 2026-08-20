@@ -6,28 +6,20 @@ use App\Models\Trade;
 use App\Models\AccountBalance;
 use Illuminate\Http\Request;
 
-class DashboardController extends Controller
+class AdminPanelController extends Controller
 {
     public function index(Request $request)
     {
         $trades = Trade::orderBy('date', 'desc')->orderBy('id', 'desc')->get();
-        $totalTrades = $trades->count();
-        $wins = $trades->where('result', 'WIN')->count();
-        $losses = $trades->where('result', 'LOSS')->count();
-        $bes = $trades->where('result', 'BE')->count();
-        $totalProfit = (float) $trades->sum('profit');
-        $netPips = (float) $trades->sum('pips');
-        $lossPips = (float) $trades->where('pips', '<', 0)->sum('pips');
-        $winRate = $totalTrades > 0 ? round(($wins / $totalTrades) * 100, 1) : 0;
 
         $balance = AccountBalance::first();
         $startBalance = $balance ? (float) $balance->start_balance : 1000;
         $depositBalance = $balance ? (float) $balance->deposit_balance : 0;
         $withdrawBalance = $balance ? (float) $balance->withdraw_balance : 0;
-        $currentBalance = $startBalance + $depositBalance - $withdrawBalance + $totalProfit;
 
         $tradesJson = $trades->map(fn ($t) => [
             'no' => $t->no ?? $t->id,
+            'id' => $t->id,
             'date' => $t->date,
             'pair' => $t->pair,
             'direction' => $t->direction,
@@ -44,11 +36,9 @@ class DashboardController extends Controller
             'channel' => $t->channel,
         ])->toArray();
 
-        return view('admin.dashboard', compact(
+        return view('admin.admin', compact(
             'trades', 'tradesJson',
-            'totalTrades', 'wins', 'losses', 'bes',
-            'totalProfit', 'netPips', 'lossPips', 'winRate',
-            'startBalance', 'depositBalance', 'withdrawBalance', 'currentBalance'
+            'startBalance', 'depositBalance', 'withdrawBalance'
         ));
     }
 }
