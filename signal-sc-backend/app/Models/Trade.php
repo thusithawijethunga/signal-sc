@@ -24,6 +24,7 @@ class Trade extends Model
         'pips',
         'profit',
         'result',
+        'hit_level',
         'channel',
         'user_id',
     ];

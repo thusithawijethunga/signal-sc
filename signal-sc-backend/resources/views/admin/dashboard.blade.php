@@ -71,8 +71,8 @@
   <div class="card-admin p-4 border-b-2 border-b-green-500"><span class="text-xs text-green-400 uppercase font-semibold">Wins</span><div class="text-xl font-bold text-green-400 mt-1" x-text="computedMetrics.wins">{{ $wins }}</div></div>
   <div class="card-admin p-4 border-b-2 border-b-red-500"><span class="text-xs text-red-400 uppercase font-semibold">Losses</span><div class="text-xl font-bold text-red-400 mt-1" x-text="computedMetrics.losses">{{ $losses }}</div></div>
   <div class="card-admin p-4 border-b-2 border-b-amber-500"><span class="text-xs text-amber-400 uppercase font-semibold">BE Trades</span><div class="text-xl font-bold text-amber-400 mt-1" x-text="computedMetrics.bes">{{ $bes }}</div></div>
-  <div class="card-admin p-4"><span class="text-xs text-purple-400 uppercase font-semibold">Net Pips Gain</span><div class="text-xl font-bold text-purple-400 mt-1" x-text="computedMetrics.netPips">{{ $netPips }}</div></div>
-  <div class="card-admin p-4 border-l-2 border-l-red-500"><span class="text-xs text-red-400 uppercase font-semibold">Total Loss Pips</span><div class="text-xl font-bold text-red-400 mt-1" x-text="computedMetrics.lossPips">{{ $lossPips }}</div></div>
+  <div class="card-admin p-4"><span class="text-xs text-purple-400 uppercase font-semibold">Net Pips Gain</span><div class="text-xl font-bold mt-1" :class="computedMetrics.netPips >= 0 ? 'text-emerald-400' : 'text-red-400'" x-text="fmtPips(computedMetrics.netPips)">{{ $netPips > 0 ? '+' : '' }}{{ number_format($netPips, 1) }}</div></div>
+  <div class="card-admin p-4 border-l-2 border-l-red-500"><span class="text-xs text-red-400 uppercase font-semibold">Total Loss Pips</span><div class="text-xl font-bold text-red-400 mt-1" x-text="fmtPips(computedMetrics.lossPips)">{{ number_format($lossPips, 1) }}</div></div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -106,7 +106,10 @@
           <th class="p-3">Direction</th>
           <th class="p-3">Entry 1 / 2</th>
           <th class="p-3">SL</th>
-          <th class="p-3">TP 1-4</th>
+          <th class="p-3">TP1</th>
+          <th class="p-3">TP2</th>
+          <th class="p-3">TP3</th>
+          <th class="p-3">TP4</th>
           <th class="p-3 text-right">Pips</th>
           <th class="p-3 text-right">Profit ($)</th>
           <th class="p-3 text-center">Result</th>
@@ -120,19 +123,25 @@
             <td class="p-3 text-white font-bold" x-text="t.pair"></td>
             <td class="p-3 font-bold" :class="String(t.direction).includes('BUY') ? 'text-blue-400' : 'text-amber-400'" x-text="t.direction"></td>
             <td class="p-3 text-xs text-gray-200" x-text="[t.entry1, t.entry2].filter(Boolean).join(' / ') || '—'"></td>
-            <td class="p-3 text-xs text-red-400 font-bold" x-text="t.sl || '—'"></td>
-            <td class="p-3 text-xs text-gray-200" x-text="[t.tp1, t.tp2, t.tp3, t.tp4].filter(Boolean).join(', ') || '—'"></td>
+            <td class="p-3 text-xs font-bold" :class="isSlHit(t) ? 'bg-red-900/40 text-red-200 border border-red-700 rounded px-1.5 py-0.5' : 'text-red-400'" x-text="t.sl || '—'"></td>
+            <td class="p-3"><span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold border" :class="tpBadgeClass(t, 1)" x-text="t.tp1 || '—'"></span></td>
+            <td class="p-3"><span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold border" :class="tpBadgeClass(t, 2)" x-text="t.tp2 || '—'"></span></td>
+            <td class="p-3"><span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold border" :class="tpBadgeClass(t, 3)" x-text="t.tp3 || '—'"></span></td>
+            <td class="p-3"><span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold border" :class="tpBadgeClass(t, 4)" x-text="t.tp4 || '—'"></span></td>
             <td class="p-3 text-right text-gray-100 font-semibold" x-text="t.pips"></td>
             <td class="p-3 text-right text-white font-bold" x-text="'$' + (t.profit || 0)"></td>
             <td class="p-3 text-center">
               <span class="px-2 py-0.5 rounded text-xs font-bold"
                 :class="t.result === 'WIN' ? 'bg-green-900/60 text-green-300 border border-green-700' : t.result === 'LOSS' ? 'bg-red-900/60 text-red-300 border border-red-700' : 'bg-amber-900/60 text-amber-300 border border-amber-700'"
                 x-text="t.result"></span>
+              <span x-show="t.hit_level" class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                :class="isSlHit(t) ? 'bg-red-900/60 text-red-300 border-red-700' : isBeHit(t) ? 'bg-amber-900/60 text-amber-300 border-amber-700' : 'bg-emerald-900/60 text-emerald-300 border-emerald-700'"
+                x-text="String(t.hit_level).toUpperCase()"></span>
             </td>
           </tr>
         </template>
         <tr x-show="paginatedData.length === 0">
-          <td colspan="10" class="p-4 text-center text-gray-400">No records found for selected period/filter.</td>
+          <td colspan="13" class="p-4 text-center text-gray-400">No records found for selected period/filter.</td>
         </tr>
       </tbody>
     </table>
@@ -307,12 +316,41 @@ function dashboardApp() {
       if (!d || !d.id) return;
       const idx = this.trades.findIndex(t => t.id === d.id || t.no === d.no);
       if (idx >= 0) {
-        this.trades[idx] = { ...this.trades[idx], pips: d.pips, profit: d.profit, result: d.result };
+        this.trades[idx] = { ...this.trades[idx], pips: d.pips, profit: d.profit, result: d.result, hit_level: d.hit_level };
         this.trades = [...this.trades];
       } else if (d.type === 'trade' && d.action === 'created') {
         this.trades = [d, ...this.trades];
       }
       this.$nextTick(() => this.renderCharts());
+    },
+
+    hitNumber(level) {
+      if (!level) return 0;
+      const m = String(level).toUpperCase().match(/TP\s*(\d+)/);
+      return m ? parseInt(m[1], 10) : 0;
+    },
+
+    isTpHit(t, n) {
+      return this.hitNumber(t.hit_level) >= n;
+    },
+
+    isBeHit(t) {
+      return String(t.hit_level || '').toUpperCase() === 'BE';
+    },
+
+    isSlHit(t) {
+      return String(t.hit_level || '').toUpperCase() === 'SL';
+    },
+
+    tpBadgeClass(t, n) {
+      return this.isTpHit(t, n)
+        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500'
+        : 'text-gray-300 border-transparent';
+    },
+
+    fmtPips(v) {
+      const n = Number(v) || 0;
+      return (n > 0 ? '+' : '') + n.toFixed(1);
     },
 
     filterByPeriod(period) {

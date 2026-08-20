@@ -33,6 +33,7 @@ class PublishTradeUpdateToWebSocket
             'profit' => $trade->profit,
             'result' => $trade->result,
             'old_result' => $oldResult,
+            'hit_level' => $trade->hit_level,
             'channel' => $trade->channel,
             'date' => $trade->date?->format('Y-m-d'),
             'timestamp' => now()->toISOString(),

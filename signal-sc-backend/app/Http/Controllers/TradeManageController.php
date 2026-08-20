@@ -120,9 +120,14 @@ class TradeManageController extends Controller
             'result' => 'nullable|string|max:10',
             'channel' => 'nullable|string|max:10',
             'hit_type' => 'nullable|string|max:10',
+            'hit_level' => 'nullable|string|max:10',
         ]);
 
         $hitType = $request->input('hit_type');
+
+        if ($hitType) {
+            $validated['hit_level'] = $hitType;
+        }
 
         $trade->update($validated);
         TradeUpdated::dispatch($trade, $oldResult, $hitType);

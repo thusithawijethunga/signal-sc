@@ -169,6 +169,9 @@
             <td class="p-2 text-white font-bold">${{ $trade->profit }}</td>
             <td class="p-2">
               <span class="{{ strtoupper($trade->result ?? '') === 'WIN' ? 'text-green-400' : (strtoupper($trade->result ?? '') === 'LOSS' ? 'text-red-400' : 'text-amber-400') }} font-bold">{{ strtoupper($trade->result) }}</span>
+              @if($trade->hit_level)
+                <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold border {{ strtoupper($trade->hit_level) === 'SL' ? 'bg-red-900/60 text-red-300 border-red-700' : (strtoupper($trade->hit_level) === 'BE' ? 'bg-amber-900/60 text-amber-300 border-amber-700' : 'bg-emerald-900/60 text-emerald-300 border-emerald-700') }}">{{ strtoupper($trade->hit_level) }}</span>
+              @endif
             </td>
             <td class="p-2">
               <div class="flex flex-wrap gap-1 mb-1">
@@ -237,6 +240,7 @@ function adminApp() {
 
     trades: @json($tradesJson),
     editingNum: null,
+    hitType: null,
     sendToTg: true,
     form: {
       date: new Date().toLocaleDateString('en-CA'),
@@ -372,7 +376,8 @@ function adminApp() {
         pips: Number(this.form.pips) || 0,
         profit: Number(this.form.profit) || 0,
         result: this.form.result,
-        channel: this.form.channel
+        channel: this.form.channel,
+        hit_type: this.hitType
       };
 
       const csrf = '{{ csrf_token() }}';
@@ -480,6 +485,7 @@ function adminApp() {
 
     resetForm() {
       this.editingNum = null;
+      this.hitType = null;
       this.form = {
         date: new Date().toLocaleDateString('en-CA'),
         pair: 'XAU/USD',
@@ -567,6 +573,8 @@ function adminApp() {
       if (actionType === 'SL') { t.result = 'LOSS'; this.form.result = 'LOSS'; }
       else if (actionType === 'BE') { t.result = 'BE'; this.form.result = 'BE'; }
       else { t.result = 'WIN'; this.form.result = 'WIN'; }
+
+      this.hitType = actionType;
 
       this.sendToGoogleSheets(t, actionType);
 

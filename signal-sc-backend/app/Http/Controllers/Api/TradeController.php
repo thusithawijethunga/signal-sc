@@ -121,13 +121,21 @@ class TradeController extends Controller
     {
         try {
             $oldResult = $trade->result;
-            $trade->update($request->only([
+
+            $data = $request->only([
                 'pair', 'direction', 'entry1', 'entry2', 'sl',
                 'tp1', 'tp2', 'tp3', 'tp4', 'pips', 'profit',
-                'result', 'channel', 'date',
-            ]));
+                'result', 'channel', 'date', 'hit_level',
+            ]);
 
-            TradeUpdated::dispatch($trade, $oldResult, $request->input('hit_type'));
+            $hitType = $request->input('hit_type');
+            if ($hitType) {
+                $data['hit_level'] = $hitType;
+            }
+
+            $trade->update($data);
+
+            TradeUpdated::dispatch($trade, $oldResult, $hitType);
 
             return response()->json($trade);
         } catch (\Exception $e) {

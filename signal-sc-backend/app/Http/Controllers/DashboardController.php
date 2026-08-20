@@ -42,6 +42,7 @@ class DashboardController extends Controller
             'pips' => (float) $t->pips,
             'profit' => (float) $t->profit,
             'result' => strtoupper($t->result ?? ''),
+            'hit_level' => $t->hit_level,
             'channel' => $t->channel,
         ])->toArray();
 
