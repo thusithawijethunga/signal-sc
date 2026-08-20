@@ -232,6 +232,7 @@ function adminApp() {
     tgChatId: '',
     summaryType: 'DAILY',
     summaryDate: '',
+    gsUrl: '{{ $gsUrl ?? '' }}',
 
     trades: @json($tradesJson),
     editingNum: null,
@@ -380,6 +381,7 @@ function adminApp() {
           if (this.sendToTg) {
             this.sendToTelegram(rec);
           }
+          this.sendToGoogleSheets(rec);
           setTimeout(() => window.location.reload(), 500);
         } else {
           const err = await resp.json();
@@ -504,6 +506,7 @@ function adminApp() {
       } catch(e) {}
 
       this.sendToTelegramWithHit(t, actionType);
+      this.sendToGoogleSheets(t, actionType);
 
       this.showToast(`✓ Trade #${no} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());
@@ -553,6 +556,8 @@ function adminApp() {
       if (actionType === 'SL') { t.result = 'LOSS'; this.form.result = 'LOSS'; }
       else if (actionType === 'BE') { t.result = 'BE'; this.form.result = 'BE'; }
       else { t.result = 'WIN'; this.form.result = 'WIN'; }
+
+      this.sendToGoogleSheets(t, actionType);
 
       this.showToast(`✓ Trade #${this.editingNum} marked as ${actionType} Hit!`);
       this.$nextTick(() => this.renderCharts());
@@ -673,6 +678,23 @@ function adminApp() {
         }
       } catch(err) {
         this.showToast('Sync failed', 'error');
+      }
+    },
+
+    async sendToGoogleSheets(rec, hitType) {
+      const url = this.gsUrl.trim();
+      if (!url) return;
+      try {
+        const payload = { ...rec };
+        if (hitType) payload.hit_type = hitType;
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch(err) {
+        console.error('Google Sheets sync error:', err);
       }
     },
 

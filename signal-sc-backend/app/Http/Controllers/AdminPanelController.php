@@ -39,6 +39,6 @@ class AdminPanelController extends Controller
         return view('admin.admin', compact(
             'trades', 'tradesJson',
             'startBalance', 'depositBalance', 'withdrawBalance'
-        ));
+        ))->with('gsUrl', config('services.google_sheets.url', ''));
     }
 }

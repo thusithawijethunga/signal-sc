@@ -9,7 +9,6 @@ use App\Events\CommunityPostCreated;
 use App\Events\MarketNewsCreated;
 use App\Listeners\PublishTradeToWebSocket;
 use App\Listeners\PublishTradeUpdateToWebSocket;
-use App\Listeners\SyncTradeToGoogleSheets;
 use App\Listeners\PublishSignalToWebSocket;
 use App\Listeners\PublishCommunityPostToWebSocket;
 use App\Listeners\PublishNewsToWebSocket;
@@ -20,11 +19,9 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         TradeCreated::class => [
             PublishTradeToWebSocket::class,
-            SyncTradeToGoogleSheets::class,
         ],
         TradeUpdated::class => [
             PublishTradeUpdateToWebSocket::class,
-            SyncTradeToGoogleSheets::class,
         ],
         SignalCreated::class => [
             PublishSignalToWebSocket::class,

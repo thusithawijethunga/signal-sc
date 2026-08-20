@@ -88,7 +88,14 @@ class GoogleSheetsService
         }
 
         try {
-            $response = Http::asForm()
+            $response = Http::withOptions([
+                'allow_redirects' => [
+                    'max' => 5,
+                    'strict' => true, // preserve POST method across Google's 302 redirect
+                    'protocols' => ['https', 'http'],
+                ],
+            ])
+                ->asForm()
                 ->timeout(20)
                 ->post($this->url, ['data' => json_encode($payload)]);
 
