@@ -299,7 +299,7 @@
 <div id="toast" class="toast-custom"></div>
 
 <!-- WebSocket Real-Time Updates -->
-<script src="https://cdn.jsdelivr.net/npm/centrifuge@5.4.0/dist/centrifuge.umd.js"></script>
+<script src="https://unpkg.com/centrifuge@5.4.0/dist/centrifuge.js"></script>
 <script>
 (function() {
   const toast = document.getElementById('toast');
