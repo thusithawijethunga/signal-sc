@@ -28,9 +28,10 @@ class DashboardController extends Controller
 
         $tradesJson = $trades->map(fn ($t) => [
             'no' => $t->no ?? $t->id,
-            'date' => $t->date,
+            'id' => $t->id,
+            'date' => $t->date->format('Y-m-d'),
             'pair' => $t->pair,
-            'direction' => $t->direction,
+            'direction' => strtoupper($t->direction ?? ''),
             'entry1' => $t->entry1,
             'entry2' => $t->entry2,
             'sl' => $t->sl,
@@ -40,7 +41,7 @@ class DashboardController extends Controller
             'tp4' => $t->tp4,
             'pips' => (float) $t->pips,
             'profit' => (float) $t->profit,
-            'result' => strtoupper($t->result),
+            'result' => strtoupper($t->result ?? ''),
             'channel' => $t->channel,
         ])->toArray();
 

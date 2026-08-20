@@ -1,6 +1,7 @@
 <x-layouts.admin>
 
-<div x-data="dashboardApp()" class="w-full text-center py-6 mb-0 bg-gradient-to-r from-[#1f242c] via-[#bd2828]/25 to-[#10b981]/25 border border-[#30363d] rounded-t-xl shadow-lg flex flex-col gap-3">
+<div x-data="dashboardApp()">
+<div class="w-full text-center py-6 mb-0 bg-gradient-to-r from-[#1f242c] via-[#bd2828]/25 to-[#10b981]/25 border border-[#30363d] rounded-t-xl shadow-lg flex flex-col gap-3">
   <h2 class="dynamic-banner-text text-2xl md:text-3xl font-black tracking-[0.2em] uppercase font-mono">🔥 GET RISK WIN YOUR LIFE 🔥</h2>
   <p class="dynamic-banner-text text-lg md:text-xl font-bold tracking-wider">"අවදානමක් ගන්න ජිවිතේ දිනන්න"</p>
   <div class="mt-1 flex flex-col items-center gap-1">
@@ -112,33 +113,27 @@
         </tr>
       </thead>
       <tbody class="font-mono">
-        @forelse($trades as $trade)
-          @php
-            $entries = array_filter([$trade->entry1 ?? null, $trade->entry2 ?? null]);
-            $entries = $entries ? implode(' / ', $entries) : '—';
-            $slVal = ($trade->sl ?? null) !== null && ($trade->sl ?? '') !== '' ? $trade->sl : '—';
-            $tps = array_filter([$trade->tp1 ?? null, $trade->tp2 ?? null, $trade->tp3 ?? null, $trade->tp4 ?? null]);
-            $tps = $tps ? implode(', ', $tps) : '—';
-            $resClass = strtoupper($trade->result ?? '') === 'WIN' ? 'bg-green-900/60 text-green-300 border border-green-700' :
-                        (strtoupper($trade->result ?? '') === 'LOSS' ? 'bg-red-900/60 text-red-300 border border-red-700' :
-                        'bg-amber-900/60 text-amber-300 border border-amber-700');
-            $dirClass = str_contains(strtoupper($trade->direction ?? ''), 'BUY') ? 'text-blue-400' : 'text-amber-400';
-          @endphp
+        <template x-for="t in paginatedData" :key="t.no || t.id">
           <tr class="border-b border-gray-800 hover:bg-gray-800/40">
-            <td class="p-3 text-white font-bold">{{ $trade->no ?? $trade->id }}</td>
-            <td class="p-3 text-xs text-gray-200">{{ $trade->date }}</td>
-            <td class="p-3 text-white font-bold">{{ $trade->pair }}</td>
-            <td class="p-3 font-bold {{ $dirClass }}">{{ $trade->direction }}</td>
-            <td class="p-3 text-xs text-gray-200">{{ $entries }}</td>
-            <td class="p-3 text-xs text-red-400 font-bold">{{ $slVal }}</td>
-            <td class="p-3 text-xs text-gray-200">{{ $tps }}</td>
-            <td class="p-3 text-right text-gray-100 font-semibold">{{ $trade->pips }}</td>
-            <td class="p-3 text-right text-white font-bold">${{ $trade->profit }}</td>
-            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold {{ $resClass }}">{{ strtoupper($trade->result) }}</span></td>
+            <td class="p-3 text-white font-bold" x-text="t.no || t.id"></td>
+            <td class="p-3 text-xs text-gray-200" x-text="t.date"></td>
+            <td class="p-3 text-white font-bold" x-text="t.pair"></td>
+            <td class="p-3 font-bold" :class="String(t.direction).includes('BUY') ? 'text-blue-400' : 'text-amber-400'" x-text="t.direction"></td>
+            <td class="p-3 text-xs text-gray-200" x-text="[t.entry1, t.entry2].filter(Boolean).join(' / ') || '—'"></td>
+            <td class="p-3 text-xs text-red-400 font-bold" x-text="t.sl || '—'"></td>
+            <td class="p-3 text-xs text-gray-200" x-text="[t.tp1, t.tp2, t.tp3, t.tp4].filter(Boolean).join(', ') || '—'"></td>
+            <td class="p-3 text-right text-gray-100 font-semibold" x-text="t.pips"></td>
+            <td class="p-3 text-right text-white font-bold" x-text="'$' + (t.profit || 0)"></td>
+            <td class="p-3 text-center">
+              <span class="px-2 py-0.5 rounded text-xs font-bold"
+                :class="t.result === 'WIN' ? 'bg-green-900/60 text-green-300 border border-green-700' : t.result === 'LOSS' ? 'bg-red-900/60 text-red-300 border border-red-700' : 'bg-amber-900/60 text-amber-300 border border-amber-700'"
+                x-text="t.result"></span>
+            </td>
           </tr>
-        @empty
-          <tr><td colspan="10" class="p-4 text-center text-gray-400">No records found for selected period/filter.</td></tr>
-        @endforelse
+        </template>
+        <tr x-show="paginatedData.length === 0">
+          <td colspan="10" class="p-4 text-center text-gray-400">No records found for selected period/filter.</td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -171,6 +166,7 @@
     </div>
   </div>
 </div>
+</div>
 
 <div class="toast-custom" id="toast" :class="{ 'show': toastVisible, 'error': toastType === 'error' }" x-text="toastMsg"></div>
 
@@ -189,6 +185,7 @@ function dashboardApp() {
 
     currentPage: 1,
     rowsPerPage: '10',
+    resultFilter: 'ALL',
     filteredTrades: [],
 
     toastVisible: false,
@@ -231,6 +228,9 @@ function dashboardApp() {
       } else if (this.currentPeriod === 'CUSTOM_DATE' && this.dateFilter) {
         data = data.filter(t => t.date === this.dateFilter);
       }
+      if (this.resultFilter !== 'ALL') {
+        data = data.filter(t => t.result === this.resultFilter);
+      }
       return data;
     },
 
@@ -246,6 +246,16 @@ function dashboardApp() {
       const currentBalance = this.startBalance + this.depositBalance - this.withdrawBalance + totalProfit;
       const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0';
       return { totalTrades, wins, losses, bes, totalProfit, netPips, lossPips, currentBalance, winRate };
+    },
+
+    get paginatedData() {
+      const data = [...this.filteredData].reverse();
+      if (this.rowsPerPage === 'ALL') return data;
+      const rpp = parseInt(this.rowsPerPage);
+      const totalPages = Math.ceil(data.length / rpp);
+      if (this.currentPage > totalPages) this.currentPage = Math.max(totalPages, 1);
+      const start = (this.currentPage - 1) * rpp;
+      return data.slice(start, start + rpp);
     },
 
     get paginationInfo() {
@@ -332,6 +342,7 @@ function dashboardApp() {
     },
 
     filterResult(type) {
+      this.resultFilter = type;
       this.currentPage = 1;
     },
 
@@ -347,6 +358,20 @@ function dashboardApp() {
     },
 
     renderCharts() {
+      try {
+      const eqCanvas = document.getElementById('equityChart');
+      const distCanvas = document.getElementById('distributionChart');
+      if (!eqCanvas || !distCanvas) return;
+      const eqCtx = eqCanvas.getContext('2d');
+      const distCtx = distCanvas.getContext('2d');
+      if (!eqCtx || !distCtx) return;
+
+      // Destroy any existing charts on these canvases
+      const existingEq = Chart.getChart(eqCanvas);
+      if (existingEq) existingEq.destroy();
+      const existingDist = Chart.getChart(distCanvas);
+      if (existingDist) existingDist.destroy();
+
       const data = this.filteredData;
       const m = this.computedMetrics;
       const balance = this.startBalance + this.depositBalance - this.withdrawBalance;
@@ -358,13 +383,6 @@ function dashboardApp() {
         labels.push('T' + t.no);
         points.push(bal);
       });
-
-      if (this.chartInstances.equity) this.chartInstances.equity.destroy();
-      if (this.chartInstances.distribution) this.chartInstances.distribution.destroy();
-
-      const eqCanvas = document.getElementById('equityChart');
-      const distCanvas = document.getElementById('distributionChart');
-      if (!eqCanvas || !distCanvas) return;
 
       const winPips = data.filter(t => t.pips > 0).reduce((s,t) => s + t.pips, 0);
       const lossPipsVal = data.filter(t => t.pips < 0).reduce((s,t) => s + t.pips, 0);
@@ -427,6 +445,7 @@ function dashboardApp() {
           plugins: { legend: { labels: { color: '#ffffff' } } }
         }
       });
+      } catch(e) { /* canvas not ready */ }
     }
   };
 }
