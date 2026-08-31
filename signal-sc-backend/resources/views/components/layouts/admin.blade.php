@@ -265,9 +265,6 @@
           <a href="{{ route('admin.ib-partners') }}" class="nav-link {{ request()->routeIs('admin.ib-partners') ? 'active' : '' }}">🛡️ IB Partner System</a>
         </li>
         <li class="nav-item m-0">
-          <a href="{{ route('admin.community') }}" class="nav-link {{ request()->routeIs('admin.community') ? 'active' : '' }}">👥 Community</a>
-        </li>
-        <li class="nav-item m-0">
           <a href="{{ route('admin.news') }}" class="nav-link {{ request()->routeIs('admin.news') ? 'active' : '' }}">📰 Market News</a>
         </li>
         <li class="nav-item m-0">
