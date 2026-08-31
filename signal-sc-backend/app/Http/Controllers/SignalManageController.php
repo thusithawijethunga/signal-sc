@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Signal;
 use App\Events\SignalCreated;
+use App\Events\SignalUpdated;
+use App\Events\SignalDeleted;
 use Illuminate\Http\Request;
 
 class SignalManageController extends Controller
@@ -78,13 +80,14 @@ class SignalManageController extends Controller
         ]);
 
         $signal->update($validated);
-        SignalCreated::dispatch($signal);
+        SignalUpdated::dispatch($signal, 'updated');
 
         return redirect()->route('admin.signals.index')->with('success', 'Signal updated successfully.');
     }
 
     public function destroy(Signal $signal)
     {
+        SignalDeleted::dispatch($signal->id, $signal->no);
         $signal->delete();
 
         return redirect()->route('admin.signals.index')->with('success', 'Signal deleted successfully.');

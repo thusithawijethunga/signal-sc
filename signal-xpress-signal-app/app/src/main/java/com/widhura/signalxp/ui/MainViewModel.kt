@@ -155,6 +155,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun handleRealtimeSignalUpdate(event: SignalRealtimeEvent) {
         val db = AppDatabase.getDatabase(getApplication())
+
+        if (event.action == "deleted") {
+            db.signalDao().deleteSignalById(event.id)
+            withContext(Dispatchers.Main) {
+                _lastSyncTime.value = "Live • Signal #${event.no} deleted"
+            }
+            return
+        }
+
         val entry = if (event.entry2 > 0) "${event.entry1} / ${event.entry2}" else event.entry1.toString()
         val entity = SignalEntity(
             id = event.id,
@@ -180,10 +189,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         if (event.eventType == "signal" && event.action != "updated") {
-            // New signal - insert
             db.signalDao().insertSignal(entity)
         } else {
-            // Signal update (hit level, reaction, etc.)
             db.signalDao().updateSignal(entity)
         }
 

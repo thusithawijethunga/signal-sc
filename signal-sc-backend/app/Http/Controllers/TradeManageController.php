@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Events\TradeCreated;
 use App\Events\TradeUpdated;
 use App\Events\SignalCreated;
+use App\Events\SignalUpdated;
+use App\Events\SignalDeleted;
 use App\Models\Trade;
 use App\Models\Signal;
 use Carbon\Carbon;
@@ -137,18 +139,25 @@ class TradeManageController extends Controller
 
         $trade->update($validated);
         TradeUpdated::dispatch($trade, $oldResult, $hitType);
-        $this->syncTradeToSignal($trade);
+        $this->syncTradeToSignal($trade, $hitType);
 
         return response()->json(['message' => 'Trade updated', 'trade' => $trade]);
     }
 
     public function destroy(Trade $trade)
     {
+        $signal = Signal::where('no', $trade->no)->first();
         $trade->delete();
+
+        if ($signal) {
+            SignalDeleted::dispatch($signal->id, $signal->no);
+            $signal->delete();
+        }
+
         return response()->json(['message' => 'Trade deleted']);
     }
 
-    private function syncTradeToSignal(Trade $trade): void
+    private function syncTradeToSignal(Trade $trade, ?string $action = null): void
     {
         $signalData = [
             'no' => $trade->no,
@@ -174,7 +183,7 @@ class TradeManageController extends Controller
 
         if ($existing) {
             $existing->update($signalData);
-            SignalCreated::dispatch($existing);
+            SignalUpdated::dispatch($existing, $action);
         } else {
             $signal = Signal::create($signalData);
             SignalCreated::dispatch($signal);
