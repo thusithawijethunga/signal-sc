@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Events\TradeCreated;
 use App\Events\TradeUpdated;
+use App\Events\SignalCreated;
 use App\Models\Trade;
+use App\Models\Signal;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -39,12 +41,15 @@ class TradeManageController extends Controller
 
             if ($no) {
                 $data['no'] = (int) $no;
-                Trade::updateOrCreate(['no' => (int) $no], $data);
+                $trade = Trade::updateOrCreate(['no' => (int) $no], $data);
             } else {
                 $data['no'] = (int) (Trade::max('no') + 1);
                 $trade = Trade::create($data);
                 TradeCreated::dispatch($trade);
             }
+
+            $this->syncTradeToSignal($trade);
+
             $count++;
         }
 
@@ -96,6 +101,7 @@ class TradeManageController extends Controller
 
         $trade = Trade::create($validated);
         TradeCreated::dispatch($trade);
+        $this->syncTradeToSignal($trade);
 
         return response()->json(['message' => 'Trade saved', 'trade' => $trade]);
     }
@@ -131,6 +137,7 @@ class TradeManageController extends Controller
 
         $trade->update($validated);
         TradeUpdated::dispatch($trade, $oldResult, $hitType);
+        $this->syncTradeToSignal($trade);
 
         return response()->json(['message' => 'Trade updated', 'trade' => $trade]);
     }
@@ -139,5 +146,38 @@ class TradeManageController extends Controller
     {
         $trade->delete();
         return response()->json(['message' => 'Trade deleted']);
+    }
+
+    private function syncTradeToSignal(Trade $trade): void
+    {
+        $signalData = [
+            'no' => $trade->no,
+            'date' => $trade->date,
+            'pair' => $trade->pair,
+            'direction' => $trade->direction,
+            'entry1' => $trade->entry1,
+            'entry2' => $trade->entry2,
+            'sl' => $trade->sl,
+            'tp1' => $trade->tp1,
+            'tp2' => $trade->tp2,
+            'tp3' => $trade->tp3,
+            'tp4' => $trade->tp4,
+            'pips' => $trade->pips,
+            'profit' => $trade->profit,
+            'result' => $trade->result,
+            'channel' => $trade->channel,
+            'hit_level' => $trade->hit_level,
+            'user_id' => $trade->user_id,
+        ];
+
+        $existing = Signal::where('no', $trade->no)->first();
+
+        if ($existing) {
+            $existing->update($signalData);
+            SignalCreated::dispatch($existing);
+        } else {
+            $signal = Signal::create($signalData);
+            SignalCreated::dispatch($signal);
+        }
     }
 }

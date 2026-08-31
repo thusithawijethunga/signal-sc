@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Signal;
+use App\Events\SignalCreated;
 use Illuminate\Http\Request;
 
 class SignalManageController extends Controller
@@ -43,7 +44,8 @@ class SignalManageController extends Controller
 
         $validated['user_id'] = $request->user()->id;
 
-        Signal::create($validated);
+        $signal = Signal::create($validated);
+        SignalCreated::dispatch($signal);
 
         return redirect()->route('admin.signals.index')->with('success', 'Signal created successfully.');
     }
@@ -76,6 +78,7 @@ class SignalManageController extends Controller
         ]);
 
         $signal->update($validated);
+        SignalCreated::dispatch($signal);
 
         return redirect()->route('admin.signals.index')->with('success', 'Signal updated successfully.');
     }
