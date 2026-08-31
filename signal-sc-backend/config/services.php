@@ -48,4 +48,7 @@ return [
         'url' => env('IB_GOOGLE_SHEETS_URL', ''),
     ],
 
+    'fmp' => [
+        'api_key' => env('FMP_API_KEY', ''),
+    ],
 ];
