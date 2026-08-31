@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\IbMember;
 use App\Models\IbPartner;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class IbPartnerManageController extends Controller
@@ -27,16 +26,93 @@ class IbPartnerManageController extends Controller
         }
 
         try {
-            $response = Http::timeout(20)->get($url);
+            $response = Http::timeout(30)->get($url);
             $data = $response->json();
 
             if (! is_array($data)) {
                 return response()->json(['ok' => false, 'message' => 'Invalid response from Google Sheets'], 400);
             }
 
-            return response()->json(['ok' => true, 'members' => $data]);
+            $synced = 0;
+            $created = 0;
+            $updated = 0;
+
+            foreach ($data as $row) {
+                $name = $row['name'] ?? $row['Name'] ?? $row['trader_name'] ?? null;
+                if (empty($name)) {
+                    continue;
+                }
+
+                $broker = $row['broker'] ?? $row['Broker'] ?? $row['broker_name'] ?? 'XM';
+                $accountId = $row['account_id'] ?? $row['Account ID'] ?? $row['accountId'] ?? $row['account'] ?? null;
+                $nic = $row['nic'] ?? $row['NIC'] ?? null;
+                $whatsapp = $row['whatsapp'] ?? $row['WhatsApp'] ?? $row['phone'] ?? null;
+                $telegram = $row['telegram'] ?? $row['Telegram'] ?? $row['tg'] ?? null;
+                $partnerName = $row['partner'] ?? $row['Partner'] ?? $row['partner_name'] ?? $row['referral'] ?? null;
+                $sxId = $row['sx_id'] ?? $row['SX ID'] ?? $row['sxId'] ?? $row['id'] ?? null;
+
+                // Resolve partner_id
+                $partnerId = null;
+                if (! empty($partnerName)) {
+                    $partner = IbPartner::firstOrCreate(['name' => $partnerName]);
+                    $partnerId = $partner->id;
+                }
+
+                // Try to find existing member by sx_id or account_id
+                $existing = null;
+                if (! empty($sxId)) {
+                    $existing = IbMember::where('sx_id', $sxId)->first();
+                }
+                if (! $existing && ! empty($accountId)) {
+                    $existing = IbMember::where('account_id', $accountId)->first();
+                }
+
+                if ($existing) {
+                    $existing->update([
+                        'name' => $name,
+                        'broker' => $broker,
+                        'account_id' => $accountId,
+                        'nic' => $nic,
+                        'whatsapp' => $whatsapp,
+                        'telegram' => $telegram,
+                        'partner_id' => $partnerId,
+                    ]);
+                    $updated++;
+                } else {
+                    IbMember::create([
+                        'name' => $name,
+                        'broker' => $broker,
+                        'account_id' => $accountId,
+                        'nic' => $nic,
+                        'whatsapp' => $whatsapp,
+                        'telegram' => $telegram,
+                        'partner_id' => $partnerId,
+                    ]);
+                    $created++;
+                }
+
+                $synced++;
+            }
+
+            return response()->json([
+                'ok' => true,
+                'message' => "Synced {$synced} members ({$created} created, {$updated} updated)",
+                'synced' => $synced,
+                'created' => $created,
+                'updated' => $updated,
+                'members' => IbMember::with('partner')->latest()->get()->map(fn ($m) => [
+                    'sx_id' => $m->sx_id,
+                    'name' => $m->name,
+                    'broker' => $m->broker,
+                    'account_id' => $m->account_id,
+                    'nic' => $m->nic,
+                    'whatsapp' => $m->whatsapp,
+                    'telegram' => $m->telegram,
+                    'partner' => $m->partner->name ?? '',
+                ])->toArray(),
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['ok' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(['ok' => false, 'message' => 'Sync failed: ' . $e->getMessage()], 500);
         }
     }
 
