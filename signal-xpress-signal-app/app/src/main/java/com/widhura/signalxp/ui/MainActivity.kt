@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -145,7 +146,7 @@ fun BottomNavBar(currentTab: NavTab, onTabSelected: (NavTab) -> Unit) {
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Column {
-            Divider(color = BorderColor, thickness = 1.dp)
+            HorizontalDivider(Modifier, thickness = 1.dp, color = BorderColor)
             Row(
                 modifier = Modifier.fillMaxWidth().height(58.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
