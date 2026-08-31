@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CommunityPost;
 use App\Models\CommunityComment;
+use App\Models\CommunitySetting;
 use App\Models\ChatMessage;
 use App\Models\Trade;
 use App\Models\MarketNews;
@@ -25,6 +26,12 @@ class AdminFeedController extends Controller
         $pendingPosts = CommunityPost::where('status', 'pending')->count();
         $pendingComments = CommunityComment::where('status', 'pending')->count();
 
+        // Community settings
+        $settings = [
+            'require_post_approval' => CommunitySetting::get('require_post_approval', '1') === '1',
+            'require_comment_approval' => CommunitySetting::get('require_comment_approval', '0') === '1',
+        ];
+
         // Chat messages (approved + pending for admin)
         $chatMessages = ChatMessage::with('user')
             ->orderBy('created_at', 'asc')
@@ -37,7 +44,7 @@ class AdminFeedController extends Controller
         $recentSignals = Signal::orderBy('date', 'desc')->limit(5)->get();
 
         return view('admin.feed', compact(
-            'posts', 'pendingPosts', 'pendingComments',
+            'posts', 'pendingPosts', 'pendingComments', 'settings',
             'chatMessages', 'pendingChats',
             'recentTrades', 'recentSignals'
         ));
@@ -225,5 +232,13 @@ class AdminFeedController extends Controller
             'pending_comments' => CommunityComment::where('status', 'pending')->count(),
             'pending_chats' => ChatMessage::where('status', 'pending')->count(),
         ]);
+    }
+
+    public function updateSettings(Request $request)
+    {
+        CommunitySetting::set('require_post_approval', $request->input('require_post_approval') ? '1' : '0');
+        CommunitySetting::set('require_comment_approval', $request->input('require_comment_approval') ? '1' : '0');
+
+        return back()->with('success', 'Community settings updated');
     }
 }

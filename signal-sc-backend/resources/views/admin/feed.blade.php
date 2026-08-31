@@ -227,7 +227,22 @@
         </div>
       </template>
 
-      <h6 class="text-white small fw-bold mb-1 mt-2" style="font-size:11px;">Channels</h6>
+      <!-- Community Settings -->
+      <h6 class="text-white small fw-bold mb-1 mt-3" style="font-size:11px;"><i class="fa-solid fa-cog text-warning me-1"></i>Settings</h6>
+      <form action="{{ route('admin.feed.settings') }}" method="POST" class="bg-dark rounded p-2 border border-secondary">
+        @csrf
+        <div class="form-check mb-1">
+          <input type="checkbox" name="require_post_approval" value="1" class="form-check-input" id="postApproval" {{ $settings['require_post_approval'] ? 'checked' : '' }}>
+          <label class="form-check-label text-white" for="postApproval" style="font-size:10px;">Require Post Approval</label>
+        </div>
+        <div class="form-check mb-2">
+          <input type="checkbox" name="require_comment_approval" value="1" class="form-check-input" id="commentApproval" {{ $settings['require_comment_approval'] ? 'checked' : '' }}>
+          <label class="form-check-label text-white" for="commentApproval" style="font-size:10px;">Require Comment Approval</label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-outline-warning w-100 py-0" style="font-size:10px;">Save Settings</button>
+      </form>
+
+      <h6 class="text-white small fw-bold mb-1 mt-3" style="font-size:11px;">Channels</h6>
       <div style="font-size:10px;">
         <div class="mb-1"><span class="badge bg-success" style="font-size:7px;">●</span> <span class="text-secondary">trading:signals</span></div>
         <div class="mb-1"><span class="badge bg-primary" style="font-size:7px;">●</span> <span class="text-secondary">trading:trades</span></div>

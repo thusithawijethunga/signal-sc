@@ -80,81 +80,135 @@ class AdminNewsController extends Controller
 
     public function syncFromApi()
     {
+        $synced = 0;
+        $errors = [];
+
+        // ── Source 1: ForexFactory free JSON feed ──────
         try {
-            $apiKey = config('services.fmp.api_key', '');
+            $response = Http::timeout(20)->get('https://nfp.ourforecast.com/calendar.json', [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'Accept' => 'application/json',
+            ]);
 
-            if (empty($apiKey)) {
-                return back()->with('error', 'FMP API key not configured. Set FMP_API_KEY in .env');
+            if ($response->successful()) {
+                $data = $response->json();
+                $events = is_array($data) ? $data : [];
+
+                foreach ($events as $event) {
+                    $title = $event['title'] ?? $event['event'] ?? $event['name'] ?? null;
+                    if (empty($title)) continue;
+
+                    $currency = strtoupper($event['country'] ?? $event['currency'] ?? '');
+                    $impact = strtoupper($event['impact'] ?? 'Low');
+                    if (!in_array($impact, ['HIGH', 'MEDIUM', 'LOW'])) $impact = 'LOW';
+
+                    $eventTime = $event['date'] ?? $event['event_time'] ?? null;
+
+                    MarketNews::updateOrCreate(
+                        ['title' => $title, 'event_time' => $eventTime],
+                        [
+                            'currency' => $currency,
+                            'impact' => $impact,
+                            'forecast' => $event['forecast'] ?? null,
+                            'previous' => $event['previous'] ?? null,
+                            'actual' => $event['actual'] ?? null,
+                            'description' => "ForexFactory Calendar ({$currency})",
+                        ]
+                    );
+                    $synced++;
+                }
             }
+        } catch (\Throwable $e) {
+            $errors[] = 'ForexFactory: ' . $e->getMessage();
+        }
 
-            // Fetch next 30 days of economic events
+        // ── Source 2: Xoomar Pulse free calendar (US events, no key) ──
+        try {
             $from = now()->subDays(3)->format('Y-m-d');
             $to = now()->addDays(30)->format('Y-m-d');
+            $response = Http::timeout(15)->get("https://xoomar.com/api/markets/calendar", [
+                'from' => $from,
+                'to' => $to,
+            ]);
 
-            $url = "https://financialmodelingprep.com/stable/economic-calendar?from={$from}&to={$to}&apikey={$apiKey}";
+            if ($response->successful()) {
+                $data = $response->json();
+                $events = $data['data'] ?? $data ?? [];
 
-            $response = Http::timeout(30)->get($url);
+                foreach ($events as $event) {
+                    $title = $event['eventName'] ?? $event['event'] ?? null;
+                    if (empty($title)) continue;
 
-            if (!$response->successful()) {
-                $status = $response->status();
-                if ($status === 402) {
-                    return back()->with('error', 'FMP API requires a paid subscription. Using fallback API.');
+                    $impact = ucfirst($event['importance'] ?? 'low');
+                    $eventTime = $event['scheduledAt'] ?? $event['date'] ?? null;
+
+                    MarketNews::updateOrCreate(
+                        ['title' => $title, 'event_time' => $eventTime],
+                        [
+                            'currency' => 'USD',
+                            'impact' => strtoupper($impact),
+                            'forecast' => $event['estimate'] ?? $event['forecast'] ?? null,
+                            'previous' => $event['previous'] ?? null,
+                            'actual' => $event['actual'] ?? null,
+                            'description' => $event['source'] ? "Source: " . strtoupper($event['source']) : 'US Economic Calendar',
+                        ]
+                    );
+                    $synced++;
                 }
-                if ($status === 401) {
-                    return back()->with('error', 'Invalid FMP API key. Check FMP_API_KEY in .env');
-                }
-                return back()->with('error', 'FMP API returned HTTP ' . $status);
             }
-
-            $events = $response->json();
-
-            if (!is_array($events)) {
-                return back()->with('error', 'Invalid response from FMP API');
-            }
-
-            $synced = 0;
-            $currencyMap = [
-                'US' => 'USD', 'EU' => 'EUR', 'GB' => 'GBP', 'JP' => 'JPY',
-                'AU' => 'AUD', 'CA' => 'CAD', 'CH' => 'CHF', 'CN' => 'CNY',
-                'NZ' => 'NZD', 'DE' => 'EUR', 'FR' => 'EUR', 'IT' => 'EUR',
-                'ES' => 'EUR', 'KR' => 'KRW', 'IN' => 'INR', 'BR' => 'BRL',
-                'MX' => 'MXN', 'RU' => 'RUB', 'SA' => 'SAR', 'SE' => 'SEK',
-            ];
-
-            foreach ($events as $event) {
-                $title = $event['event'] ?? $event['name'] ?? null;
-                if (empty($title)) continue;
-
-                $country = strtoupper($event['country'] ?? '');
-                $currency = strtoupper($event['currency'] ?? $currencyMap[$country] ?? $country);
-                $impact = strtoupper($event['impact'] ?? 'Low');
-
-                // Map impact levels
-                if (!in_array($impact, ['HIGH', 'MEDIUM', 'LOW'])) {
-                    $impact = 'LOW';
-                }
-
-                $eventTime = $event['date'] ?? null;
-
-                MarketNews::updateOrCreate(
-                    ['title' => $title, 'event_time' => $eventTime],
-                    [
-                        'currency' => $currency,
-                        'impact' => $impact,
-                        'forecast' => $event['estimate'] ?? $event['forecast'] ?? null,
-                        'previous' => $event['previous'] ?? null,
-                        'actual' => $event['actual'] ?? null,
-                        'description' => "Economic event: {$title} ({$currency}) - Impact: {$impact}",
-                    ]
-                );
-                $synced++;
-            }
-
-            return back()->with('success', "Synced {$synced} economic events from Financial Modeling Prep API ({$from} to {$to})");
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            return back()->with('error', 'Connection timeout. Please try again.');
         } catch (\Throwable $e) {
-            return back()->with('error', 'Sync failed: ' . $e->getMessage());
+            $errors[] = 'Xoomar: ' . $e->getMessage();
         }
+
+        // ── Source 3: FMP (if API key is configured) ──
+        $apiKey = config('services.fmp.api_key', '');
+        if (!empty($apiKey)) {
+            try {
+                $from = now()->subDays(3)->format('Y-m-d');
+                $to = now()->addDays(30)->format('Y-m-d');
+                $response = Http::timeout(20)->get("https://financialmodelingprep.com/stable/economic-calendar", [
+                    'from' => $from,
+                    'to' => $to,
+                    'apikey' => $apiKey,
+                ]);
+
+                if ($response->successful()) {
+                    $events = $response->json();
+                    if (is_array($events)) {
+                        $currencyMap = ['US'=>'USD','EU'=>'EUR','GB'=>'GBP','JP'=>'JPY','AU'=>'AUD','CA'=>'CAD','CH'=>'CHF','DE'=>'EUR','FR'=>'EUR'];
+                        foreach ($events as $event) {
+                            $title = $event['event'] ?? $event['name'] ?? null;
+                            if (empty($title)) continue;
+                            $country = strtoupper($event['country'] ?? '');
+                            $currency = strtoupper($event['currency'] ?? $currencyMap[$country] ?? $country);
+                            $impact = strtoupper($event['impact'] ?? 'Low');
+                            if (!in_array($impact, ['HIGH','MEDIUM','LOW'])) $impact = 'LOW';
+
+                            MarketNews::updateOrCreate(
+                                ['title' => $title, 'event_time' => $event['date'] ?? null],
+                                [
+                                    'currency' => $currency,
+                                    'impact' => $impact,
+                                    'forecast' => $event['estimate'] ?? null,
+                                    'previous' => $event['previous'] ?? null,
+                                    'actual' => $event['actual'] ?? null,
+                                    'description' => "FMP Economic Calendar",
+                                ]
+                            );
+                            $synced++;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $errors[] = 'FMP: ' . $e->getMessage();
+            }
+        }
+
+        $msg = "Synced {$synced} economic events";
+        if (!empty($errors)) {
+            $msg .= " (warnings: " . implode('; ', $errors) . ")";
+        }
+
+        return back()->with('success', $msg);
     }
 }

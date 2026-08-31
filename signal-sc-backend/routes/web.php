@@ -79,6 +79,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/feed/chat/{chat}/reject', [AdminFeedController::class, 'rejectChat'])->name('admin.feed.chat.reject');
     Route::delete('/admin/feed/chat/{chat}', [AdminFeedController::class, 'deleteChat'])->name('admin.feed.chat.delete');
     Route::get('/admin/feed/pending-count', [AdminFeedController::class, 'getPendingCount'])->name('admin.feed.pending-count');
+    Route::post('/admin/feed/settings', [AdminFeedController::class, 'updateSettings'])->name('admin.feed.settings');
 
     // Settings
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
