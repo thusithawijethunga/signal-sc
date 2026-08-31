@@ -62,10 +62,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/admin/news/{newsItem}', [AdminNewsController::class, 'destroy'])->name('admin.news.destroy');
     Route::post('/admin/news/sync', [AdminNewsController::class, 'syncFromApi'])->name('admin.news.sync');
 
-    // Real-time Chat
-    Route::get('/admin/chat', [AdminChatController::class, 'index'])->name('admin.chat');
+    // Real-time Chat (kept for API compatibility)
     Route::get('/admin/chat/token', [AdminChatController::class, 'getToken'])->name('admin.chat.token');
-    Route::post('/admin/chat/send', [AdminChatController::class, 'sendMessage'])->name('admin.chat.send');
 
     // Unified Feed (Telegram-like)
     Route::get('/admin/feed', [AdminFeedController::class, 'index'])->name('admin.feed');
@@ -76,6 +74,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/feed/posts/{post}/pin', [AdminFeedController::class, 'togglePin'])->name('admin.feed.pin');
     Route::post('/admin/feed/comments/{comment}/approve', [AdminFeedController::class, 'approveComment'])->name('admin.feed.comment.approve');
     Route::post('/admin/feed/comments/{comment}/reject', [AdminFeedController::class, 'rejectComment'])->name('admin.feed.comment.reject');
+    Route::post('/admin/feed/chat', [AdminFeedController::class, 'sendChat'])->name('admin.feed.chat');
+    Route::post('/admin/feed/chat/{chat}/approve', [AdminFeedController::class, 'approveChat'])->name('admin.feed.chat.approve');
+    Route::post('/admin/feed/chat/{chat}/reject', [AdminFeedController::class, 'rejectChat'])->name('admin.feed.chat.reject');
+    Route::delete('/admin/feed/chat/{chat}', [AdminFeedController::class, 'deleteChat'])->name('admin.feed.chat.delete');
     Route::get('/admin/feed/pending-count', [AdminFeedController::class, 'getPendingCount'])->name('admin.feed.pending-count');
 
     // Settings

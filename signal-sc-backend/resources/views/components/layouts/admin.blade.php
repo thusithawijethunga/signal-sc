@@ -271,9 +271,6 @@
           <a href="{{ route('admin.news') }}" class="nav-link {{ request()->routeIs('admin.news') ? 'active' : '' }}">📰 Market News</a>
         </li>
         <li class="nav-item m-0">
-          <a href="{{ route('admin.chat') }}" class="nav-link {{ request()->routeIs('admin.chat') ? 'active' : '' }}">💬 Live Chat</a>
-        </li>
-        <li class="nav-item m-0">
           <a href="{{ route('admin.csv-analytics') }}" class="nav-link {{ request()->routeIs('admin.csv-analytics') ? 'active' : '' }}">📈 Trading CSV Analytics</a>
         </li>
       </ul>
