@@ -76,12 +76,12 @@ class CommunityPost extends Model
 
     public function comments(): HasMany
     {
-        return $this->hasMany(CommunityComment::class);
+        return $this->hasMany(CommunityComment::class, 'post_id');
     }
 
     public function reactions(): HasMany
     {
-        return $this->hasMany(CommunityReaction::class);
+        return $this->hasMany(CommunityReaction::class, 'post_id');
     }
 
     public function scopeApproved($query)

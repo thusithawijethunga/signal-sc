@@ -29,7 +29,7 @@ class CommunityComment extends Model
 
     public function post(): BelongsTo
     {
-        return $this->belongsTo(CommunityPost::class);
+        return $this->belongsTo(CommunityPost::class, 'post_id');
     }
 
     public function user(): BelongsTo
