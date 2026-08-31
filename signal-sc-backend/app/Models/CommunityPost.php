@@ -12,6 +12,7 @@ class CommunityPost extends Model
 
     protected $fillable = [
         'user_id',
+        'status',
         'author_name',
         'author_badge',
         'author_avatar_hex',
@@ -38,6 +39,10 @@ class CommunityPost extends Model
         'is_fired_by_me',
         'is_rocket_by_me',
         'is_pinned',
+        'comments_need_review',
+        'approved_at',
+        'approved_by',
+        'rejection_reason',
     ];
 
     protected function casts(): array
@@ -48,18 +53,25 @@ class CommunityPost extends Model
             'is_fired_by_me' => 'boolean',
             'is_rocket_by_me' => 'boolean',
             'is_pinned' => 'boolean',
+            'comments_need_review' => 'boolean',
             'entry_price' => 'decimal:2',
             'exit_price' => 'decimal:2',
             'lot_size' => 'decimal:2',
             'profit_amount' => 'decimal:2',
             'roi_percentage' => 'decimal:2',
             'pips_gain' => 'decimal:1',
+            'approved_at' => 'datetime',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function comments(): HasMany
@@ -70,5 +82,30 @@ class CommunityPost extends Model
     public function reactions(): HasMany
     {
         return $this->hasMany(CommunityReaction::class);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 }

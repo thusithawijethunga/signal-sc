@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\IbPartnerController;
 use App\Http\Controllers\Api\CsvController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\WebSocketController;
+use App\Http\Controllers\Api\AdminCommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/websocket/token', [WebSocketController::class, 'token']);
@@ -33,12 +34,28 @@ Route::middleware('api.auth')->group(function () {
     Route::put('/trades/{trade}', [TradeController::class, 'update']);
     Route::delete('/trades/{trade}', [TradeController::class, 'destroy']);
 
+    // Community (user endpoints)
     Route::get('/community/posts', [CommunityController::class, 'posts']);
     Route::post('/community/posts', [CommunityController::class, 'storePost']);
     Route::delete('/community/posts/{post}', [CommunityController::class, 'destroyPost']);
     Route::get('/community/posts/{post}/comments', [CommunityController::class, 'comments']);
     Route::post('/community/posts/{post}/comments', [CommunityController::class, 'storeComment']);
     Route::post('/community/posts/{post}/react', [CommunityController::class, 'reactPost']);
+    Route::get('/community/settings', [CommunityController::class, 'settings']);
+    Route::post('/community/settings', [CommunityController::class, 'settings']);
+
+    // Admin community moderation
+    Route::get('/admin/community/stats', [AdminCommunityController::class, 'stats']);
+    Route::get('/admin/community/pending-posts', [AdminCommunityController::class, 'pendingPosts']);
+    Route::get('/admin/community/posts', [AdminCommunityController::class, 'allPosts']);
+    Route::post('/admin/community/posts/{post}/approve', [AdminCommunityController::class, 'approvePost']);
+    Route::post('/admin/community/posts/approve-all', [AdminCommunityController::class, 'approveAllPosts']);
+    Route::post('/admin/community/posts/{post}/reject', [AdminCommunityController::class, 'rejectPost']);
+    Route::delete('/admin/community/posts/{post}', [AdminCommunityController::class, 'deletePost']);
+    Route::get('/admin/community/pending-comments', [AdminCommunityController::class, 'pendingComments']);
+    Route::post('/admin/community/comments/{comment}/approve', [AdminCommunityController::class, 'approveComment']);
+    Route::post('/admin/community/comments/approve-all', [AdminCommunityController::class, 'approveAllComments']);
+    Route::post('/admin/community/comments/{comment}/reject', [AdminCommunityController::class, 'rejectComment']);
 
     Route::get('/news', [NewsController::class, 'index']);
     Route::post('/news/sync', [NewsController::class, 'sync']);

@@ -7,6 +7,7 @@ use App\Events\CommunityPostCreated;
 use App\Models\CommunityComment;
 use App\Models\CommunityPost;
 use App\Models\CommunityReaction;
+use App\Models\CommunitySetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,30 @@ class CommunityController extends Controller
     public function posts(Request $request): JsonResponse
     {
         try {
+            $user = $request->user();
+            $isAdmin = $user && $user->role === 'admin';
+
             $query = CommunityPost::with('user');
+
+            // Non-admin users only see approved posts + their own pending posts
+            if (!$isAdmin) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('status', 'approved')
+                      ->orWhere(function ($q2) use ($user) {
+                          $q2->where('user_id', $user->id)
+                             ->where('status', 'pending');
+                      })
+                      ->orWhere(function ($q3) use ($user) {
+                          $q3->where('user_id', $user->id)
+                             ->where('status', 'rejected');
+                      });
+                });
+            } else {
+                // Admin can filter by status
+                if ($request->filled('status')) {
+                    $query->where('status', $request->status);
+                }
+            }
 
             if ($request->filled('post_type')) {
                 $query->where('post_type', $request->post_type);
@@ -50,8 +74,12 @@ class CommunityController extends Controller
                 'post_type' => 'required|string|in:text,trade_update,screenshot,signal_card',
             ]);
 
+            $requiresApproval = CommunitySetting::isPostApprovalRequired();
+            $status = $requiresApproval ? 'pending' : 'approved';
+
             $post = CommunityPost::create([
                 'user_id' => $request->user()->id,
+                'status' => $status,
                 'author_name' => $request->user()->name,
                 'author_badge' => $request->get('author_badge'),
                 'author_avatar_hex' => $request->get('author_avatar_hex'),
@@ -70,11 +98,23 @@ class CommunityController extends Controller
                 'broker_name' => $request->get('broker_name'),
                 'card_theme' => $request->get('card_theme'),
                 'is_verified_trade' => $request->get('is_verified_trade', false),
+                'comments_need_review' => CommunitySetting::get('require_comment_approval', '0') === '1',
             ]);
 
-            CommunityPostCreated::dispatch($post);
+            // Only broadcast if approved (no approval required)
+            if (!$requiresApproval) {
+                CommunityPostCreated::dispatch($post);
+            }
 
-            return response()->json($post, 201);
+            $message = $requiresApproval
+                ? 'Post submitted for review. It will appear after admin approval.'
+                : 'Post published successfully.';
+
+            return response()->json([
+                'post' => $post,
+                'message' => $message,
+                'status' => $status,
+            ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
@@ -85,6 +125,12 @@ class CommunityController extends Controller
     public function destroyPost(Request $request, CommunityPost $post): JsonResponse
     {
         try {
+            $user = $request->user();
+            // Users can only delete their own posts, admin can delete any
+            if ($user->role !== 'admin' && $post->user_id !== $user->id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
             $post->delete();
             return response()->json(['message' => 'Post deleted']);
         } catch (\Exception $e) {
@@ -95,10 +141,29 @@ class CommunityController extends Controller
     public function comments(Request $request, CommunityPost $post): JsonResponse
     {
         try {
-            $comments = CommunityComment::with('user')
-                ->where('post_id', $post->id)
-                ->orderBy('created_at', 'asc')
-                ->paginate($request->get('per_page', 20));
+            $user = $request->user();
+            $isAdmin = $user && $user->role === 'admin';
+
+            $query = CommunityComment::with('user')
+                ->where('post_id', $post->id);
+
+            // Non-admin: show approved comments + own pending comments
+            if (!$isAdmin) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('status', 'approved')
+                      ->orWhere(function ($q2) use ($user) {
+                          $q2->where('user_id', $user->id)
+                             ->where('status', 'pending');
+                      });
+                });
+            } else {
+                if ($request->filled('status')) {
+                    $query->where('status', $request->status);
+                }
+            }
+
+            $comments = $query->orderBy('created_at', 'asc')
+                ->paginate($request->get('per_page', 50));
 
             return response()->json($comments);
         } catch (\Exception $e) {
@@ -113,16 +178,31 @@ class CommunityController extends Controller
                 'content' => 'required|string',
             ]);
 
+            $requiresApproval = $post->comments_need_review || CommunitySetting::isCommentApprovalRequired();
+            $status = $requiresApproval ? 'pending' : 'approved';
+
             $comment = CommunityComment::create([
                 'post_id' => $post->id,
                 'user_id' => $request->user()->id,
                 'author_name' => $request->user()->name,
                 'content' => $request->content,
+                'status' => $status,
             ]);
 
-            $post->increment('comments_count');
+            // Only increment count if auto-approved
+            if (!$requiresApproval) {
+                $post->increment('comments_count');
+            }
 
-            return response()->json($comment, 201);
+            $message = $requiresApproval
+                ? 'Comment submitted for review.'
+                : 'Comment posted.';
+
+            return response()->json([
+                'comment' => $comment,
+                'message' => $message,
+                'status' => $status,
+            ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
@@ -170,6 +250,39 @@ class CommunityController extends Controller
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to react', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    // Settings endpoint (admin only)
+    public function settings(Request $request): JsonResponse
+    {
+        try {
+            if ($request->user()->role !== 'admin') {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            if ($request->isMethod('GET')) {
+                return response()->json([
+                    'require_post_approval' => CommunitySetting::isPostApprovalRequired(),
+                    'require_comment_approval' => CommunitySetting::isCommentApprovalRequired(),
+                    'max_post_length' => CommunitySetting::get('max_post_length', '5000'),
+                ]);
+            }
+
+            // Update settings
+            if ($request->has('require_post_approval')) {
+                CommunitySetting::set('require_post_approval', $request->input('require_post_approval') ? '1' : '0');
+            }
+            if ($request->has('require_comment_approval')) {
+                CommunitySetting::set('require_comment_approval', $request->input('require_comment_approval') ? '1' : '0');
+            }
+            if ($request->has('max_post_length')) {
+                CommunitySetting::set('max_post_length', $request->input('max_post_length'));
+            }
+
+            return response()->json(['message' => 'Settings updated']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to update settings', 'error' => $e->getMessage()], 500);
         }
     }
 
