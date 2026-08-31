@@ -20,7 +20,12 @@ class AdminNewsController extends Controller
             $query->where('impact', $request->impact);
         }
 
-        $news = $query->orderBy('event_time', 'desc')->paginate(20);
+        $sort = $request->get('sort', 'event_time');
+        if ($sort === 'newest') {
+            $news = $query->orderBy('created_at', 'desc')->paginate(20);
+        } else {
+            $news = $query->orderBy('event_time', 'desc')->paginate(20);
+        }
         $stats = [
             'total' => MarketNews::count(),
             'high' => MarketNews::where('impact', 'HIGH')->count(),

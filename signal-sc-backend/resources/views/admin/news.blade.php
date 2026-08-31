@@ -52,13 +52,31 @@
   <!-- News List -->
   <div class="col-lg-7">
     <div class="card-ib p-4">
-      <h5 class="text-white mb-3"><i class="fa-solid fa-newspaper text-primary me-2"></i>Market News Events</h5>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-white mb-0"><i class="fa-solid fa-newspaper text-primary me-2"></i>Market News Events</h5>
+        <div class="d-flex gap-2">
+          <a href="{{ route('admin.news', array_merge(request()->query(), ['sort' => 'event_time'])) }}"
+             class="btn btn-sm {{ request('sort', 'event_time') === 'event_time' ? 'btn-warning' : 'btn-outline-secondary' }}">
+            <i class="fa-solid fa-calendar me-1"></i> By Date
+          </a>
+          <a href="{{ route('admin.news', array_merge(request()->query(), ['sort' => 'newest'])) }}"
+             class="btn btn-sm {{ request('sort') === 'newest' ? 'btn-success' : 'btn-outline-secondary' }}">
+            <i class="fa-solid fa-bolt me-1"></i> Latest First
+          </a>
+        </div>
+      </div>
 
       @forelse($news as $item)
-      <div class="border border-secondary rounded p-3 mb-3">
+      @php
+        $isNew = $item->created_at && $item->created_at->diffInMinutes(now()) < 60;
+      @endphp
+      <div class="border border-secondary rounded p-3 mb-3 {{ $isNew ? 'border-success' : '' }}">
         <div class="d-flex justify-content-between align-items-start">
           <div>
             <strong class="text-white">{{ $item->title }}</strong>
+            @if($isNew)
+              <span class="badge bg-success ms-2" style="font-size:10px;animation:pulse 1.5s infinite;">NEW</span>
+            @endif
             <div class="mt-1">
               <span class="badge bg-{{ $item->impact === 'HIGH' ? 'danger' : ($item->impact === 'MEDIUM' ? 'warning' : 'secondary') }}">{{ $item->impact }}</span>
               <span class="badge bg-primary">{{ $item->currency }}</span>
@@ -99,3 +117,10 @@
 </div>
 @endif
 </x-layouts.admin>
+
+<style>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+</style>

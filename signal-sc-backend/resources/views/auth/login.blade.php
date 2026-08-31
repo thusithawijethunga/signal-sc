@@ -1,47 +1,62 @@
 <x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <div class="auth-card">
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Sign in to your admin portal</p>
 
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
+        <!-- Session Status -->
+        @if (session('status'))
+            <div class="alert-session">{{ session('status') }}</div>
+        @endif
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+        <!-- Validation Errors -->
+        @if ($errors->any())
+            <div class="alert-error">
+                @foreach ($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('login') }}">
+            @csrf
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username" placeholder="admin@signalxpress.com">
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input id="password" type="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
+            </div>
+
+            <!-- Remember Me -->
+            <div class="form-check-group">
+                <input id="remember_me" type="checkbox" name="remember">
+                <label for="remember_me">Remember me</label>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-auth btn-auth-primary">
+                <i class="fa-solid fa-right-to-bracket"></i> Log in
+            </button>
+
+            <!-- Links -->
+            <div class="auth-links">
+                @if (Route::has('password.request'))
+                    <a href="{{ route('password.request') }}">
+                        <i class="fa-solid fa-key"></i> Forgot password?
+                    </a>
+                @endif
+            </div>
+        </form>
+
+        @if (Route::has('register'))
+        <div class="auth-footer">
+            Don't have an account? <a href="{{ route('register') }}">Register</a>
         </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
+        @endif
+    </div>
 </x-guest-layout>
