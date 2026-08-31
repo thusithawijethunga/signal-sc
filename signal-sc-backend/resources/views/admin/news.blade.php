@@ -116,7 +116,6 @@
   <div class="toast show align-items-center text-bg-danger border-0"><div class="d-flex"><div class="toast-body">{{ session('error') }}</div></div></div>
 </div>
 @endif
-</x-layouts.admin>
 
 <style>
 @keyframes pulse {
@@ -124,3 +123,4 @@
   50% { opacity: 0.5; }
 }
 </style>
+</x-layouts.admin>
