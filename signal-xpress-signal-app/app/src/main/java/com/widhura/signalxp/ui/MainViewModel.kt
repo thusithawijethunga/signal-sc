@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.widhura.signalxp.BuildConfig
 import com.widhura.signalxp.data.AppDatabase
 import com.widhura.signalxp.data.CommunityCommentEntity
 import com.widhura.signalxp.data.CommunityPostEntity
@@ -11,6 +12,16 @@ import com.widhura.signalxp.data.NewsEntity
 import com.widhura.signalxp.data.SignalEntity
 import com.widhura.signalxp.data.SignalRepository
 import com.widhura.signalxp.data.VipMemberEntity
+import com.widhura.signalxp.data.api.ApiClient
+import com.widhura.signalxp.data.api.ApiRepository
+import com.widhura.signalxp.data.api.AuthRepository
+import com.widhura.signalxp.data.api.CentrifugoWebSocketService
+import com.widhura.signalxp.data.api.CommunityPostStoreRequest
+import com.widhura.signalxp.data.api.SignalStoreRequest
+import com.widhura.signalxp.data.api.CommunityRealtimeEvent
+import com.widhura.signalxp.data.api.NewsRealtimeEvent
+import com.widhura.signalxp.data.api.SignalRealtimeEvent
+import com.widhura.signalxp.data.api.TradeRealtimeEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

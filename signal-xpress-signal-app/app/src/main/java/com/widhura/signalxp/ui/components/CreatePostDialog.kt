@@ -934,6 +934,7 @@ fun CreatePostDialog(
                                     tradeType = tradeType,
                                     profitAmount = profitVal,
                                     pipsGain = pipsVal,
+                                    brokerName = "",
                                     hashtags = customTags
                                 )
                             } else {
