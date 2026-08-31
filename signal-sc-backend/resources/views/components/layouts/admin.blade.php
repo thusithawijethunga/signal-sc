@@ -237,20 +237,51 @@
 
 <div class="star-container" id="starContainer"></div>
 
-<div class="max-w-7xl mx-auto relative z-10">
+<div class="max-w-7xl mx-auto relative z-10" x-data="{ navOpen: false }">
 
   <!-- Navigation Header Bar -->
-  <div class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-800 gap-4">
-    <div class="flex items-center gap-3">
-      <div class="w-12 h-12 bg-gradient-to-br from-[#d4a04c] to-[#f5c46d] rounded-xl flex items-center justify-center font-bold text-black text-xl shadow-lg">SX</div>
-      <div>
-        <h1 class="text-xl font-bold text-white tracking-tight">SIGNAL XPRESS</h1>
-        <p class="text-xs text-gray-300 font-mono">Master Trading Portal & Unified Admin System</p>
+  <div class="flex flex-col mb-6 pb-4 border-b border-gray-800 gap-4">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-gradient-to-br from-[#d4a04c] to-[#f5c46d] rounded-xl flex items-center justify-center font-bold text-black text-xl shadow-lg">SX</div>
+        <div>
+          <h1 class="text-xl font-bold text-white tracking-tight">SIGNAL XPRESS</h1>
+          <p class="text-xs text-gray-300 font-mono">Master Trading Portal & Unified Admin System</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- User Menu -->
+        <div class="relative" x-data="{ open: false }">
+          <button @click="open = !open" class="flex items-center gap-2 bg-[#121815] border border-[#2a3a32] rounded-lg px-3 py-1.5 text-sm text-white hover:border-[#d4a04c] transition-all">
+            <div class="w-7 h-7 bg-gradient-to-br from-[#d4a04c] to-[#f5c46d] rounded-full flex items-center justify-center text-black text-xs font-bold">{{ substr(Auth::user()->name ?? 'A', 0, 1) }}</div>
+            <span class="text-gray-200 font-semibold hidden sm:inline">{{ Auth::user()->name ?? 'Admin' }}</span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div x-show="open" @click.away="open = false" x-transition
+               class="absolute right-0 mt-2 w-48 bg-[#121815] border border-[#2a3a32] rounded-lg shadow-xl z-50 py-1">
+            <div class="px-4 py-2 border-b border-[#2a3a32]">
+              <div class="text-xs text-gray-400">Signed in as</div>
+              <div class="text-sm font-bold text-white">{{ Auth::user()->name ?? 'Admin' }}</div>
+            </div>
+            <form method="POST" action="{{ route('logout') }}">
+              @csrf
+              <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#1f242c] transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Hamburger Menu Button -->
+        <button @click="navOpen = !navOpen" class="md:hidden flex items-center justify-center w-10 h-10 rounded-lg border border-[#2a3a32] bg-[#121815] text-white hover:border-[#d4a04c] transition-all">
+          <i class="fa-solid" :class="navOpen ? 'fa-xmark' : 'fa-bars'" style="font-size:18px;"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Right side: Nav links + User menu -->
-    <div class="flex items-center gap-4 flex-wrap">
+    <!-- Nav Links - Desktop always visible, Mobile collapsible -->
+    <div :class="navOpen ? 'flex' : 'hidden md:flex'" class="flex flex-wrap gap-2">
       <ul class="nav nav-pills nav-pills-custom flex flex-wrap gap-2 m-0 p-0 border-0" role="tablist">
         <li class="nav-item m-0">
           <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">📊 Main Dashboard</a>
@@ -271,28 +302,6 @@
           <a href="{{ route('admin.csv-analytics') }}" class="nav-link {{ request()->routeIs('admin.csv-analytics') ? 'active' : '' }}">📈 Trading CSV Analytics</a>
         </li>
       </ul>
-
-      <!-- User Menu -->
-      <div class="relative" x-data="{ open: false }">
-        <button @click="open = !open" class="flex items-center gap-2 bg-[#121815] border border-[#2a3a32] rounded-lg px-3 py-1.5 text-sm text-white hover:border-[#d4a04c] transition-all">
-          <div class="w-7 h-7 bg-gradient-to-br from-[#d4a04c] to-[#f5c46d] rounded-full flex items-center justify-center text-black text-xs font-bold">{{ substr(Auth::user()->name ?? 'A', 0, 1) }}</div>
-          <span class="text-gray-200 font-semibold">{{ Auth::user()->name ?? 'Admin' }}</span>
-          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div x-show="open" @click.away="open = false" x-transition
-             class="absolute right-0 mt-2 w-48 bg-[#121815] border border-[#2a3a32] rounded-lg shadow-xl z-50 py-1">
-          <div class="px-4 py-2 border-b border-[#2a3a32]">
-            <div class="text-xs text-gray-400">Signed in as</div>
-            <div class="text-sm font-bold text-white">{{ Auth::user()->name ?? 'Admin' }}</div>
-          </div>
-          <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#1f242c] transition-colors flex items-center gap-2">
-              <i class="fa-solid fa-right-from-bracket"></i> Logout
-            </button>
-          </form>
-        </div>
-      </div>
     </div>
   </div>
 
