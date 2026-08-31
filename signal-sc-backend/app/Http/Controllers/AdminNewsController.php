@@ -81,40 +81,78 @@ class AdminNewsController extends Controller
     public function syncFromApi()
     {
         try {
-            $response = Http::timeout(30)->get('https://nfp.ourforecast.com/calendar.json');
+            $apiKey = config('services.fmp.api_key', '');
 
-            if (!$response->successful()) {
-                return back()->with('error', 'Failed to fetch from external API');
+            if (empty($apiKey)) {
+                return back()->with('error', 'FMP API key not configured. Set FMP_API_KEY in .env');
             }
 
-            $data = $response->json();
-            $events = is_array($data) ? ($data['data'] ?? $data) : [];
+            // Fetch next 30 days of economic events
+            $from = now()->subDays(3)->format('Y-m-d');
+            $to = now()->addDays(30)->format('Y-m-d');
+
+            $url = "https://financialmodelingprep.com/stable/economic-calendar?from={$from}&to={$to}&apikey={$apiKey}";
+
+            $response = Http::timeout(30)->get($url);
+
+            if (!$response->successful()) {
+                $status = $response->status();
+                if ($status === 402) {
+                    return back()->with('error', 'FMP API requires a paid subscription. Using fallback API.');
+                }
+                if ($status === 401) {
+                    return back()->with('error', 'Invalid FMP API key. Check FMP_API_KEY in .env');
+                }
+                return back()->with('error', 'FMP API returned HTTP ' . $status);
+            }
+
+            $events = $response->json();
+
+            if (!is_array($events)) {
+                return back()->with('error', 'Invalid response from FMP API');
+            }
+
             $synced = 0;
+            $currencyMap = [
+                'US' => 'USD', 'EU' => 'EUR', 'GB' => 'GBP', 'JP' => 'JPY',
+                'AU' => 'AUD', 'CA' => 'CAD', 'CH' => 'CHF', 'CN' => 'CNY',
+                'NZ' => 'NZD', 'DE' => 'EUR', 'FR' => 'EUR', 'IT' => 'EUR',
+                'ES' => 'EUR', 'KR' => 'KRW', 'IN' => 'INR', 'BR' => 'BRL',
+                'MX' => 'MXN', 'RU' => 'RUB', 'SA' => 'SAR', 'SE' => 'SEK',
+            ];
 
             foreach ($events as $event) {
-                $eventTime = $event['date'] ?? $event['event_time'] ?? null;
-                $currency = $event['currency'] ?? $event['cur'] ?? '';
-                $title = $event['title'] ?? $event['event'] ?? $event['name'] ?? '';
-                $impact = strtoupper($event['impact'] ?? $event['impact_level'] ?? 'LOW');
-                $forecast = $event['forecast'] ?? null;
-                $previous = $event['previous'] ?? null;
-                $actual = $event['actual'] ?? null;
-
+                $title = $event['event'] ?? $event['name'] ?? null;
                 if (empty($title)) continue;
 
+                $country = strtoupper($event['country'] ?? '');
+                $currency = strtoupper($event['currency'] ?? $currencyMap[$country] ?? $country);
+                $impact = strtoupper($event['impact'] ?? 'Low');
+
+                // Map impact levels
+                if (!in_array($impact, ['HIGH', 'MEDIUM', 'LOW'])) {
+                    $impact = 'LOW';
+                }
+
+                $eventTime = $event['date'] ?? null;
+
                 MarketNews::updateOrCreate(
-                    ['event_time' => $eventTime, 'currency' => $currency, 'title' => $title],
+                    ['title' => $title, 'event_time' => $eventTime],
                     [
+                        'currency' => $currency,
                         'impact' => $impact,
-                        'forecast' => $forecast,
-                        'previous' => $previous,
-                        'actual' => $actual,
+                        'forecast' => $event['estimate'] ?? $event['forecast'] ?? null,
+                        'previous' => $event['previous'] ?? null,
+                        'actual' => $event['actual'] ?? null,
+                        'description' => "Economic event: {$title} ({$currency}) - Impact: {$impact}",
                     ]
                 );
                 $synced++;
             }
 
-            return back()->with('success', "Synced {$synced} news events from external API");
+            return back()->with('success', "Synced {$synced} economic events from Financial Modeling Prep API ({$from} to {$to})");
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return back()->with('error', 'Connection timeout. Please try again.');
         } catch (\Throwable $e) {
             return back()->with('error', 'Sync failed: ' . $e->getMessage());
         }
