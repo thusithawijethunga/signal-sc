@@ -12,15 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Divider
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,9 +40,7 @@ import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.DarkBackground
 import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
-import com.widhura.signalxp.ui.theme.SecondaryBlue
 import com.widhura.signalxp.ui.theme.TextLight
-import com.widhura.signalxp.ui.theme.TextPrimary
 import com.widhura.signalxp.ui.theme.TextSecondary
 
 @Composable
@@ -52,7 +48,7 @@ fun SignalsFeedScreen(
     viewModel: MainViewModel,
     isDarkMode: Boolean = true,
     onTitleTap: (() -> Unit)? = null,
-    onSettingsClick: (() -> Unit)? = null
+    onProfileClick: (() -> Unit)? = null
 ) {
     val signals by viewModel.filteredSignals.collectAsState()
     val selectedPair by viewModel.selectedPairFilter.collectAsState()
@@ -111,16 +107,28 @@ fun SignalsFeedScreen(
                         fontSize = 12.sp
                     )
                 }
-                if (onSettingsClick != null) {
-                    Text(
-                        text = "\u2699\uFE0F",
-                        fontSize = 22.sp,
+                if (onProfileClick != null) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val userLetter = remember {
+                        val name = com.widhura.signalxp.data.api.ApiClient.getCurrentUserName(context)
+                        if (name.isNotBlank()) name.first().uppercase() else "T"
+                    }
+                    Box(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onSettingsClick() }
-                            .padding(4.dp)
-                    )
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(primary)
+                            .clickable { onProfileClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = userLetter,
+                            color = bg,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 

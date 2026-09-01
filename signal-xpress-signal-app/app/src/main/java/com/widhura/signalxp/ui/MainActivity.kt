@@ -45,6 +45,7 @@ import com.widhura.signalxp.ui.screens.CommunityScreen
 import com.widhura.signalxp.ui.screens.SettingsScreen
 import com.widhura.signalxp.ui.screens.LoginScreen
 import com.widhura.signalxp.ui.screens.MarketNewsScreen
+import com.widhura.signalxp.ui.screens.ProfileScreen
 import com.widhura.signalxp.ui.screens.SignalsFeedScreen
 import com.widhura.signalxp.ui.screens.VipLeaderboardScreen
 import com.widhura.signalxp.ui.theme.BorderColor
@@ -117,19 +118,36 @@ fun MainAppContent(
 ) {
     var currentTab by remember { mutableStateOf(NavTab.SIGNALS) }
     var showDeveloperSettings by remember { mutableStateOf(false) }
+    var showProfile by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val bg = if (isDarkMode) DarkBackground else LightTheme.Background
     val headerBg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
     val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
 
-    if (showDeveloperSettings) {
-        SettingsScreen(
+    when {
+        showProfile -> ProfileScreen(
+            isDarkMode = isDarkMode,
+            onToggleTheme = onToggleTheme,
+            onBack = { showProfile = false },
+            onSignOut = {
+                com.widhura.signalxp.data.api.ApiClient.clearAuth(context)
+                showProfile = false
+            }
+        )
+        showSettings -> SettingsScreen(
+            isDarkMode = isDarkMode,
+            onToggleTheme = onToggleTheme,
+            onBack = { showSettings = false }
+        )
+        showDeveloperSettings -> SettingsScreen(
             isDarkMode = isDarkMode,
             onToggleTheme = onToggleTheme,
             onBack = { showDeveloperSettings = false }
         )
-    } else {
-        Scaffold(
+        else -> {
+            Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = bg,
             bottomBar = {
@@ -150,7 +168,7 @@ fun MainAppContent(
                         viewModel = viewModel,
                         isDarkMode = isDarkMode,
                         onTitleTap = { showDeveloperSettings = true },
-                        onSettingsClick = { showDeveloperSettings = true }
+                        onProfileClick = { showProfile = true }
                     )
                     NavTab.SUMMARY -> AnalyticsSummaryScreen(viewModel = viewModel, isDarkMode = isDarkMode)
                     NavTab.NEWS -> MarketNewsScreen(viewModel = viewModel, isDarkMode = isDarkMode)
@@ -158,6 +176,7 @@ fun MainAppContent(
                     NavTab.VIP_LEADERBOARD -> VipLeaderboardScreen(viewModel = viewModel, isDarkMode = isDarkMode)
                 }
             }
+        }
         }
     }
 }

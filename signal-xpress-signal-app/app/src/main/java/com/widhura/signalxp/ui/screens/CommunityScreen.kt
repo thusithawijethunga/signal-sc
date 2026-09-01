@@ -36,7 +36,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -176,27 +176,7 @@ fun CommunityScreen(
                     )
                 }
 
-                // Header Action Button
-                Button(
-                    onClick = { showCreateDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = primary),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PostAdd,
-                        contentDescription = "Share",
-                        tint = bg,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Share",
-                        color = bg,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
+
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -470,27 +450,19 @@ fun CommunityScreen(
         }
 
         // Floating Action Button to Add Profit Card / Discussion
-        ExtendedFloatingActionButton(
+        FloatingActionButton(
             onClick = { showCreateDialog = true },
             containerColor = primary,
             contentColor = bg,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Share Profit / Thought"
-                )
-            },
-            text = {
-                Text(
-                    text = "Share Profit / Idea",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
-            }
-        )
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Share Profit / Thought"
+            )
+        }
     }
 
     if (showCreateDialog) {

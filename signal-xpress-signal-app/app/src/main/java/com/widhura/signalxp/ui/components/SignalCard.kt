@@ -259,10 +259,10 @@ fun SignalCard(
                         .padding(12.dp)
                 ) {
                     Column {
-                        Text(text = "\u26A0\uFE0F \u0DC0\u0DDA\u0DB1\u0DDA\u0DB8\u0DCA\u200D\u0DBB\u0DCF\u0DB8\u0DCA\u200D\u0DD0\u0DB6\u0DCA\u200D\u0DBA\u0DCF\u0DB8\u0DCA\u200D\u0DC3\u0DD2\u0DBA\u0DD4\u0DC3\u0DD2\u0DAB\u0DD4\u0DB1\u0DCA\u200D\u0DBB\u0DB8\u0DB1\u0DCA\u200D\u0DC0\u0DDA\u0DC5\u0DD2", color = accentRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "⚠️ වැදගත් අවවාදය", color = accentRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Trading \u0D82\u0D9A\u0DD2\u0DBA\u0DD4\u0DB8\u0DCA\u200D\u0DBB\u0DC3\u0DCF\u0DBA\u0DCA\u200D\u0DC0\u0DC3\u0DD2\u0DB1\u0DCA\u200D\u0DC0\u0DD2\u0DD2\u0DAD\u0DBA \u0D89\u0D9A\u0DCA\u0D9A\u0DB1\u0DCA\u200D\u0DBB\u0DD2 \u0DC3\u0DBD\u0DBD\u0DD2 \u0DB4\u0DDA\u0DB8\u0DCA\u200D\u0DBB\u0DD2 \u0DC1\u0DDA\u0DB8\u0DD2\u0D9A\u0DBA \u0DB1\u0DDC\u0DBA\u0DD4\u0DAB\u0DCF\u0DBA. \u0DBD\u0DBA\u0DB8\u0DCA\u200D\u0DC3\u0DD0\u0DBD\u0DB8\u0DCA\u200D\u0DB6\u0DDA\u0DB8 \u0D89\u0D9A\u0DCA\u0D9A\u0DD2\u0DBA\u0DD4\u0DB8\u0DCA\u200D\u0DBB\u0DD2 \u0DB4\u0DCF\u0DB8\u0DCA\u200D\u0DAD\u0DD4\u0DAD\u0DCA\u200D\u0DC0\u0DDA\u0DB8 \u0DB1\u0DDC\u0DB1\u0DCA\u200D\u0DC0\u0DB1\u0DCA\u200D\u0DAD\u0DD4\u0DB1\u0DCA\u200D\u0DC0\u0DDA\u0DC5\u0DD2. \u0D94\u0DBA\u0D9A \u0D85\u0D9A\u0DD2\u0DB8\u0DD2 \u0DC0\u0DD4\u0DC5\u0DD4\u0DBA\u0DD4\u0DBA\u0DCA\u200D\u0DAD\u0DD2 \u0D83\u0DBA\u0DC3\u0DCF\u0DB8\u0DCA\u200D\u0DC3\u0DDA\u0DC4\u0DDA\u0DC0\u0DCA\u200D\u0DB8 \u0DB8\u0DD2\u0D9A\u0DBD\u0DCA\u200D\u0DC0\u0DCA\u200D\u0DBA \u0DB4\u0DB8\u0DCA\u200D\u0DBB\u0DCA\u200D\u0DB6\u0DDA \u0D86\u0DAD\u0DDC\u0DBA\u0DD4\u0DB1\u0DCA\u200D\u0DBB \u0D9A\u0DBB\u0DC4\u0DD2\u0DBA.",
+                            text = "Trading කියන්නේ ඉක්මනින් සල්ලි හොයන ක්‍රමයක් නොවෙයි. ලාභ ලැබෙන වගේම පාඩුත් ලැබිය හැකියි. ඔබට අහිමි වුවහොත් දරාගත හැකි මුදලක් පමණක් ආයෝජනය කරන්න.",
                             color = accentRed.copy(alpha = 0.8f), fontSize = 11.sp, lineHeight = 16.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))

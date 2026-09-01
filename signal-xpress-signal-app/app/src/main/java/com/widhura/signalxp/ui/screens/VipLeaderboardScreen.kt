@@ -117,6 +117,7 @@ fun VipLeaderboardScreen(
     var showAdminConfigDialog by remember { mutableStateOf(false) }
     var selectedMemberForDetail by remember { mutableStateOf<VipMemberEntity?>(null) }
     var isSearchOpen by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(vipWebUrl) {
         if (vipWebUrl.isNotBlank()) {
