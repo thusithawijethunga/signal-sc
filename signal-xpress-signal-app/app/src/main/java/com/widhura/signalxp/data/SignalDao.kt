@@ -24,6 +24,9 @@ interface SignalDao {
     @Query("DELETE FROM signals WHERE id = :id")
     suspend fun deleteSignalById(id: Long)
 
+    @Query("SELECT * FROM signals WHERE id = :id LIMIT 1")
+    suspend fun getSignalById(id: Long): SignalEntity?
+
     @Query("DELETE FROM signals")
     suspend fun deleteAllSignals()
 

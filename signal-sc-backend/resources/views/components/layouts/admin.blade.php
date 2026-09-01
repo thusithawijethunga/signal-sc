@@ -347,9 +347,19 @@ window.wsStore = { signals: [], trades: [], news: [], community: [], lastTrade: 
           const d = ctx.data;
           const ch = sub.channel;
           if (ch.includes('trading:signals')) {
-            wsToast('📡 New Signal: ' + (d.pair || '') + ' ' + (d.direction || ''), 'success');
-            window.wsStore.signals.push(d);
-            if (typeof window.onWsSignal === 'function') window.onWsSignal(d);
+            if (d.action === 'reaction') {
+              wsToast((d.emoji_display || '👍') + ' ' + (d.user_name || 'User') + ' reacted to Signal #' + d.no, 'success');
+              window.wsStore.signals.push(d);
+              if (typeof window.onWsReaction === 'function') window.onWsReaction(d);
+            } else if (d.action === 'deleted') {
+              wsToast('🗑️ Signal #' + d.no + ' deleted', 'success');
+              window.wsStore.signals.push(d);
+              if (typeof window.onWsSignal === 'function') window.onWsSignal(d);
+            } else {
+              wsToast('📡 Signal ' + (d.pair || '') + ' ' + (d.direction || '') + (d.action && d.action !== 'updated' ? ' — ' + d.action.toUpperCase() : ''), 'success');
+              window.wsStore.signals.push(d);
+              if (typeof window.onWsSignal === 'function') window.onWsSignal(d);
+            }
           } else if (ch.includes('trading:trades')) {
             window.wsStore.lastTrade = d;
             window.wsStore.trades.push(d);

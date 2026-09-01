@@ -83,6 +83,21 @@ Route::middleware('auth')->group(function () {
 
     // Settings
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
+
+    // Signal Reactions (admin view)
+    Route::get('/admin/signals/{signal}/reactions', function ($signal) {
+        $reactions = \App\Models\SignalReaction::where('signal_id', $signal)
+            ->with('user:id,name,email')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->id,
+                'emoji' => $r->emoji,
+                'user_name' => $r->user->name ?? 'Unknown',
+                'user_email' => $r->user->email ?? '',
+                'created_at' => $r->created_at->diffForHumans(),
+            ]);
+        return response()->json($reactions);
+    })->name('admin.signal.reactions');
 });
 
 require __DIR__.'/auth.php';

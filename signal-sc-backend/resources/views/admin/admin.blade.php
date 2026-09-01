@@ -146,6 +146,7 @@
           <th class="p-2">Pips</th>
           <th class="p-2">Profit</th>
           <th class="p-2">Result</th>
+          <th class="p-2">Reactions</th>
           <th class="p-2">Quick Hit Status / Actions</th>
         </tr>
       </thead>
@@ -171,6 +172,29 @@
               <span class="{{ strtoupper($trade->result ?? '') === 'WIN' ? 'text-green-400' : (strtoupper($trade->result ?? '') === 'LOSS' ? 'text-red-400' : 'text-amber-400') }} font-bold">{{ strtoupper($trade->result) }}</span>
               @if($trade->hit_level)
                 <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold border {{ strtoupper($trade->hit_level) === 'SL' ? 'bg-red-900/60 text-red-300 border-red-700' : (strtoupper($trade->hit_level) === 'BE' ? 'bg-amber-900/60 text-amber-300 border-amber-700' : 'bg-emerald-900/60 text-emerald-300 border-emerald-700') }}">{{ strtoupper($trade->hit_level) }}</span>
+              @endif
+            </td>
+            <td class="p-2">
+              @php
+                $signal = $signalsByNo->get($trade->no) ?? null;
+              @endphp
+              @if($signal && ($signal->thumbs_count > 0 || $signal->fire_count > 0 || $signal->rocket_count > 0 || $signal->broken_heart_count > 0))
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  @if($signal->thumbs_count > 0)
+                    <span class="inline-flex items-center gap-0.5 bg-blue-900/40 border border-blue-700/50 rounded px-1.5 py-0.5 text-[10px] cursor-pointer hover:bg-blue-800/60 transition" onclick="showReactions({{ $signal->id }}, '👍 {{ $signal->thumbs_count }}')" title="Click to see who liked">👍 {{ $signal->thumbs_count }}</span>
+                  @endif
+                  @if($signal->fire_count > 0)
+                    <span class="inline-flex items-center gap-0.5 bg-orange-900/40 border border-orange-700/50 rounded px-1.5 py-0.5 text-[10px] cursor-pointer hover:bg-orange-800/60 transition" onclick="showReactions({{ $signal->id }}, '🔥 {{ $signal->fire_count }}')" title="Click to see who reacted fire">🔥 {{ $signal->fire_count }}</span>
+                  @endif
+                  @if($signal->rocket_count > 0)
+                    <span class="inline-flex items-center gap-0.5 bg-purple-900/40 border border-purple-700/50 rounded px-1.5 py-0.5 text-[10px] cursor-pointer hover:bg-purple-800/60 transition" onclick="showReactions({{ $signal->id }}, '🚀 {{ $signal->rocket_count }}')" title="Click to see who reacted rocket">🚀 {{ $signal->rocket_count }}</span>
+                  @endif
+                  @if($signal->broken_heart_count > 0)
+                    <span class="inline-flex items-center gap-0.5 bg-red-900/40 border border-red-700/50 rounded px-1.5 py-0.5 text-[10px] cursor-pointer hover:bg-red-800/60 transition" onclick="showReactions({{ $signal->id }}, '💔 {{ $signal->broken_heart_count }}')" title="Click to see who reacted broken heart">💔 {{ $signal->broken_heart_count }}</span>
+                  @endif
+                </div>
+              @else
+                <span class="text-gray-600 text-[10px]">—</span>
               @endif
             </td>
             <td class="p-2">
@@ -214,6 +238,37 @@
         <button type="button" @click="modalResolve({ pips: modal.pips, profit: modal.profit })" class="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded text-xs uppercase">Submit</button>
         <button type="button" @click="modalResolve(null)" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Reactions Detail Modal -->
+  <div x-show="reactionsModal.show" x-transition class="custom-modal-overlay" style="display: none;" @click.self="reactionsModal.show = false">
+    <div class="custom-modal-box" style="max-width: 420px;">
+      <h3 class="text-base font-bold text-amber-400 uppercase tracking-wider mb-1" x-text="reactionsModal.title"></h3>
+      <p class="text-xs text-gray-400 mb-3">Signal reactions from mobile app users</p>
+      <div class="max-h-64 overflow-y-auto">
+        <template x-if="reactionsModal.loading">
+          <div class="text-center text-gray-400 py-4">Loading...</div>
+        </template>
+        <template x-if="!reactionsModal.loading && reactionsModal.items.length === 0">
+          <div class="text-center text-gray-500 py-4">No reactions yet</div>
+        </template>
+        <template x-if="!reactionsModal.loading">
+          <div class="flex flex-col gap-1.5">
+            <template x-for="r in reactionsModal.items" :key="r.id">
+              <div class="flex items-center gap-2 bg-[#0a0e0c] border border-[#2a3a32] rounded-lg px-3 py-2">
+                <span class="text-lg" x-text="r.emoji"></span>
+                <div class="flex-1">
+                  <div class="text-xs font-bold text-white" x-text="r.user_name"></div>
+                  <div class="text-[10px] text-gray-500" x-text="r.user_email"></div>
+                </div>
+                <span class="text-[10px] text-gray-500" x-text="r.created_at"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+      <button type="button" @click="reactionsModal.show = false" class="mt-3 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold">Close</button>
     </div>
   </div>
 
@@ -261,6 +316,8 @@ function adminApp() {
 
     modal: { show: false, title: '', pips: 0, profit: 0 },
     modalResolve: null,
+
+    reactionsModal: { show: false, title: '', loading: false, items: [] },
 
     toastVisible: false,
     toastMsg: '',
@@ -496,6 +553,19 @@ function adminApp() {
         pips: '', profit: '', result: 'WIN'
       };
       this.sendToTg = true;
+    },
+
+    async showReactions(signalId, label) {
+      this.reactionsModal = { show: true, title: label + ' — Reactions', loading: true, items: [] };
+      try {
+        const resp = await fetch('/admin/signals/' + signalId + '/reactions');
+        const data = await resp.json();
+        const emojiMap = { 'thumbs': '👍', 'fire': '🔥', 'rocket': '🚀', 'broken_heart': '💔' };
+        this.reactionsModal.items = data.map(r => ({ ...r, emoji: emojiMap[r.emoji] || r.emoji }));
+      } catch (e) {
+        this.reactionsModal.items = [];
+      }
+      this.reactionsModal.loading = false;
     },
 
     async hitAction(no, actionType) {

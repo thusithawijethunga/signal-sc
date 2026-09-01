@@ -164,6 +164,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        if (event.action == "reaction") {
+            val existing = db.signalDao().getSignalById(event.id)
+            if (existing != null) {
+                val updated = existing.copy(
+                    thumbsCount = event.thumbsCount,
+                    fireCount = event.fireCount,
+                    rocketCount = event.rocketCount,
+                    brokenHeartCount = event.brokenHeartCount
+                )
+                db.signalDao().updateSignal(updated)
+            }
+            withContext(Dispatchers.Main) {
+                _lastSyncTime.value = "Live • Reaction updated"
+            }
+            return
+        }
+
         val entry = if (event.entry2 > 0) "${event.entry1} / ${event.entry2}" else event.entry1.toString()
         val entity = SignalEntity(
             id = event.id,

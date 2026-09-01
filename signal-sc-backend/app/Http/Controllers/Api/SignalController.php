@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Events\SignalCreated;
+use App\Events\SignalReacted;
 use App\Models\Signal;
 use App\Models\SignalReaction;
 use Illuminate\Http\JsonResponse;
@@ -118,6 +119,7 @@ class SignalController extends Controller
             ]);
 
             $userId = $request->user()->id;
+            $userName = $request->user()->name ?? 'User';
             $emoji = $request->emoji;
 
             $existing = SignalReaction::where('signal_id', $signal->id)
@@ -128,14 +130,17 @@ class SignalController extends Controller
                 if ($existing->emoji === $emoji) {
                     $existing->delete();
                     $this->decrementCount($signal, $emoji);
-                    return response()->json(['message' => 'Reaction removed', 'signal' => $signal->fresh()]);
+                    $signal = $signal->fresh();
+                    SignalReacted::dispatch($signal, 'removed', $emoji, $userName);
+                    return response()->json(['message' => 'Reaction removed', 'signal' => $signal]);
                 }
 
                 $this->decrementCount($signal, $existing->emoji);
                 $existing->update(['emoji' => $emoji]);
                 $this->incrementCount($signal, $emoji);
-
-                return response()->json(['message' => 'Reaction changed', 'signal' => $signal->fresh()]);
+                $signal = $signal->fresh();
+                SignalReacted::dispatch($signal, 'changed', $emoji, $userName);
+                return response()->json(['message' => 'Reaction changed', 'signal' => $signal]);
             }
 
             SignalReaction::create([
@@ -144,8 +149,9 @@ class SignalController extends Controller
                 'emoji' => $emoji,
             ]);
             $this->incrementCount($signal, $emoji);
-
-            return response()->json(['message' => 'Reaction added', 'signal' => $signal->fresh()]);
+            $signal = $signal->fresh();
+            SignalReacted::dispatch($signal, 'added', $emoji, $userName);
+            return response()->json(['message' => 'Reaction added', 'signal' => $signal]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
