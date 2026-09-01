@@ -5,9 +5,9 @@ import androidx.compose.ui.graphics.Color
 // ═══════════════════════════════════════════════════════════
 // DARK THEME (Default)
 // ═══════════════════════════════════════════════════════════
-val DarkBackground = Color(0xFF0D1117)
-val CardBackground = Color(0xFF1F2937)
-val CardHeaderBackground = Color(0xFF111827)
+val DarkBackground = Color(0xFF161B22)
+val CardBackground = Color(0xFF1E2630)
+val CardHeaderBackground = Color(0xFF141A22)
 val BorderColor = Color(0xFF374151)
 
 val PrimarySky = Color(0xFF38BDF8)

@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
                 if (isLoggedIn) {
                     MainAppContent(
                         viewModel = viewModel,
+                        authViewModel = authViewModel,
                         isDarkMode = isDarkMode,
                         onToggleTheme = {
                             scope.launch {
@@ -113,6 +114,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppContent(
     viewModel: MainViewModel,
+    authViewModel: AuthViewModel,
     isDarkMode: Boolean = true,
     onToggleTheme: () -> Unit = {}
 ) {
@@ -131,10 +133,7 @@ fun MainAppContent(
             isDarkMode = isDarkMode,
             onToggleTheme = onToggleTheme,
             onBack = { showProfile = false },
-            onSignOut = {
-                com.widhura.signalxp.data.api.ApiClient.clearAuth(context)
-                showProfile = false
-            }
+            onSignOut = { authViewModel.logout() }
         )
         showSettings -> SettingsScreen(
             isDarkMode = isDarkMode,
