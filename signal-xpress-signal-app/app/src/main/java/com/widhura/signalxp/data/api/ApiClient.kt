@@ -70,17 +70,14 @@ object ApiClient {
 
         val authInterceptor = Interceptor { chain ->
             val token = getToken(context)
-            val request = if (token != null) {
-                chain.request().newBuilder()
-                    .header("Authorization", "Bearer $token")
-                    .header("Accept", "application/json")
-                    .build()
-            } else {
-                chain.request().newBuilder()
-                    .header("Accept", "application/json")
-                    .build()
+            val request = chain.request().newBuilder()
+                .header("Accept", "application/json")
+                .header("User-Agent", "SignalXpress/1.0 (Android ${android.os.Build.VERSION.RELEASE}; ${android.os.Build.MODEL})")
+                .header("X-Requested-With", "XMLHttpRequest")
+            if (token != null) {
+                request.header("Authorization", "Bearer $token")
             }
-            chain.proceed(request)
+            chain.proceed(request.build())
         }
 
         val loggingInterceptor = HttpLoggingInterceptor().apply {

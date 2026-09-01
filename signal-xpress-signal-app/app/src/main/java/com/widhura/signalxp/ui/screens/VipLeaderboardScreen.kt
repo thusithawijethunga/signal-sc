@@ -173,20 +173,12 @@ fun VipLeaderboardScreen(
                             )
                         }
                         IconButton(onClick = {
-                            if (vipWebUrl.isBlank()) showAdminConfigDialog = true
-                            else viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
+                            viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
                         }, modifier = Modifier.size(34.dp)) {
                             Icon(
                                 Icons.Default.Refresh, "Sync",
                                 tint = if (isSyncingVip) primary else textSec,
                                 modifier = Modifier.size(20.dp).then(if (isSyncingVip) Modifier.rotate(spinAngle) else Modifier)
-                            )
-                        }
-                        IconButton(onClick = { showAdminConfigDialog = true }, modifier = Modifier.size(34.dp)) {
-                            Icon(
-                                Icons.Default.AdminPanelSettings, "Admin",
-                                tint = if (vipWebUrl.isNotBlank()) primary else accentAmber,
-                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -208,56 +200,6 @@ fun VipLeaderboardScreen(
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
-                }
-            }
-
-            // Web Sync Status
-            item {
-                Surface(
-                    shape = RoundedCornerShape(10.dp), color = cardHeaderBg,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, border.copy(alpha = 0.6f)),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            if (isSyncingVip) {
-                                CircularProgressIndicator(color = primary, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
-                            } else {
-                                Icon(
-                                    if (vipWebUrl.isNotBlank()) Icons.Default.CloudDone else Icons.Default.Link,
-                                    null, tint = if (vipWebUrl.isNotBlank()) accentEmerald else accentAmber, modifier = Modifier.size(15.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    if (vipWebUrl.isNotBlank()) "Live Web Admin Sync" else "Web Admin Link Not Set",
-                                    color = if (vipWebUrl.isNotBlank()) textOnBg else accentAmber,
-                                    fontSize = 11.sp, fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    if (vipWebUrl.isNotBlank()) lastVipSyncTime else "Tap ⚙️ to link your web backend",
-                                    color = textSec, fontSize = 9.5.sp
-                                )
-                            }
-                        }
-                        if (vipWebUrl.isNotBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp), color = primary.copy(alpha = 0.15f),
-                                modifier = Modifier.clickable { viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() } }
-                            ) {
-                                Text("SYNC NOW", color = primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                            }
-                        } else {
-                            Surface(shape = RoundedCornerShape(6.dp), color = accentAmber.copy(alpha = 0.2f), modifier = Modifier.clickable { showAdminConfigDialog = true }) {
-                                Text("LINK WEB", color = accentAmber, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                            }
-                        }
-                    }
                 }
             }
 
