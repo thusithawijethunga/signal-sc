@@ -68,10 +68,12 @@ import com.widhura.signalxp.ui.components.CommunityPostCard
 import com.widhura.signalxp.ui.components.CreatePostDialog
 import com.widhura.signalxp.ui.theme.AccentAmber
 import com.widhura.signalxp.ui.theme.AccentEmerald
+import com.widhura.signalxp.ui.theme.AccentRed
 import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.CardBackground
 import com.widhura.signalxp.ui.theme.CardHeaderBackground
 import com.widhura.signalxp.ui.theme.DarkBackground
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.SecondaryBlue
 import com.widhura.signalxp.ui.theme.TextLight
@@ -81,8 +83,20 @@ import java.text.DecimalFormat
 
 @Composable
 fun CommunityScreen(
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    isDarkMode: Boolean = true
 ) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val cardHeaderBg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val accentAmber = if (isDarkMode) AccentAmber else LightTheme.AccentAmber
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+
     val posts by viewModel.filteredCommunityPosts.collectAsState()
     val topHighlights by viewModel.topProfitHighlights.collectAsState()
     val selectedFilter by viewModel.communityFilter.collectAsState()
@@ -105,7 +119,7 @@ fun CommunityScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(bg)
     ) {
         Column(
             modifier = Modifier
@@ -126,13 +140,13 @@ fun CommunityScreen(
                             text = "Traders Community",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextLight
+                            color = textOnBg
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = AccentEmerald.copy(alpha = 0.15f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AccentEmerald.copy(alpha = 0.4f))
+                            color = accentEmerald.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, accentEmerald.copy(alpha = 0.4f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -142,12 +156,12 @@ fun CommunityScreen(
                                     modifier = Modifier
                                         .size(6.dp)
                                         .clip(CircleShape)
-                                        .background(AccentEmerald)
+                                        .background(accentEmerald)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "3.4K Online",
-                                    color = AccentEmerald,
+                                    color = accentEmerald,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -158,27 +172,27 @@ fun CommunityScreen(
                     Text(
                         text = "Share Profit Cards, Ideas & Market Thoughts",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = textSec
                     )
                 }
 
                 // Header Action Button
                 Button(
                     onClick = { showCreateDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimarySky),
+                    colors = ButtonDefaults.buttonColors(containerColor = primary),
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.PostAdd,
                         contentDescription = "Share",
-                        tint = DarkBackground,
+                        tint = bg,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Share",
-                        color = DarkBackground,
+                        color = bg,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
@@ -209,7 +223,7 @@ fun CommunityScreen(
                                     Icon(
                                         imageVector = Icons.Default.EmojiEvents,
                                         contentDescription = null,
-                                        tint = AccentAmber,
+                                        tint = accentAmber,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -217,7 +231,7 @@ fun CommunityScreen(
                                         text = "TODAY'S TOP PROFIT LEADERS",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = AccentAmber,
+                                        color = accentAmber,
                                         letterSpacing = 0.8.sp
                                     )
                                 }
@@ -225,7 +239,7 @@ fun CommunityScreen(
                                 Text(
                                     text = "${topHighlights.size} Top Winners",
                                     fontSize = 11.sp,
-                                    color = TextSecondary
+                                    color = textSec
                                 )
                             }
 
@@ -235,7 +249,7 @@ fun CommunityScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(topHighlights) { item ->
-                                    LeaderHighlightChip(item = item)
+                                    LeaderHighlightChip(item = item, isDarkMode = isDarkMode)
                                 }
                             }
                         }
@@ -252,7 +266,7 @@ fun CommunityScreen(
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search",
-                                tint = TextSecondary,
+                                tint = textSec,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
@@ -262,7 +276,7 @@ fun CommunityScreen(
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "Clear",
-                                        tint = TextSecondary,
+                                        tint = textSec,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -271,12 +285,12 @@ fun CommunityScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 10.dp),
-                        textStyle = TextStyle(color = TextLight, fontSize = 13.sp),
+                        textStyle = TextStyle(color = textOnBg, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimarySky,
-                            unfocusedBorderColor = BorderColor,
-                            focusedContainerColor = CardHeaderBackground,
-                            unfocusedContainerColor = CardHeaderBackground
+                            focusedBorderColor = primary,
+                            unfocusedBorderColor = border,
+                            focusedContainerColor = cardHeaderBg,
+                            unfocusedContainerColor = cardHeaderBg
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp)
@@ -293,35 +307,40 @@ fun CommunityScreen(
                             CommunityFilterChip(
                                 label = "🌐 All Feed",
                                 isSelected = selectedFilter == CommunityFilter.ALL,
-                                onClick = { viewModel.setCommunityFilter(CommunityFilter.ALL) }
+                                onClick = { viewModel.setCommunityFilter(CommunityFilter.ALL) },
+                                isDarkMode = isDarkMode
                             )
                         }
                         item {
                             CommunityFilterChip(
                                 label = "📸 Screenshots",
                                 isSelected = selectedFilter == CommunityFilter.SCREENSHOTS,
-                                onClick = { viewModel.setCommunityFilter(CommunityFilter.SCREENSHOTS) }
+                                onClick = { viewModel.setCommunityFilter(CommunityFilter.SCREENSHOTS) },
+                                isDarkMode = isDarkMode
                             )
                         }
                         item {
                             CommunityFilterChip(
                                 label = "💎 Profit Cards",
                                 isSelected = selectedFilter == CommunityFilter.PROFIT_CARDS,
-                                onClick = { viewModel.setCommunityFilter(CommunityFilter.PROFIT_CARDS) }
+                                onClick = { viewModel.setCommunityFilter(CommunityFilter.PROFIT_CARDS) },
+                                isDarkMode = isDarkMode
                             )
                         }
                         item {
                             CommunityFilterChip(
                                 label = "💡 Discussions",
                                 isSelected = selectedFilter == CommunityFilter.DISCUSSIONS,
-                                onClick = { viewModel.setCommunityFilter(CommunityFilter.DISCUSSIONS) }
+                                onClick = { viewModel.setCommunityFilter(CommunityFilter.DISCUSSIONS) },
+                                isDarkMode = isDarkMode
                             )
                         }
                         item {
                             CommunityFilterChip(
                                 label = "🏆 Top Gainers",
                                 isSelected = selectedFilter == CommunityFilter.TOP_GAINERS,
-                                onClick = { viewModel.setCommunityFilter(CommunityFilter.TOP_GAINERS) }
+                                onClick = { viewModel.setCommunityFilter(CommunityFilter.TOP_GAINERS) },
+                                isDarkMode = isDarkMode
                             )
                         }
                     }
@@ -339,16 +358,16 @@ fun CommunityScreen(
                             val isSelected = selectedPair == pair
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = if (isSelected) PrimarySky.copy(alpha = 0.2f) else CardHeaderBackground,
+                                color = if (isSelected) primary.copy(alpha = 0.2f) else cardHeaderBg,
                                 border = androidx.compose.foundation.BorderStroke(
                                     1.dp,
-                                    if (isSelected) PrimarySky else BorderColor
+                                    if (isSelected) primary else border
                                 ),
                                 modifier = Modifier.clickable { viewModel.setCommunityPairFilter(pair) }
                             ) {
                                 Text(
                                     text = pair,
-                                    color = if (isSelected) PrimarySky else TextSecondary,
+                                    color = if (isSelected) primary else textSec,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     fontSize = 11.sp,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -375,22 +394,22 @@ fun CommunityScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text(
                                     text = "No posts found matching filter",
-                                    color = TextLight,
+                                    color = textOnBg,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "Be the first to share your profit card or market thought!",
-                                    color = TextSecondary,
+                                    color = textSec,
                                     fontSize = 12.sp
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Button(
                                     onClick = { showCreateDialog = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = PrimarySky)
+                                    colors = ButtonDefaults.buttonColors(containerColor = primary)
                                 ) {
-                                    Text("Post to Community 🚀", color = DarkBackground, fontWeight = FontWeight.Bold)
+                                    Text("Post to Community 🚀", color = bg, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -405,8 +424,8 @@ fun CommunityScreen(
                                     .fillMaxWidth()
                                     .padding(bottom = 8.dp),
                                 shape = RoundedCornerShape(10.dp),
-                                color = AccentAmber.copy(alpha = 0.1f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, AccentAmber.copy(alpha = 0.4f))
+                                color = accentAmber.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, accentAmber.copy(alpha = 0.4f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(12.dp),
@@ -417,13 +436,13 @@ fun CommunityScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = "${pendingPosts.size} post${if (pendingPosts.size > 1) "s" else ""} pending review",
-                                            color = AccentAmber,
+                                            color = accentAmber,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
                                         Text(
                                             text = "Your post will appear after admin approval",
-                                            color = TextSecondary,
+                                            color = textSec,
                                             fontSize = 11.sp
                                         )
                                     }
@@ -436,7 +455,7 @@ fun CommunityScreen(
                     val rejectedPosts = posts.filter { it.status == "rejected" }
                     if (rejectedPosts.isNotEmpty()) {
                         items(rejectedPosts, key = { "rejected_${it.id}" }) { post ->
-                            RejectedPostCard(post = post)
+                            RejectedPostCard(post = post, isDarkMode = isDarkMode)
                         }
                     }
 
@@ -453,8 +472,8 @@ fun CommunityScreen(
         // Floating Action Button to Add Profit Card / Discussion
         ExtendedFloatingActionButton(
             onClick = { showCreateDialog = true },
-            containerColor = PrimarySky,
-            contentColor = DarkBackground,
+            containerColor = primary,
+            contentColor = bg,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
@@ -486,20 +505,27 @@ fun CommunityScreen(
 fun CommunityFilterChip(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isDarkMode: Boolean = true
 ) {
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = if (isSelected) PrimarySky else CardBackground,
+        color = if (isSelected) primary else cardBg,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isSelected) PrimarySky else BorderColor
+            if (isSelected) primary else border
         ),
         modifier = Modifier.clickable { onClick() }
     ) {
         Text(
             text = label,
-            color = if (isSelected) DarkBackground else TextLight,
+            color = if (isSelected) bg else textOnBg,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             fontSize = 12.sp,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
@@ -508,12 +534,17 @@ fun CommunityFilterChip(
 }
 
 @Composable
-fun LeaderHighlightChip(item: CommunityPostEntity) {
+fun LeaderHighlightChip(item: CommunityPostEntity, isDarkMode: Boolean = true) {
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val accentAmber = if (isDarkMode) AccentAmber else LightTheme.AccentAmber
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+
     val df = remember { DecimalFormat("#,##0.00") }
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = CardBackground,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f))
+        color = cardBg,
+        border = androidx.compose.foundation.BorderStroke(1.dp, accentAmber.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -539,13 +570,13 @@ fun LeaderHighlightChip(item: CommunityPostEntity) {
             Column {
                 Text(
                     text = item.authorName,
-                    color = TextLight,
+                    color = textOnBg,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "+$${df.format(item.profitAmount)} (${item.pair})",
-                    color = Color(0xFF4ADE80),
+                    color = accentEmerald,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily.Monospace
@@ -556,14 +587,17 @@ fun LeaderHighlightChip(item: CommunityPostEntity) {
 }
 
 @Composable
-fun RejectedPostCard(post: CommunityPostEntity) {
+fun RejectedPostCard(post: CommunityPostEntity, isDarkMode: Boolean = true) {
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF991B1B).copy(alpha = 0.1f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f))
+        color = accentRed.copy(alpha = 0.1f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accentRed.copy(alpha = 0.4f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -571,7 +605,7 @@ fun RejectedPostCard(post: CommunityPostEntity) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Post Not Approved",
-                    color = Color(0xFFFCA5A5),
+                    color = accentRed.copy(alpha = 0.8f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
@@ -580,7 +614,7 @@ fun RejectedPostCard(post: CommunityPostEntity) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = post.content.take(100) + if (post.content.length > 100) "..." else "",
-                    color = TextSecondary,
+                    color = textSec,
                     fontSize = 11.sp,
                     maxLines = 2
                 )
@@ -589,7 +623,7 @@ fun RejectedPostCard(post: CommunityPostEntity) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Reason: ${post.rejectionReason}",
-                    color = TextSecondary,
+                    color = textSec,
                     fontSize = 10.sp,
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )

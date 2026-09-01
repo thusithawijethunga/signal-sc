@@ -2,59 +2,62 @@ package com.widhura.signalxp.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.widhura.signalxp.ui.MainViewModel
-import com.widhura.signalxp.ui.theme.AccentEmerald
-import com.widhura.signalxp.ui.theme.AccentRed
 import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.CardBackground
 import com.widhura.signalxp.ui.theme.DarkBackground
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
-import com.widhura.signalxp.ui.theme.TextLight
 import com.widhura.signalxp.ui.theme.TextSecondary
 
 @Composable
-fun DeveloperSettingsScreen(
-    viewModel: MainViewModel,
+fun SettingsScreen(
+    isDarkMode: Boolean = true,
+    onToggleTheme: () -> Unit = {},
     onBack: () -> Unit
 ) {
-    val isDeveloperMode by viewModel.isDeveloperMode.collectAsState()
-    val isScreenshotDisabled by viewModel.isScreenshotDisabled.collectAsState()
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val textPrimary = if (isDarkMode) LightTheme.TextLight else LightTheme.TextPrimary
+    val textSecondary = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(bg)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Header with back
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -70,112 +73,58 @@ fun DeveloperSettingsScreen(
                 )
                 Column {
                     Text(
-                        text = "Developer Settings",
+                        text = "Settings",
                         color = PrimarySky,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Read-only status (controlled via BuildConfig)",
-                        color = TextSecondary,
+                        text = "App preferences",
+                        color = textSecondary,
                         fontSize = 12.sp
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = BorderColor)
+            HorizontalDivider(color = border)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Developer Mode Status (Read-only)
-            SettingsStatusRow(
-                title = "Developer Mode",
-                subtitle = "DEVELOPER_MODE in build.gradle.kts",
-                icon = "\uD83D\uDD27",
-                isActive = isDeveloperMode
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = BorderColor, thickness = 0.5.dp)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Screenshot Protection Status (Read-only)
-            SettingsStatusRow(
-                title = "Screenshot Protection",
-                subtitle = "SCREENSHOT_DISABLED in build.gradle.kts",
-                icon = "\uD83D\uDCF7",
-                isActive = isScreenshotDisabled
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider(color = BorderColor, thickness = 0.5.dp)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Instructions
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CardBackground)
-                    .padding(16.dp)
+                    .background(cardBg)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "How to Change",
-                    color = TextLight,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Edit the buildConfigField values in app/build.gradle.kts:\n\n" +
-                            "buildConfigField(\"Boolean\", \"SCREENSHOT_DISABLED\", \"true\")\n" +
-                            "buildConfigField(\"Boolean\", \"DEVELOPER_MODE\", \"true\")\n\n" +
-                            "Then rebuild the app.",
-                    color = TextSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp
+                Text(text = if (isDarkMode) "\uD83C\uDF19" else "\u2600\uFE0F", fontSize = 24.sp)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Theme",
+                        color = textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (isDarkMode) "Dark mode" else "Light mode",
+                        color = textSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = isDarkMode,
+                    onCheckedChange = { onToggleTheme() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = PrimarySky,
+                        checkedTrackColor = PrimarySky.copy(alpha = 0.3f),
+                        uncheckedThumbColor = LightTheme.PrimarySky,
+                        uncheckedTrackColor = LightTheme.PrimarySky.copy(alpha = 0.3f)
+                    )
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsStatusRow(
-    title: String,
-    subtitle: String,
-    icon: String,
-    isActive: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(CardBackground)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = icon, fontSize = 24.sp)
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = TextLight,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = subtitle,
-                color = TextSecondary,
-                fontSize = 11.sp
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = if (isActive) "ON" else "OFF",
-            color = if (isActive) AccentEmerald else AccentRed,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

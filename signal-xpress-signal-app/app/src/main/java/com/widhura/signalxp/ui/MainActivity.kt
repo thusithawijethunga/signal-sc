@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -30,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,13 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.widhura.signalxp.BuildConfig
+import com.widhura.signalxp.data.ThemePreferences
 import com.widhura.signalxp.data.api.AuthViewModel
-import com.widhura.signalxp.ui.components.AddNewsDialog
-import com.widhura.signalxp.ui.components.AddSignalDialog
-import com.widhura.signalxp.ui.components.GeminiAnalysisDialog
 import com.widhura.signalxp.ui.screens.AnalyticsSummaryScreen
 import com.widhura.signalxp.ui.screens.CommunityScreen
-import com.widhura.signalxp.ui.screens.DeveloperSettingsScreen
+import com.widhura.signalxp.ui.screens.SettingsScreen
 import com.widhura.signalxp.ui.screens.LoginScreen
 import com.widhura.signalxp.ui.screens.MarketNewsScreen
 import com.widhura.signalxp.ui.screens.SignalsFeedScreen
@@ -52,9 +50,11 @@ import com.widhura.signalxp.ui.screens.VipLeaderboardScreen
 import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.CardHeaderBackground
 import com.widhura.signalxp.ui.theme.DarkBackground
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.SignalXpressTheme
 import com.widhura.signalxp.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 
 enum class NavTab { SIGNALS, SUMMARY, NEWS, COMMUNITY, VIP_LEADERBOARD }
 
@@ -62,18 +62,31 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
+    private lateinit var themePreferences: ThemePreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyScreenshotPolicy()
         enableEdgeToEdge()
 
-        setContent {
-            SignalXpressTheme {
-                val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+        themePreferences = ThemePreferences(applicationContext)
 
+        setContent {
+            val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = true)
+            val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+            val scope = rememberCoroutineScope()
+
+            SignalXpressTheme(darkTheme = isDarkMode) {
                 if (isLoggedIn) {
-                    MainAppContent(viewModel = viewModel)
+                    MainAppContent(
+                        viewModel = viewModel,
+                        isDarkMode = isDarkMode,
+                        onToggleTheme = {
+                            scope.launch {
+                                themePreferences.setDarkMode(!isDarkMode)
+                            }
+                        }
+                    )
                 } else {
                     LoginScreen(
                         authViewModel = authViewModel,
@@ -97,22 +110,32 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainAppContent(viewModel: MainViewModel) {
+fun MainAppContent(
+    viewModel: MainViewModel,
+    isDarkMode: Boolean = true,
+    onToggleTheme: () -> Unit = {}
+) {
     var currentTab by remember { mutableStateOf(NavTab.SIGNALS) }
     var showDeveloperSettings by remember { mutableStateOf(false) }
 
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val headerBg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+
     if (showDeveloperSettings) {
-        DeveloperSettingsScreen(
-            viewModel = viewModel,
+        SettingsScreen(
+            isDarkMode = isDarkMode,
+            onToggleTheme = onToggleTheme,
             onBack = { showDeveloperSettings = false }
         )
     } else {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = DarkBackground,
+            containerColor = bg,
             bottomBar = {
                 BottomNavBar(
                     currentTab = currentTab,
+                    isDarkMode = isDarkMode,
                     onTabSelected = { currentTab = it }
                 )
             }
@@ -125,12 +148,14 @@ fun MainAppContent(viewModel: MainViewModel) {
                 when (currentTab) {
                     NavTab.SIGNALS -> SignalsFeedScreen(
                         viewModel = viewModel,
-                        onTitleTap = { showDeveloperSettings = true }
+                        isDarkMode = isDarkMode,
+                        onTitleTap = { showDeveloperSettings = true },
+                        onSettingsClick = { showDeveloperSettings = true }
                     )
-                    NavTab.SUMMARY -> AnalyticsSummaryScreen(viewModel = viewModel)
-                    NavTab.NEWS -> MarketNewsScreen(viewModel = viewModel)
-                    NavTab.COMMUNITY -> CommunityScreen(viewModel = viewModel)
-                    NavTab.VIP_LEADERBOARD -> VipLeaderboardScreen(viewModel = viewModel)
+                    NavTab.SUMMARY -> AnalyticsSummaryScreen(viewModel = viewModel, isDarkMode = isDarkMode)
+                    NavTab.NEWS -> MarketNewsScreen(viewModel = viewModel, isDarkMode = isDarkMode)
+                    NavTab.COMMUNITY -> CommunityScreen(viewModel = viewModel, isDarkMode = isDarkMode)
+                    NavTab.VIP_LEADERBOARD -> VipLeaderboardScreen(viewModel = viewModel, isDarkMode = isDarkMode)
                 }
             }
         }
@@ -138,33 +163,38 @@ fun MainAppContent(viewModel: MainViewModel) {
 }
 
 @Composable
-fun BottomNavBar(currentTab: NavTab, onTabSelected: (NavTab) -> Unit) {
+fun BottomNavBar(currentTab: NavTab, isDarkMode: Boolean = true, onTabSelected: (NavTab) -> Unit) {
+    val bg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val selectedColor = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val unselectedColor = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     Surface(
-        color = CardHeaderBackground,
+        color = bg,
         modifier = Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Column {
-            HorizontalDivider(Modifier, thickness = 1.dp, color = BorderColor)
+            HorizontalDivider(Modifier, thickness = 1.dp, color = border)
             Row(
                 modifier = Modifier.fillMaxWidth().height(58.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                NavItem(icon = "📡", label = "Signals", isSelected = currentTab == NavTab.SIGNALS) { onTabSelected(NavTab.SIGNALS) }
-                NavItem(icon = "📊", label = "Summary", isSelected = currentTab == NavTab.SUMMARY) { onTabSelected(NavTab.SUMMARY) }
-                NavItem(icon = "📰", label = "News", isSelected = currentTab == NavTab.NEWS) { onTabSelected(NavTab.NEWS) }
-                NavItem(icon = "👥", label = "Community", isSelected = currentTab == NavTab.COMMUNITY) { onTabSelected(NavTab.COMMUNITY) }
-                NavItem(icon = "🏆", label = "Top 10", isSelected = currentTab == NavTab.VIP_LEADERBOARD) { onTabSelected(NavTab.VIP_LEADERBOARD) }
+                NavItem(icon = "\uD83D\uDCE1", label = "Signals", isSelected = currentTab == NavTab.SIGNALS, selectedColor = selectedColor, unselectedColor = unselectedColor) { onTabSelected(NavTab.SIGNALS) }
+                NavItem(icon = "\uD83D\uDCCA", label = "Summary", isSelected = currentTab == NavTab.SUMMARY, selectedColor = selectedColor, unselectedColor = unselectedColor) { onTabSelected(NavTab.SUMMARY) }
+                NavItem(icon = "\uD83D\uDCF0", label = "News", isSelected = currentTab == NavTab.NEWS, selectedColor = selectedColor, unselectedColor = unselectedColor) { onTabSelected(NavTab.NEWS) }
+                NavItem(icon = "\uD83D\uDC65", label = "Community", isSelected = currentTab == NavTab.COMMUNITY, selectedColor = selectedColor, unselectedColor = unselectedColor) { onTabSelected(NavTab.COMMUNITY) }
+                NavItem(icon = "\uD83C\uDFC6", label = "Top 10", isSelected = currentTab == NavTab.VIP_LEADERBOARD, selectedColor = selectedColor, unselectedColor = unselectedColor) { onTabSelected(NavTab.VIP_LEADERBOARD) }
             }
         }
     }
 }
 
 @Composable
-fun NavItem(icon: String, label: String, isSelected: Boolean, onClick: () -> Unit) {
-    val tintColor = if (isSelected) PrimarySky else TextSecondary
+fun NavItem(icon: String, label: String, isSelected: Boolean, selectedColor: androidx.compose.ui.graphics.Color = PrimarySky, unselectedColor: androidx.compose.ui.graphics.Color = TextSecondary, onClick: () -> Unit) {
+    val tintColor = if (isSelected) selectedColor else unselectedColor
     Column(
         modifier = Modifier
             .clickable { onClick() }

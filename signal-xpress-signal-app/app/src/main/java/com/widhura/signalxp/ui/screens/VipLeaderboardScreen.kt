@@ -83,6 +83,7 @@ import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.CardBackground
 import com.widhura.signalxp.ui.theme.CardHeaderBackground
 import com.widhura.signalxp.ui.theme.DarkBackground
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.TextLight
 import com.widhura.signalxp.ui.theme.TextSecondary
@@ -91,8 +92,20 @@ import java.text.DecimalFormat
 @Composable
 fun VipLeaderboardScreen(
     viewModel: MainViewModel,
+    isDarkMode: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val cardHeaderBg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val accentAmber = if (isDarkMode) AccentAmber else LightTheme.AccentAmber
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+
     val context = LocalContext.current
     val vipMembers by viewModel.filteredVipMembers.collectAsState()
     val selectedPeriod by viewModel.vipPeriodFilter.collectAsState()
@@ -123,12 +136,12 @@ fun VipLeaderboardScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = DarkBackground
+        containerColor = bg
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(bottom = innerPadding.calculateBottomPadding())
                 .padding(horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
@@ -146,7 +159,7 @@ fun VipLeaderboardScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Top 10 — Lots අනුව",
-                            color = Color(0xFF94A3B8),
+                            color = textSec,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -155,7 +168,7 @@ fun VipLeaderboardScreen(
                         IconButton(onClick = { isSearchOpen = !isSearchOpen }, modifier = Modifier.size(34.dp)) {
                             Icon(
                                 if (isSearchOpen) Icons.Default.Close else Icons.Default.Search,
-                                "Search", tint = if (isSearchOpen) PrimarySky else Color(0xFF64748B),
+                                "Search", tint = if (isSearchOpen) primary else textSec,
                                 modifier = Modifier.size(19.dp)
                             )
                         }
@@ -165,14 +178,14 @@ fun VipLeaderboardScreen(
                         }, modifier = Modifier.size(34.dp)) {
                             Icon(
                                 Icons.Default.Refresh, "Sync",
-                                tint = if (isSyncingVip) PrimarySky else Color(0xFF94A3B8),
+                                tint = if (isSyncingVip) primary else textSec,
                                 modifier = Modifier.size(20.dp).then(if (isSyncingVip) Modifier.rotate(spinAngle) else Modifier)
                             )
                         }
                         IconButton(onClick = { showAdminConfigDialog = true }, modifier = Modifier.size(34.dp)) {
                             Icon(
                                 Icons.Default.AdminPanelSettings, "Admin",
-                                tint = if (vipWebUrl.isNotBlank()) PrimarySky else AccentAmber,
+                                tint = if (vipWebUrl.isNotBlank()) primary else accentAmber,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -185,12 +198,12 @@ fun VipLeaderboardScreen(
                 item {
                     OutlinedTextField(
                         value = searchQuery, onValueChange = { viewModel.setVipSearchQuery(it) },
-                        placeholder = { Text("Search by name, ID...", fontSize = 12.sp, color = TextSecondary) },
+                        placeholder = { Text("Search by name, ID...", fontSize = 12.sp, color = textSec) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimarySky, unfocusedBorderColor = BorderColor,
-                            focusedContainerColor = CardHeaderBackground, unfocusedContainerColor = CardHeaderBackground,
-                            focusedTextColor = TextLight, unfocusedTextColor = TextLight
+                            focusedBorderColor = primary, unfocusedBorderColor = border,
+                            focusedContainerColor = cardHeaderBg, unfocusedContainerColor = cardHeaderBg,
+                            focusedTextColor = textOnBg, unfocusedTextColor = textOnBg
                         ),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
@@ -201,8 +214,8 @@ fun VipLeaderboardScreen(
             // Web Sync Status
             item {
                 Surface(
-                    shape = RoundedCornerShape(10.dp), color = CardHeaderBackground,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor.copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(10.dp), color = cardHeaderBg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, border.copy(alpha = 0.6f)),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
                 ) {
                     Row(
@@ -212,36 +225,36 @@ fun VipLeaderboardScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                             if (isSyncingVip) {
-                                CircularProgressIndicator(color = PrimarySky, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+                                CircularProgressIndicator(color = primary, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
                             } else {
                                 Icon(
                                     if (vipWebUrl.isNotBlank()) Icons.Default.CloudDone else Icons.Default.Link,
-                                    null, tint = if (vipWebUrl.isNotBlank()) AccentEmerald else AccentAmber, modifier = Modifier.size(15.dp)
+                                    null, tint = if (vipWebUrl.isNotBlank()) accentEmerald else accentAmber, modifier = Modifier.size(15.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
                                     if (vipWebUrl.isNotBlank()) "Live Web Admin Sync" else "Web Admin Link Not Set",
-                                    color = if (vipWebUrl.isNotBlank()) Color(0xFFE2E8F0) else AccentAmber,
+                                    color = if (vipWebUrl.isNotBlank()) textOnBg else accentAmber,
                                     fontSize = 11.sp, fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
                                     if (vipWebUrl.isNotBlank()) lastVipSyncTime else "Tap ⚙️ to link your web backend",
-                                    color = Color(0xFF64748B), fontSize = 9.5.sp
+                                    color = textSec, fontSize = 9.5.sp
                                 )
                             }
                         }
                         if (vipWebUrl.isNotBlank()) {
                             Surface(
-                                shape = RoundedCornerShape(6.dp), color = PrimarySky.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp), color = primary.copy(alpha = 0.15f),
                                 modifier = Modifier.clickable { viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() } }
                             ) {
-                                Text("SYNC NOW", color = PrimarySky, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                Text("SYNC NOW", color = primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                             }
                         } else {
-                            Surface(shape = RoundedCornerShape(6.dp), color = AccentAmber.copy(alpha = 0.2f), modifier = Modifier.clickable { showAdminConfigDialog = true }) {
-                                Text("LINK WEB", color = AccentAmber, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                            Surface(shape = RoundedCornerShape(6.dp), color = accentAmber.copy(alpha = 0.2f), modifier = Modifier.clickable { showAdminConfigDialog = true }) {
+                                Text("LINK WEB", color = accentAmber, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                             }
                         }
                     }
@@ -273,12 +286,12 @@ fun VipLeaderboardScreen(
                         val isSelected = selectedPeriod == key
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (isSelected) PrimarySky.copy(alpha = 0.2f) else CardHeaderBackground,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) PrimarySky else BorderColor.copy(alpha = 0.4f)),
+                            color = if (isSelected) primary.copy(alpha = 0.2f) else cardHeaderBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) primary else border.copy(alpha = 0.4f)),
                             modifier = Modifier.weight(1f).clickable { viewModel.setVipPeriodFilter(key) }
                         ) {
                             Box(modifier = Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
-                                Text(label, color = if (isSelected) PrimarySky else TextSecondary, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)
+                                Text(label, color = if (isSelected) primary else textSec, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)
                             }
                         }
                     }
@@ -289,8 +302,8 @@ fun VipLeaderboardScreen(
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    shape = RoundedCornerShape(12.dp), color = CardHeaderBackground,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor.copy(alpha = 0.6f))
+                    shape = RoundedCornerShape(12.dp), color = cardHeaderBg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, border.copy(alpha = 0.6f))
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -298,14 +311,14 @@ fun VipLeaderboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("TOTAL VIP VOLUME", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 1.sp)
-                            Text("${df.format(totalLots)} Lots", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = PrimarySky, fontFamily = FontFamily.Monospace)
+                            Text("TOTAL VIP VOLUME", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = textSec, letterSpacing = 1.sp)
+                            Text("${df.format(totalLots)} Lots", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = primary, fontFamily = FontFamily.Monospace)
                         }
-                        Surface(shape = RoundedCornerShape(6.dp), color = Color(0x22F59E0B), border = androidx.compose.foundation.BorderStroke(0.5.dp, AccentAmber)) {
+                        Surface(shape = RoundedCornerShape(6.dp), color = accentAmber.copy(alpha = 0.15f), border = androidx.compose.foundation.BorderStroke(0.5.dp, accentAmber)) {
                             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.WorkspacePremium, null, tint = AccentAmber, modifier = Modifier.size(13.dp))
+                                Icon(Icons.Default.WorkspacePremium, null, tint = accentAmber, modifier = Modifier.size(13.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("VIP Lounge", color = AccentAmber, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("VIP Lounge", color = accentAmber, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -317,14 +330,14 @@ fun VipLeaderboardScreen(
                 item {
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("No VIP members recorded yet.", color = TextSecondary, fontSize = 13.sp)
+                            Text("No VIP members recorded yet.", color = textSec, fontSize = 13.sp)
                             if (vipWebUrl.isNotBlank()) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp), color = PrimarySky,
+                                    shape = RoundedCornerShape(8.dp), color = primary,
                                     modifier = Modifier.clickable { viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() } }
                                 ) {
-                                    Text("Fetch from Web", color = DarkBackground, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                                    Text("Fetch from Web", color = bg, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
                                 }
                             }
                         }
@@ -417,16 +430,18 @@ fun PodiumCard(
     cardHeight: androidx.compose.ui.unit.Dp,
     borderColor: Color,
     rankColor: Color,
+    isDarkMode: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     df: DecimalFormat
 ) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
     Card(
         modifier = modifier
             .height(cardHeight)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0D1117)),
+        colors = CardDefaults.cardColors(containerColor = bg),
         border = androidx.compose.foundation.BorderStroke(2.dp, borderColor)
     ) {
         Column(
@@ -494,6 +509,7 @@ fun PodiumCard(
 fun VipLeaderboardRow(
     member: VipMemberEntity,
     displayRank: Int,
+    isDarkMode: Boolean = true,
     onClick: () -> Unit
 ) {
     val df = remember { DecimalFormat("#,##0.00") }
@@ -502,11 +518,14 @@ fun VipLeaderboardRow(
         animationSpec = tween(durationMillis = 600), label = "progress"
     )
     val rowAccentColor = Color(member.accentHex)
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
 
-    val (cardBg, cardBorder) = when (displayRank) {
-        1 -> Color(0xFF14110A) to Color(0xFF4A3814)
-        2 -> Color(0xFF0F1521) to Color(0xFF26354D)
-        3 -> Color(0xFF17110C) to Color(0xFF3F2716)
+    val (cardBg, cardBorder) = when {
+        !isDarkMode -> LightTheme.CardBackground to LightTheme.BorderColor
+        displayRank == 1 -> Color(0xFF14110A) to Color(0xFF4A3814)
+        displayRank == 2 -> Color(0xFF0F1521) to Color(0xFF26354D)
+        displayRank == 3 -> Color(0xFF17110C) to Color(0xFF3F2716)
         else -> Color(0xFF0A111F) to Color(0xFF162338)
     }
 
@@ -526,7 +545,7 @@ fun VipLeaderboardRow(
                     1 -> Text("🥇", fontSize = 20.sp)
                     2 -> Text("🥈", fontSize = 20.sp)
                     3 -> Text("🥉", fontSize = 20.sp)
-                    else -> Text("#$displayRank", color = Color(0xFF64748B), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    else -> Text("#$displayRank", color = textSec, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
             }
 
@@ -541,7 +560,7 @@ fun VipLeaderboardRow(
 
             // Member ID pill
             Box(modifier = Modifier.padding(end = 12.dp), contentAlignment = Alignment.Center) {
-                Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFF1D4ED8), modifier = Modifier.height(26.dp)) {
+                Surface(shape = RoundedCornerShape(14.dp), color = primary, modifier = Modifier.height(26.dp)) {
                     Box(modifier = Modifier.padding(horizontal = if (member.memberId == "—") 10.dp else 9.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
                         Text(member.memberId, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp)
                     }
@@ -551,7 +570,7 @@ fun VipLeaderboardRow(
             // Lots
             Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(62.dp)) {
                 Text(df.format(member.lots), color = rowAccentColor, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
-                Text("lots", color = Color(0xFF64748B), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                Text("lots", color = textSec, fontSize = 10.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

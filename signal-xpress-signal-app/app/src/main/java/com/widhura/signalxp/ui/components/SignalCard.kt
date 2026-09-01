@@ -46,6 +46,7 @@ import com.widhura.signalxp.ui.theme.BuyBadgeBg
 import com.widhura.signalxp.ui.theme.BuyBadgeText
 import com.widhura.signalxp.ui.theme.CardBackground
 import com.widhura.signalxp.ui.theme.DarkBackground
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.LossBorder
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.ProfitBorder
@@ -59,23 +60,42 @@ import com.widhura.signalxp.ui.theme.TextSecondary
 @Composable
 fun SignalCard(
     signal: SignalEntity,
-    onReactionToggle: (String) -> Unit
+    onReactionToggle: (String) -> Unit,
+    isDarkMode: Boolean = true
 ) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val secondary = if (isDarkMode) SecondaryBlue else LightTheme.SecondaryBlue
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val buyBadgeBg = if (isDarkMode) BuyBadgeBg else LightTheme.BuyBadgeBg
+    val buyBadgeText = if (isDarkMode) BuyBadgeText else LightTheme.BuyBadgeText
+    val sellBadgeBg = if (isDarkMode) SellBadgeBg else LightTheme.SellBadgeBg
+    val sellBadgeText = if (isDarkMode) SellBadgeText else LightTheme.SellBadgeText
+    val profitBorder = if (isDarkMode) ProfitBorder else LightTheme.ProfitBorder
+    val lossBorder = if (isDarkMode) LossBorder else LightTheme.LossBorder
+    val activeBorder = if (isDarkMode) ActiveBorder else LightTheme.ActiveBorder
+    val accentAmber = if (isDarkMode) AccentAmber else LightTheme.AccentAmber
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+
     val leftBorderColor = when (signal.result.uppercase()) {
-        "WIN" -> ProfitBorder
-        "LOSS" -> LossBorder
-        else -> ActiveBorder
+        "WIN" -> profitBorder
+        "LOSS" -> lossBorder
+        else -> activeBorder
     }
 
     val statusBarBg = when (signal.result.uppercase()) {
-        "WIN" -> Color(0xFF065F46)
-        "LOSS" -> Color(0xFF991B1B)
-        else -> SecondaryBlue
+        "WIN" -> accentEmerald.copy(alpha = 0.3f)
+        "LOSS" -> accentRed.copy(alpha = 0.3f)
+        else -> secondary
     }
 
     val statusBarText = when (signal.result.uppercase()) {
-        "WIN" -> Color(0xFF34D399)
-        "LOSS" -> Color(0xFFFCA5A5)
+        "WIN" -> accentEmerald
+        "LOSS" -> accentRed.copy(alpha = 0.8f)
         else -> Color.White
     }
 
@@ -86,9 +106,9 @@ fun SignalCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .border(width = 1.dp, color = BorderColor, shape = RoundedCornerShape(16.dp)),
+            .border(width = 1.dp, color = border, shape = RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
+        colors = CardDefaults.cardColors(containerColor = cardBg)
     ) {
         Row(
             modifier = Modifier
@@ -107,15 +127,14 @@ fun SignalCard(
                     .weight(1f)
                     .padding(16.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "🚨 SIGNALXPRESS LIVE",
-                        color = AccentAmber,
+                        text = "\uD83D\uDEA8 SIGNALXPRESS LIVE",
+                        color = accentAmber,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -123,12 +142,12 @@ fun SignalCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isBuy) BuyBadgeBg else SellBadgeBg)
+                            .background(if (isBuy) buyBadgeBg else sellBadgeBg)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = signal.type.uppercase(),
-                            color = if (isBuy) BuyBadgeText else SellBadgeText,
+                            color = if (isBuy) buyBadgeText else sellBadgeText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -137,40 +156,37 @@ fun SignalCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Signal Body
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(DarkBackground)
+                        .background(bg)
                         .padding(12.dp)
                 ) {
                     Column {
-                        Text(text = "💎 Pair: ${signal.pair}", color = TextLight, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = "\uD83D\uDC8E Pair: ${signal.pair}", color = textOnBg, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "📊 Type: ${signal.type}", color = TextPrimary, fontSize = 14.sp)
+                        Text(text = "\uD83D\uDCCA Type: ${signal.type}", color = TextPrimary, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "📥 Entry: ${signal.entry}", color = TextPrimary, fontSize = 14.sp)
+                        Text(text = "\uD83D\uDCE5 Entry: ${signal.entry}", color = TextPrimary, fontSize = 14.sp)
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // TP lines with green highlight when hit
-                        TpLine(label = "TP1", price = signal.tp1, isHit = hitLevelInt >= 1)
-                        TpLine(label = "TP2", price = signal.tp2, isHit = hitLevelInt >= 2)
-                        TpLine(label = "TP3", price = signal.tp3, isHit = hitLevelInt >= 3)
-                        TpLine(label = "TP4", price = signal.tp4, isHit = hitLevelInt >= 4)
+                        TpLine(label = "TP1", price = signal.tp1, isHit = hitLevelInt >= 1, isDarkMode = isDarkMode)
+                        TpLine(label = "TP2", price = signal.tp2, isHit = hitLevelInt >= 2, isDarkMode = isDarkMode)
+                        TpLine(label = "TP3", price = signal.tp3, isHit = hitLevelInt >= 3, isDarkMode = isDarkMode)
+                        TpLine(label = "TP4", price = signal.tp4, isHit = hitLevelInt >= 4, isDarkMode = isDarkMode)
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // SL line with red highlight when hit
                         val isSlHit = hitLevel == "SL"
                         val slColor by animateColorAsState(
-                            targetValue = if (isSlHit) AccentRed else AccentRed.copy(alpha = 0.8f),
+                            targetValue = if (isSlHit) accentRed else accentRed.copy(alpha = 0.8f),
                             animationSpec = tween(500), label = "slColor"
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = if (isSlHit) "🛑 SL HIT!" else "🛑 SL:",
+                                text = if (isSlHit) "\uD83D\uDED1 SL HIT!" else "\uD83D\uDED1 SL:",
                                 color = slColor,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
@@ -185,45 +201,42 @@ fun SignalCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Target Progress Badges
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(text = "🎯 Target Progress:", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "\uD83C\uDFAF Target Progress:", color = textSec, fontSize = 11.sp, fontWeight = FontWeight.Bold)
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TargetStatusBadge("TP1", isHit = hitLevelInt >= 1, modifier = Modifier.weight(1f))
-                        TargetStatusBadge("TP2", isHit = hitLevelInt >= 2, modifier = Modifier.weight(1f))
-                        TargetStatusBadge("TP3", isHit = hitLevelInt >= 3, modifier = Modifier.weight(1f))
-                        TargetStatusBadge("TP4", isHit = hitLevelInt >= 4, modifier = Modifier.weight(1f))
+                        TargetStatusBadge("TP1", isHit = hitLevelInt >= 1, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
+                        TargetStatusBadge("TP2", isHit = hitLevelInt >= 2, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
+                        TargetStatusBadge("TP3", isHit = hitLevelInt >= 3, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
+                        TargetStatusBadge("TP4", isHit = hitLevelInt >= 4, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
                     }
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TargetStatusBadge(label = "BE", isHit = hitLevel == "BE", isWarning = true, modifier = Modifier.weight(1f))
-                        TargetStatusBadge(label = "SL Hit", isHit = hitLevel == "SL", isDanger = true, modifier = Modifier.weight(1f))
+                        TargetStatusBadge(label = "BE", isHit = hitLevel == "BE", isWarning = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
+                        TargetStatusBadge(label = "SL Hit", isHit = hitLevel == "SL", isDanger = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
                         if (hitLevel == "CLOSE") {
-                            TargetStatusBadge(label = "Closed", isHit = true, isGray = true, modifier = Modifier.weight(1f))
+                            TargetStatusBadge(label = "Closed", isHit = true, isGray = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Reaction Bar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ReactionButton("👍", signal.thumbsCount, isSelected = signal.userReactedEmoji == "👍") { onReactionToggle("👍") }
-                        ReactionButton("🔥", signal.fireCount, isSelected = signal.userReactedEmoji == "🔥") { onReactionToggle("🔥") }
-                        ReactionButton("🚀", signal.rocketCount, isSelected = signal.userReactedEmoji == "🚀") { onReactionToggle("🚀") }
-                        ReactionButton("💔", signal.brokenHeartCount, isSelected = signal.userReactedEmoji == "💔") { onReactionToggle("💔") }
+                        ReactionButton("\uD83D\uDC4D", signal.thumbsCount, isSelected = signal.userReactedEmoji == "\uD83D\uDC4D", isDarkMode = isDarkMode) { onReactionToggle("\uD83D\uDC4D") }
+                        ReactionButton("\uD83D\uDD25", signal.fireCount, isSelected = signal.userReactedEmoji == "\uD83D\uDD25", isDarkMode = isDarkMode) { onReactionToggle("\uD83D\uDD25") }
+                        ReactionButton("\uD83D\uDE80", signal.rocketCount, isSelected = signal.userReactedEmoji == "\uD83D\uDE80", isDarkMode = isDarkMode) { onReactionToggle("\uD83D\uDE80") }
+                        ReactionButton("\uD83D\uDC94", signal.brokenHeartCount, isSelected = signal.userReactedEmoji == "\uD83D\uDC94", isDarkMode = isDarkMode) { onReactionToggle("\uD83D\uDC94") }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Status Bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -237,28 +250,27 @@ fun SignalCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Risk Warning
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0x14EF4444))
-                        .border(1.5.dp, AccentRed, RoundedCornerShape(12.dp))
+                        .background(accentRed.copy(alpha = 0.1f))
+                        .border(1.5.dp, accentRed, RoundedCornerShape(12.dp))
                         .padding(12.dp)
                 ) {
                     Column {
-                        Text(text = "⚠️ වැදගත් අවවාදය", color = AccentRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "\u26A0\uFE0F \u0DC0\u0DDA\u0DB1\u0DDA\u0DB8\u0DCA\u200D\u0DBB\u0DCF\u0DB8\u0DCA\u200D\u0DD0\u0DB6\u0DCA\u200D\u0DBA\u0DCF\u0DB8\u0DCA\u200D\u0DC3\u0DD2\u0DBA\u0DD4\u0DC3\u0DD2\u0DAB\u0DD4\u0DB1\u0DCA\u200D\u0DBB\u0DB8\u0DB1\u0DCA\u200D\u0DC0\u0DDA\u0DC5\u0DD2", color = accentRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Trading කියන්නේ ඉක්මනින් සල්ලි හොයන ක්‍රමයක් නොවෙයි. ලාභ ලැබෙන වගේම පාඩුත් ලැබිය හැකියි. ඔබට අහිමි වුවහොත් දරාගත හැකි මුදලක් පමණක් ආයෝජනය කරන්න.",
-                            color = Color(0xFFFCA5A5), fontSize = 11.sp, lineHeight = 16.sp
+                            text = "Trading \u0D82\u0D9A\u0DD2\u0DBA\u0DD4\u0DB8\u0DCA\u200D\u0DBB\u0DC3\u0DCF\u0DBA\u0DCA\u200D\u0DC0\u0DC3\u0DD2\u0DB1\u0DCA\u200D\u0DC0\u0DD2\u0DD2\u0DAD\u0DBA \u0D89\u0D9A\u0DCA\u0D9A\u0DB1\u0DCA\u200D\u0DBB\u0DD2 \u0DC3\u0DBD\u0DBD\u0DD2 \u0DB4\u0DDA\u0DB8\u0DCA\u200D\u0DBB\u0DD2 \u0DC1\u0DDA\u0DB8\u0DD2\u0D9A\u0DBA \u0DB1\u0DDC\u0DBA\u0DD4\u0DAB\u0DCF\u0DBA. \u0DBD\u0DBA\u0DB8\u0DCA\u200D\u0DC3\u0DD0\u0DBD\u0DB8\u0DCA\u200D\u0DB6\u0DDA\u0DB8 \u0D89\u0D9A\u0DCA\u0D9A\u0DD2\u0DBA\u0DD4\u0DB8\u0DCA\u200D\u0DBB\u0DD2 \u0DB4\u0DCF\u0DB8\u0DCA\u200D\u0DAD\u0DD4\u0DAD\u0DCA\u200D\u0DC0\u0DDA\u0DB8 \u0DB1\u0DDC\u0DB1\u0DCA\u200D\u0DC0\u0DB1\u0DCA\u200D\u0DAD\u0DD4\u0DB1\u0DCA\u200D\u0DC0\u0DDA\u0DC5\u0DD2. \u0D94\u0DBA\u0D9A \u0D85\u0D9A\u0DD2\u0DB8\u0DD2 \u0DC0\u0DD4\u0DC5\u0DD4\u0DBA\u0DD4\u0DBA\u0DCA\u200D\u0DAD\u0DD2 \u0D83\u0DBA\u0DC3\u0DCF\u0DB8\u0DCA\u200D\u0DC3\u0DDA\u0DC4\u0DDA\u0DC0\u0DCA\u200D\u0DB8 \u0DB8\u0DD2\u0D9A\u0DBD\u0DCA\u200D\u0DC0\u0DCA\u200D\u0DBA \u0DB4\u0DB8\u0DCA\u200D\u0DBB\u0DCA\u200D\u0DB6\u0DDA \u0D86\u0DAD\u0DDC\u0DBA\u0DD4\u0DB1\u0DCA\u200D\u0DBB \u0D9A\u0DBB\u0DC4\u0DD2\u0DBA.",
+                            color = accentRed.copy(alpha = 0.8f), fontSize = 11.sp, lineHeight = 16.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Divider(color = Color(0x4DDF4444), thickness = 1.dp)
+                        Divider(color = accentRed.copy(alpha = 0.3f), thickness = 1.dp)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Follow Money Management 🙏🙏🙏\n🔥 GET RISK WIN YOUR LIFE 🔥",
-                            color = AccentRed, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                            text = "Follow Money Management \uD83D\uDE4F\uD83D\uDE4F\uD83D\uDE4F\n\uD83D\uDD25 GET RISK WIN YOUR LIFE \uD83D\uDD25",
+                            color = accentRed, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -269,13 +281,15 @@ fun SignalCard(
 }
 
 @Composable
-fun TpLine(label: String, price: String, isHit: Boolean) {
+fun TpLine(label: String, price: String, isHit: Boolean, isDarkMode: Boolean = true) {
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+
     val bgColor by animateColorAsState(
-        targetValue = if (isHit) AccentEmerald.copy(alpha = 0.15f) else Color.Transparent,
+        targetValue = if (isHit) accentEmerald.copy(alpha = 0.15f) else Color.Transparent,
         animationSpec = tween(600), label = "tpBg"
     )
     val textColor by animateColorAsState(
-        targetValue = if (isHit) AccentEmerald else AccentEmerald.copy(alpha = 0.8f),
+        targetValue = if (isHit) accentEmerald else accentEmerald.copy(alpha = 0.8f),
         animationSpec = tween(600), label = "tpText"
     )
 
@@ -294,7 +308,7 @@ fun TpLine(label: String, price: String, isHit: Boolean) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = if (isHit) "🎯 $label HIT ✓" else "🎯 $label:",
+            text = if (isHit) "\uD83C\uDFAF $label HIT \u2713" else "\uD83C\uDFAF $label:",
             color = textColor.copy(alpha = if (isHit) pulseAlpha else 1f),
             fontSize = 13.sp,
             fontWeight = if (isHit) FontWeight.Bold else FontWeight.Medium
@@ -313,26 +327,35 @@ fun TargetStatusBadge(
     isWarning: Boolean = false,
     isDanger: Boolean = false,
     isGray: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean = true
 ) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val accentAmber = if (isDarkMode) AccentAmber else LightTheme.AccentAmber
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+    val bdr = if (isDarkMode) BorderColor else LightTheme.BorderColor
+
     val bgColor = when {
-        isHit && isWarning -> AccentAmber
-        isHit && isDanger -> AccentRed
-        isHit && isGray -> Color(0xFF4B5563)
-        isHit -> Color(0xFF059669)
-        else -> DarkBackground
+        isHit && isWarning -> accentAmber
+        isHit && isDanger -> accentRed
+        isHit && isGray -> textSec
+        isHit -> accentEmerald
+        else -> bg
     }
 
     val borderColor = when {
-        isHit && isWarning -> AccentAmber
-        isHit && isDanger -> AccentRed
-        isHit && isGray -> Color(0xFF9CA3AF)
-        isHit -> AccentEmerald
-        else -> BorderColor
+        isHit && isWarning -> accentAmber
+        isHit && isDanger -> accentRed
+        isHit && isGray -> textSec
+        isHit -> accentEmerald
+        else -> bdr
     }
 
-    val textColor = if (isHit) TextLight else TextSecondary
-    val displayLabel = if (isHit && !isWarning && !isDanger && !isGray) "$label ✓" else label
+    val textColor = if (isHit) textOnBg else textSec
+    val displayLabel = if (isHit && !isWarning && !isDanger && !isGray) "$label \u2713" else label
 
     Box(
         modifier = modifier
@@ -347,19 +370,26 @@ fun TargetStatusBadge(
 }
 
 @Composable
-fun ReactionButton(emoji: String, count: Int, isSelected: Boolean, onClick: () -> Unit) {
+fun ReactionButton(emoji: String, count: Int, isSelected: Boolean, isDarkMode: Boolean = true, onClick: () -> Unit) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val secondary = if (isDarkMode) SecondaryBlue else LightTheme.SecondaryBlue
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val bdr = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) SecondaryBlue else DarkBackground)
-            .border(1.dp, if (isSelected) PrimarySky else BorderColor, RoundedCornerShape(20.dp))
+            .background(if (isSelected) secondary else bg)
+            .border(1.dp, if (isSelected) primary else bdr, RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = emoji, fontSize = 12.sp)
             Spacer(modifier = Modifier.width(4.dp))
-            Text(text = count.toString(), color = if (isSelected) TextLight else TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(text = count.toString(), color = if (isSelected) textOnBg else textSec, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -50,11 +50,12 @@ import com.widhura.signalxp.ui.theme.DarkBackground
 import com.widhura.signalxp.ui.theme.TextLight
 import com.widhura.signalxp.ui.theme.TextPrimary
 import com.widhura.signalxp.ui.theme.TextSecondary
+import com.widhura.signalxp.ui.theme.LightTheme
 import java.util.Calendar
 import java.util.Locale
 
 @Composable
-fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
+fun AnalyticsSummaryScreen(viewModel: MainViewModel, isDarkMode: Boolean = true) {
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
     val year = calendar.get(Calendar.YEAR)
@@ -91,10 +92,18 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
         String.format("%.1f%%", (winCount.toFloat() / totalTrades) * 100)
     } else "0%"
 
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(bg)
             .padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -111,19 +120,19 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "📊 Signal Xpress ",
-                            color = TextLight,
+                            color = textOnBg,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF059669))
+                                .background(accentEmerald)
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
-                            Text(
-                                text = "Analytics",
-                                color = TextLight,
+                                Text(
+                                    text = "Analytics",
+                                    color = textOnBg,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -131,7 +140,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     }
                     Text(
                         text = "Performance Breakdown",
-                        color = TextSecondary,
+                        color = textSec,
                         fontSize = 11.sp
                     )
                 }
@@ -139,7 +148,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "START BALANCE",
-                        color = TextSecondary,
+                        color = textSec,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -158,15 +167,15 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, BorderColor, RoundedCornerShape(8.dp)),
+                    .border(1.dp, border, RoundedCornerShape(8.dp)),
                 shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground)
+                colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "📅 Filter Summary By Period:",
-                            color = TextLight,
+                            color = textOnBg,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -178,10 +187,10 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        TimeFilterButton("All", timeFilter == TimeFilter.ALL, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.ALL) }
-                        TimeFilterButton("Daily", timeFilter == TimeFilter.DAILY, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.DAILY) }
-                        TimeFilterButton("Weekly", timeFilter == TimeFilter.WEEKLY, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.WEEKLY) }
-                        TimeFilterButton("Monthly", timeFilter == TimeFilter.MONTHLY, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.MONTHLY) }
+                        TimeFilterButton("All", timeFilter == TimeFilter.ALL, isDarkMode = isDarkMode, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.ALL) }
+                        TimeFilterButton("Daily", timeFilter == TimeFilter.DAILY, isDarkMode = isDarkMode, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.DAILY) }
+                        TimeFilterButton("Weekly", timeFilter == TimeFilter.WEEKLY, isDarkMode = isDarkMode, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.WEEKLY) }
+                        TimeFilterButton("Monthly", timeFilter == TimeFilter.MONTHLY, isDarkMode = isDarkMode, modifier = Modifier.weight(1f)) { viewModel.setTimeFilter(TimeFilter.MONTHLY) }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -194,7 +203,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     ) {
                         Text(
                             text = "Select Date:",
-                            color = TextSecondary,
+                            color = textSec,
                             fontSize = 11.sp,
                             modifier = Modifier.clickable { datePickerDialog.show() }
                         )
@@ -204,8 +213,8 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                                 .weight(1f)
                                 .padding(horizontal = 8.dp)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(DarkBackground)
-                                .border(1.dp, BorderColor, RoundedCornerShape(6.dp))
+            .background(bg)
+                                .border(1.dp, border, RoundedCornerShape(6.dp))
                                 .clickable { datePickerDialog.show() }
                                 .padding(horizontal = 8.dp, vertical = 6.dp)
                         ) {
@@ -216,7 +225,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                             ) {
                                 Text(
                                     text = if (customDate.isNotBlank()) customDate else "dd/mm/yyyy",
-                                    color = if (customDate.isNotBlank()) TextLight else TextSecondary,
+                                    color = if (customDate.isNotBlank()) textOnBg else textSec,
                                     fontSize = 11.sp
                                 )
                                 Text("📅", fontSize = 11.sp)
@@ -225,7 +234,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
 
                         Text(
                             text = "Clear",
-                            color = Color(0xFFEF4444),
+                            color = accentRed,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable {
@@ -248,6 +257,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     title = "NET PROFIT",
                     value = String.format("$%.2f", totalProfit),
                     valueColor = Color(0xFF00A3FF),
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -255,6 +265,7 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     title = "CURRENT BALANCE",
                     value = String.format("$%,.2f", currentBalance),
                     valueColor = Color(0xFF10B981),
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -269,7 +280,8 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                 MetricCard(
                     title = "TOTAL TRADES",
                     value = totalTrades.toString(),
-                    valueColor = TextLight,
+                    valueColor = textOnBg,
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -277,13 +289,15 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     title = "WIN TRADES",
                     value = winCount.toString(),
                     valueColor = Color(0xFF10B981),
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
 
                 MetricCard(
                     title = "LOSS TRADES",
                     value = lossCount.toString(),
-                    valueColor = Color(0xFFEF4444),
+                    valueColor = accentRed,
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -299,13 +313,15 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     title = "NET PIPS GAIN",
                     value = String.format("%s%d", if (totalPips >= 0) "+" else "", totalPips),
                     valueColor = Color(0xFFC084FC),
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
 
                 MetricCard(
                     title = "LOSS PIPS",
                     value = lossPips.toString(),
-                    valueColor = Color(0xFFEF4444),
+                    valueColor = accentRed,
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -332,9 +348,9 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, BorderColor, RoundedCornerShape(8.dp)),
+                    .border(1.dp, border, RoundedCornerShape(8.dp)),
                 shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground)
+                colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(
@@ -344,15 +360,15 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     ) {
                         Text(
                             text = "Signal Ledger Database",
-                            color = TextLight,
+                            color = textOnBg,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
 
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ResultFilterTab("All", resultFilter == ResultFilter.ALL, textColor = TextLight) { viewModel.setResultFilter(ResultFilter.ALL) }
-                            ResultFilterTab("Wins", resultFilter == ResultFilter.WIN, textColor = Color(0xFF10B981)) { viewModel.setResultFilter(ResultFilter.WIN) }
-                            ResultFilterTab("Losses", resultFilter == ResultFilter.LOSS, textColor = Color(0xFFEF4444)) { viewModel.setResultFilter(ResultFilter.LOSS) }
+                            ResultFilterTab("All", resultFilter == ResultFilter.ALL, textColor = textOnBg, isDarkMode = isDarkMode) { viewModel.setResultFilter(ResultFilter.ALL) }
+                            ResultFilterTab("Wins", resultFilter == ResultFilter.WIN, textColor = Color(0xFF10B981), isDarkMode = isDarkMode) { viewModel.setResultFilter(ResultFilter.WIN) }
+                            ResultFilterTab("Losses", resultFilter == ResultFilter.LOSS, textColor = accentRed, isDarkMode = isDarkMode) { viewModel.setResultFilter(ResultFilter.LOSS) }
                         }
                     }
 
@@ -365,21 +381,21 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                             .padding(bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("NO", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.5f))
-                        Text("DATE", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
-                        Text("PAIR", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
-                        Text("DIR", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text("PIPS", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
-                        Text("PROFIT ($)", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1.3f))
-                        Text("RESULT", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1.2f))
+                        Text("NO", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.5f))
+                        Text("DATE", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
+                        Text("PAIR", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
+                        Text("DIR", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text("PIPS", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        Text("PROFIT ($)", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1.3f))
+                        Text("RESULT", color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1.2f))
                     }
 
-                    Divider(color = Color(0xFF1E293B), thickness = 1.dp)
+                    Divider(color = border, thickness = 1.dp)
 
                     if (ledgerSignals.isEmpty()) {
                         Text(
                             text = "No records found.",
-                            color = TextSecondary,
+                            color = textSec,
                             fontSize = 11.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
@@ -389,8 +405,8 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
                     } else {
                         Column {
                             ledgerSignals.forEach { sig ->
-                                LedgerRow(sig)
-                                Divider(color = Color(0xFF1E293B), thickness = 1.dp)
+                                LedgerRow(sig, isDarkMode = isDarkMode)
+                                Divider(color = border, thickness = 1.dp)
                             }
                         }
                     }
@@ -405,17 +421,21 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel) {
 fun BasicTextFieldHelper(
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String
+    placeholder: String,
+    isDarkMode: Boolean = true
 ) {
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     Box(contentAlignment = Alignment.CenterStart) {
         if (value.isEmpty()) {
-            Text(text = placeholder, color = TextSecondary, fontSize = 11.sp)
+            Text(text = placeholder, color = textSec, fontSize = 11.sp)
         }
         androidx.compose.foundation.text.BasicTextField(
             value = value,
             onValueChange = onValueChange,
             textStyle = androidx.compose.ui.text.TextStyle(
-                color = TextLight,
+                color = textOnBg,
                 fontSize = 11.sp
             ),
             singleLine = true,
@@ -425,10 +445,15 @@ fun BasicTextFieldHelper(
 }
 
 @Composable
-fun LedgerRow(sig: SignalEntity) {
+fun LedgerRow(sig: SignalEntity, isDarkMode: Boolean = true) {
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
+    val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+
     val isWin = sig.result.uppercase() == "WIN"
-    val resBg = if (isWin) Color(0xFF064E3B) else Color(0xFF7F1D1D)
-    val resText = if (isWin) Color(0xFF10B981) else Color(0xFFEF4444)
+    val resBg = if (isWin) accentEmerald.copy(alpha = 0.15f) else accentRed.copy(alpha = 0.15f)
+    val resText = if (isWin) Color(0xFF10B981) else accentRed
     val dirColor = if (sig.type.uppercase() == "BUY") Color(0xFF3B82F6) else Color(0xFFF59E0B)
 
     Row(
@@ -437,14 +462,14 @@ fun LedgerRow(sig: SignalEntity) {
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(sig.no.toString(), color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.5f))
-        Text(sig.date, color = TextSecondary, fontSize = 9.sp, modifier = Modifier.weight(1.5f))
-        Text(sig.pair, color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
+        Text(sig.no.toString(), color = textOnBg, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.5f))
+        Text(sig.date, color = textSec, fontSize = 9.sp, modifier = Modifier.weight(1.5f))
+        Text(sig.pair, color = textOnBg, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
         Text(sig.type, color = dirColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text(sig.pips.toString(), color = TextLight, fontSize = 11.sp, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+        Text(sig.pips.toString(), color = textOnBg, fontSize = 11.sp, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
         Text(
             text = if (sig.profit >= 0) "${sig.profit.toInt()}" else "${sig.profit.toInt()}",
-            color = TextLight,
+            color = textOnBg,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.End,
@@ -474,15 +499,20 @@ fun MetricCard(
     title: String,
     value: String,
     valueColor: Color,
+    isDarkMode: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     Card(
-        modifier = modifier.border(1.dp, BorderColor, RoundedCornerShape(8.dp)),
+        modifier = modifier.border(1.dp, border, RoundedCornerShape(8.dp)),
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
+        colors = CardDefaults.cardColors(containerColor = cardBg)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Text(title, color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = textSec, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
             Text(value, color = valueColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
@@ -493,11 +523,14 @@ fun MetricCard(
 fun TimeFilterButton(
     label: String,
     isSelected: Boolean,
+    isDarkMode: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val bg = if (isSelected) Color(0xFF0082FB) else DarkBackground
-    val border = if (isSelected) Color(0xFF0082FB) else BorderColor
+    val bg = if (isSelected) Color(0xFF0082FB) else if (isDarkMode) DarkBackground else LightTheme.Background
+    val border = if (isSelected) Color(0xFF0082FB) else if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
 
     Box(
         modifier = modifier
@@ -510,7 +543,7 @@ fun TimeFilterButton(
     ) {
         Text(
             text = label,
-            color = if (isSelected) TextLight else TextSecondary,
+            color = if (isSelected) textOnBg else textSec,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -522,11 +555,14 @@ fun ResultFilterTab(
     label: String,
     isSelected: Boolean,
     textColor: Color,
+    isDarkMode: Boolean = true,
     onClick: () -> Unit
 ) {
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     Text(
         text = label,
-        color = if (isSelected) textColor else TextSecondary,
+        color = if (isSelected) textColor else textSec,
         fontSize = 10.sp,
         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
         modifier = Modifier.clickable { onClick() }

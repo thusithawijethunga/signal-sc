@@ -44,13 +44,22 @@ import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.CardBackground
 import com.widhura.signalxp.ui.theme.DarkBackground
 import com.widhura.signalxp.ui.theme.PrimarySky
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.TextLight
 import com.widhura.signalxp.ui.theme.TextSecondary
 
 @Composable
 fun MarketNewsScreen(
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    isDarkMode: Boolean = true
 ) {
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val cardBg = if (isDarkMode) CardBackground else LightTheme.CardBackground
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+
     val newsList by viewModel.filteredNews.collectAsState()
     val selectedCurrency by viewModel.newsCurrencyFilter.collectAsState()
     val selectedImpact by viewModel.newsImpactFilter.collectAsState()
@@ -62,7 +71,7 @@ fun MarketNewsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(bg)
     ) {
         Column(
             modifier = Modifier
@@ -81,7 +90,7 @@ fun MarketNewsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "📅 FOREX FACTORY",
-                            color = TextLight,
+                            color = textOnBg,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
@@ -89,12 +98,12 @@ fun MarketNewsScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF1E3A8A))
+                                .background(primary.copy(alpha = 0.2f))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "CALENDAR",
-                                color = PrimarySky,
+                                color = primary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -102,7 +111,7 @@ fun MarketNewsScreen(
                     }
                     Text(
                         text = "🇱🇰 Sri Lanka Standard Time (SLST / GMT+5:30)",
-                        color = TextSecondary,
+                        color = textSec,
                         fontSize = 11.sp
                     )
                 }
@@ -115,14 +124,14 @@ fun MarketNewsScreen(
                     if (isSyncing) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = PrimarySky,
+                            color = primary,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Sync Forex Factory Calendar",
-                            tint = PrimarySky
+                            tint = primary
                         )
                     }
                 }
@@ -140,14 +149,14 @@ fun MarketNewsScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) PrimarySky else CardBackground)
-                            .border(1.dp, if (isSelected) PrimarySky else BorderColor, RoundedCornerShape(16.dp))
+                            .background(if (isSelected) primary else cardBg)
+                            .border(1.dp, if (isSelected) primary else border, RoundedCornerShape(16.dp))
                             .clickable { viewModel.setNewsCurrencyFilter(curr) }
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = if (curr == "ALL") "All Currencies" else curr,
-                            color = if (isSelected) TextLight else TextSecondary,
+                            color = if (isSelected) textOnBg else textSec,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -173,14 +182,14 @@ fun MarketNewsScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) CardBackground else DarkBackground)
-                            .border(1.dp, if (isSelected) PrimarySky else BorderColor, RoundedCornerShape(16.dp))
+                            .background(if (isSelected) cardBg else bg)
+                            .border(1.dp, if (isSelected) primary else border, RoundedCornerShape(16.dp))
                             .clickable { viewModel.setNewsImpactFilter(imp) }
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = chipLabel,
-                            color = if (isSelected) TextLight else TextSecondary,
+                            color = if (isSelected) textOnBg else textSec,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -189,7 +198,7 @@ fun MarketNewsScreen(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            Divider(color = BorderColor)
+            Divider(color = border)
             Spacer(modifier = Modifier.height(8.dp))
 
             // News Feed List
@@ -203,22 +212,22 @@ fun MarketNewsScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "No Forex Factory events found for selected filters.",
-                            color = TextSecondary,
+                            color = textSec,
                             fontSize = 12.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(CardBackground)
-                                .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                                .background(cardBg)
+                                .border(1.dp, border, RoundedCornerShape(8.dp))
                                 .clickable {
                                     viewModel.setNewsCurrencyFilter("ALL")
                                     viewModel.setNewsImpactFilter("ALL")
                                 }
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text(text = "Reset Filters", color = PrimarySky, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Reset Filters", color = primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

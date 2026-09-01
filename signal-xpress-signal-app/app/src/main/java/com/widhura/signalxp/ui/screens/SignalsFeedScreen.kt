@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Divider
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,6 +40,7 @@ import com.widhura.signalxp.ui.MainViewModel
 import com.widhura.signalxp.ui.components.SignalCard
 import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.DarkBackground
+import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.SecondaryBlue
 import com.widhura.signalxp.ui.theme.TextLight
@@ -48,7 +50,9 @@ import com.widhura.signalxp.ui.theme.TextSecondary
 @Composable
 fun SignalsFeedScreen(
     viewModel: MainViewModel,
-    onTitleTap: (() -> Unit)? = null
+    isDarkMode: Boolean = true,
+    onTitleTap: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null
 ) {
     val signals by viewModel.filteredSignals.collectAsState()
     val selectedPair by viewModel.selectedPairFilter.collectAsState()
@@ -56,10 +60,17 @@ fun SignalsFeedScreen(
 
     val pairs = listOf("ALL", "XAU/USD", "EUR/USD", "GBP/JPY")
 
+    val bg = if (isDarkMode) DarkBackground else LightTheme.Background
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+    val textOnBg = if (isDarkMode) TextLight else LightTheme.TextPrimary
+    val textSec = if (isDarkMode) TextSecondary else LightTheme.TextSecondary
+    val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val accentEmerald = if (isDarkMode) com.widhura.signalxp.ui.theme.AccentEmerald else LightTheme.AccentEmerald
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -69,37 +80,52 @@ fun SignalsFeedScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // App Header
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Box(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "SIGNAL XPRESS",
-                    color = PrimarySky,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.then(
-                        if (onTitleTap != null) {
-                            Modifier.clickable {
-                                tapCount++
-                                if (tapCount >= 5) {
-                                    tapCount = 0
-                                    onTitleTap()
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "SIGNAL XPRESS",
+                        color = primary,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.then(
+                            if (onTitleTap != null) {
+                                Modifier.clickable {
+                                    tapCount++
+                                    if (tapCount >= 5) {
+                                        tapCount = 0
+                                        onTitleTap()
+                                    }
                                 }
-                            }
-                        } else Modifier
+                            } else Modifier
+                        )
                     )
-                )
-                Text(
-                    text = "Official Forex & Gold Signals Feed",
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
+                    Text(
+                        text = "Official Forex & Gold Signals Feed",
+                        color = textSec,
+                        fontSize = 12.sp
+                    )
+                }
+                if (onSettingsClick != null) {
+                    Text(
+                        text = "\u2699\uFE0F",
+                        fontSize = 22.sp,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onSettingsClick() }
+                            .padding(4.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = BorderColor)
+            Divider(color = border)
             Spacer(modifier = Modifier.height(12.dp))
 
             // Subheader Title
@@ -110,14 +136,14 @@ fun SignalsFeedScreen(
             ) {
                 Text(
                     text = "📡 Live Market Signals",
-                    color = TextLight,
+                    color = textOnBg,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
                     text = "● Live Feed",
-                    color = com.widhura.signalxp.ui.theme.AccentEmerald,
+                    color = accentEmerald,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -135,14 +161,14 @@ fun SignalsFeedScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) PrimarySky else com.widhura.signalxp.ui.theme.CardBackground)
-                            .border(1.dp, if (isSelected) PrimarySky else BorderColor, RoundedCornerShape(8.dp))
+                            .background(if (isSelected) primary else MaterialTheme.colorScheme.surface)
+                            .border(1.dp, if (isSelected) primary else border, RoundedCornerShape(8.dp))
                             .clickable { viewModel.setPairFilter(pair) }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = pair,
-                            color = if (isSelected) DarkBackground else TextPrimary,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -162,7 +188,7 @@ fun SignalsFeedScreen(
                 ) {
                     Text(
                         text = "No signals available for selected pair.",
-                        color = TextSecondary,
+                        color = textSec,
                         fontSize = 13.sp
                     )
                 }
