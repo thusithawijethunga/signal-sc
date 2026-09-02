@@ -80,7 +80,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         authRepository = AuthRepository(application)
 
         viewModelScope.launch {
-            repository.seedInitialDataIfEmpty()
             // Auto-sync from API on startup
             syncAllFromApi()
             // Connect WebSocket after sync
@@ -826,12 +825,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isDeveloperMode: StateFlow<Boolean> = MutableStateFlow(com.widhura.signalxp.BuildConfig.DEVELOPER_MODE).asStateFlow()
     val isScreenshotDisabled: StateFlow<Boolean> = MutableStateFlow(com.widhura.signalxp.BuildConfig.SCREENSHOT_DISABLED).asStateFlow()
 
-    private val _vipWebUrl = MutableStateFlow(prefs.getString("vip_admin_web_url", "") ?: "")
-    val vipWebUrl: StateFlow<String> = _vipWebUrl.asStateFlow()
     private val _isSyncingVip = MutableStateFlow(false)
     val isSyncingVip: StateFlow<Boolean> = _isSyncingVip.asStateFlow()
-    private val _lastVipSyncTime = MutableStateFlow(prefs.getString("vip_last_sync_time", "Live Auto-Sync Active") ?: "Live Auto-Sync Active")
-    val lastVipSyncTime: StateFlow<String> = _lastVipSyncTime.asStateFlow()
 
     val rawVipMembers: StateFlow<List<VipMemberEntity>> = repository.allVipMembers.stateIn(
         scope = viewModelScope, started = SharingStarted.WhileSubscribed(5000), initialValue = emptyList()
@@ -854,79 +849,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setVipSearchQuery(query: String) { _vipSearchQuery.value = query }
     fun setVipPeriodFilter(period: String) { _vipPeriodFilter.value = period }
 
-    fun setVipWebUrl(newUrl: String) {
-        val trimmed = newUrl.trim()
-        _vipWebUrl.value = trimmed
-        prefs.edit().putString("vip_admin_web_url", trimmed).apply()
-    }
-
-    fun syncVipLeaderboardFromWeb(overrideUrl: String? = null, onComplete: ((Boolean, String) -> Unit)? = null) {
-        val urlToUse = overrideUrl?.trim() ?: _vipWebUrl.value.trim()
-        if (urlToUse.isBlank()) {
-            onComplete?.invoke(false, "Web URL not set.")
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
+    fun loadVipFromApi(onComplete: ((Boolean, String) -> Unit)? = null) {
+        viewModelScope.launch {
             _isSyncingVip.value = true
             try {
-                val request = Request.Builder().url(urlToUse)
-                    .header("User-Agent", "Mozilla/5.0 (Android; SignalXpress/1.0)")
-                    .header("Accept", "application/json").build()
-                val response = okHttpClient.newCall(request).execute()
-                val responseBodyStr = response.body?.string() ?: ""
-                if (!response.isSuccessful || responseBodyStr.isBlank()) {
-                    withContext(Dispatchers.Main) { _isSyncingVip.value = false; onComplete?.invoke(false, "Server returned HTTP ${response.code}") }
-                    return@launch
-                }
-                val trimmed = responseBodyStr.trim()
-                val jsonArray: JSONArray = when {
-                    trimmed.startsWith("[") -> JSONArray(trimmed)
-                    trimmed.startsWith("{") -> {
-                        val rootObj = JSONObject(trimmed)
-                        when {
-                            rootObj.has("members") -> rootObj.getJSONArray("members")
-                            rootObj.has("data") -> rootObj.getJSONArray("data")
-                            rootObj.has("leaderboard") -> rootObj.getJSONArray("leaderboard")
-                            rootObj.has("top10") -> rootObj.getJSONArray("top10")
-                            rootObj.has("vips") -> rootObj.getJSONArray("vips")
-                            rootObj.has("record") -> { val rec = rootObj.get("record"); if (rec is JSONArray) rec else if (rec is JSONObject && rec.has("members")) rec.getJSONArray("members") else JSONArray() }
-                            else -> JSONArray()
-                        }
-                    }
-                    else -> JSONArray()
-                }
-                if (jsonArray.length() == 0) {
-                    withContext(Dispatchers.Main) { _isSyncingVip.value = false; onComplete?.invoke(false, "No VIP entries found") }
-                    return@launch
-                }
-                val parsedList = mutableListOf<VipMemberEntity>()
-                var maxLots = 1.0
-                for (i in 0 until jsonArray.length()) { val obj = jsonArray.optJSONObject(i) ?: continue; val lots = obj.optDouble("lots", obj.optDouble("volume", 0.0)); if (lots > maxLots) maxLots = lots }
-                for (i in 0 until jsonArray.length()) {
-                    val obj = jsonArray.optJSONObject(i) ?: continue
-                    val name = obj.optString("name", obj.optString("trader", "Unknown"))
-                    val memberId = obj.optString("memberId", obj.optString("member_id", obj.optString("id", "—")))
-                    val lots = obj.optDouble("lots", obj.optDouble("volume", 0.0))
-                    val broker = obj.optString("broker", "Exness VIP")
-                    val favoritePair = obj.optString("favoritePair", obj.optString("pair", "XAU/USD"))
-                    val winRate = obj.optDouble("winRate", 75.0)
-                    val totalTrades = obj.optInt("totalTrades", 20)
-                    val period = obj.optString("period", "MONTHLY").uppercase()
-                    val fraction = (lots / (maxLots * 1.12)).toFloat().coerceIn(0.05f, 0.95f)
-                    val rankIndex = i + 1
-                    val accentColor = when (rankIndex) { 1 -> 0xFFF59E0B; 2 -> 0xFFE2E8F0; 3 -> 0xFFF97316; 4 -> 0xFF6366F1; 5 -> 0xFFD946EF; 6 -> 0xFF10B981; 7 -> 0xFFEF4444; 8 -> 0xFF06B6D4; 9 -> 0xFFEAB308; else -> 0xFF8B5CF6 }
-                    parsedList.add(VipMemberEntity(rank = rankIndex, name = name.ifBlank { "Unknown" }, memberId = memberId.ifBlank { "—" }, lots = lots, progressFraction = fraction, accentHex = accentColor, period = period, winRate = winRate, totalTrades = totalTrades, broker = broker, favoritePair = favoritePair))
-                }
-                if (parsedList.isNotEmpty()) {
-                    repository.replaceAllVipMembers(parsedList)
-                    val sdf = SimpleDateFormat("hh:mm a", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Colombo") }
-                    val syncTimeStr = "Synced at ${sdf.format(Date())} (SLST)"
-                    _lastVipSyncTime.value = syncTimeStr
-                    prefs.edit().putString("vip_last_sync_time", syncTimeStr).apply()
-                    withContext(Dispatchers.Main) { _isSyncingVip.value = false; onComplete?.invoke(true, "Fetched ${parsedList.size} VIP Traders!") }
+                val result = apiRepository.syncVipLeaderboard()
+                _isSyncingVip.value = false
+                if (result.isSuccess) {
+                    onComplete?.invoke(true, "VIP data loaded")
+                } else {
+                    onComplete?.invoke(false, result.exceptionOrNull()?.message ?: "Failed to load VIP data")
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { _isSyncingVip.value = false; onComplete?.invoke(false, "Error: ${e.localizedMessage}") }
+                _isSyncingVip.value = false
+                onComplete?.invoke(false, e.message ?: "Failed to load VIP data")
             }
         }
     }

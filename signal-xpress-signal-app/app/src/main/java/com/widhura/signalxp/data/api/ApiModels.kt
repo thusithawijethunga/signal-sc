@@ -43,7 +43,10 @@ data class RegisterRequest(
     val name: String,
     val email: String,
     val password: String,
-    @Json(name = "password_confirmation") val passwordConfirmation: String
+    @Json(name = "password_confirmation") val passwordConfirmation: String,
+    val broker: String? = null,
+    @Json(name = "account_id") val accountId: String? = null,
+    @Json(name = "account_type") val accountType: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -58,6 +61,10 @@ data class UserResponse(
     val name: String,
     val email: String,
     val role: String = "viewer",
+    @Json(name = "sx_id") val sxId: String? = null,
+    val broker: String? = null,
+    @Json(name = "account_id") val accountId: String? = null,
+    @Json(name = "account_type") val accountType: String? = null,
     @Json(name = "created_at") val createdAt: String? = null
 )
 

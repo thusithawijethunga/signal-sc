@@ -114,19 +114,13 @@ fun VipLeaderboardScreen(
     val vipMembers by viewModel.filteredVipMembers.collectAsState()
     val selectedPeriod by viewModel.vipPeriodFilter.collectAsState()
     val searchQuery by viewModel.vipSearchQuery.collectAsState()
-    val vipWebUrl by viewModel.vipWebUrl.collectAsState()
     val isSyncingVip by viewModel.isSyncingVip.collectAsState()
-    val lastVipSyncTime by viewModel.lastVipSyncTime.collectAsState()
 
-    var showAdminConfigDialog by remember { mutableStateOf(false) }
     var selectedMemberForDetail by remember { mutableStateOf<VipMemberEntity?>(null) }
     var isSearchOpen by remember { mutableStateOf(false) }
-    var isRefreshing by remember { mutableStateOf(false) }
 
-    LaunchedEffect(vipWebUrl) {
-        if (vipWebUrl.isNotBlank()) {
-            viewModel.syncVipLeaderboardFromWeb()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.loadVipFromApi()
     }
 
     val totalLots = remember(vipMembers) { vipMembers.sumOf { it.lots } }
@@ -191,9 +185,7 @@ fun VipLeaderboardScreen(
                                 modifier = Modifier.size(19.dp)
                             )
                         }
-                        IconButton(onClick = {
-                            viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
-                        }, modifier = Modifier.size(34.dp)) {
+                        IconButton(onClick = { viewModel.loadVipFromApi() }, modifier = Modifier.size(34.dp)) {
                             Icon(
                                 Icons.Default.Refresh, "Sync",
                                 tint = if (isSyncingVip) primary else textSec,
@@ -292,14 +284,12 @@ fun VipLeaderboardScreen(
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("No VIP members recorded yet.", color = textSec, fontSize = 13.sp)
-                            if (vipWebUrl.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp), color = primary,
-                                    modifier = Modifier.clickable { viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() } }
-                                ) {
-                                    Text("Fetch from Web", color = bg, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
-                                }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp), color = primary,
+                                modifier = Modifier.clickable { viewModel.loadVipFromApi() }
+                            ) {
+                                Text("Load from API", color = bg, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
                             }
                         }
                     }
@@ -312,10 +302,6 @@ fun VipLeaderboardScreen(
                 item { Spacer(modifier = Modifier.height(70.dp)) }
             }
         }
-    }
-
-    if (showAdminConfigDialog) {
-        AdminWebLinkConfigDialog(currentUrl = vipWebUrl, viewModel = viewModel, onDismiss = { showAdminConfigDialog = false })
     }
 
     selectedMemberForDetail?.let { member ->
@@ -532,122 +518,6 @@ fun VipLeaderboardRow(
             Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(62.dp)) {
                 Text(df.format(member.lots), color = rowAccentColor, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                 Text("lots", color = textSec, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════
-// ADMIN WEB LINK CONFIG DIALOG
-// ═══════════════════════════════════════════════════════
-@Composable
-fun AdminWebLinkConfigDialog(currentUrl: String, viewModel: MainViewModel, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
-    var isUnlocked by remember { mutableStateOf(false) }
-    var enteredPin by remember { mutableStateOf("") }
-    var pinError by remember { mutableStateOf(false) }
-    var webUrlInput by remember { mutableStateOf(currentUrl) }
-    var syncResultMsg by remember { mutableStateOf<String?>(null) }
-    var isTestingSync by remember { mutableStateOf(false) }
-    var showFormatGuide by remember { mutableStateOf(false) }
-
-    val sampleJson = """[{"name":"Prabath manjula","memberId":"SX1043","lots":81.15,"broker":"Exness","favoritePair":"XAU/USD","winRate":86.4,"totalTrades":128}]"""
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(18.dp), color = CardBackground, border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = PrimarySky.copy(alpha = 0.15f), modifier = Modifier.size(34.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.CloudSync, null, tint = PrimarySky, modifier = Modifier.size(18.dp)) }
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("Admin Web Link Config", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, "Close", tint = TextSecondary) }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                if (!isUnlocked) {
-                    Text("Enter Admin PIN to configure Web API source link.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 12.dp))
-                    OutlinedTextField(
-                        value = enteredPin, onValueChange = { enteredPin = it; pinError = false },
-                        label = { Text("Admin PIN (7788, 1234, 9988)") }, singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        isError = pinError,
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimarySky, unfocusedBorderColor = BorderColor, focusedTextColor = TextLight, unfocusedTextColor = TextLight, errorBorderColor = AccentRed),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (pinError) Text("Invalid PIN", color = AccentRed, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Surface(
-                        shape = RoundedCornerShape(10.dp), color = PrimarySky, modifier = Modifier.fillMaxWidth().clickable {
-                            if (enteredPin in listOf("7788", "1234", "9988", "admin")) isUnlocked = true else pinError = true
-                        }
-                    ) {
-                        Box(modifier = Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-                            Text("Authorize & Open Settings", color = DarkBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                } else {
-                    Text("Set the Web JSON URL where admin updates Top 10 rankings.", color = TextSecondary, fontSize = 11.5.sp, lineHeight = 16.sp, modifier = Modifier.padding(bottom = 12.dp))
-                    OutlinedTextField(
-                        value = webUrlInput, onValueChange = { webUrlInput = it; syncResultMsg = null },
-                        label = { Text("Web API / JSON URL") }, singleLine = false, maxLines = 3,
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimarySky, unfocusedBorderColor = BorderColor, focusedTextColor = TextLight, unfocusedTextColor = TextLight),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
-                        shape = RoundedCornerShape(8.dp), color = CardHeaderBackground,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, PrimarySky.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth().clickable(enabled = !isTestingSync && webUrlInput.isNotBlank()) {
-                            isTestingSync = true; syncResultMsg = "Connecting..."
-                            viewModel.syncVipLeaderboardFromWeb(webUrlInput) { success, msg -> isTestingSync = false; syncResultMsg = if (success) "✓ $msg" else "✕ $msg" }
-                        }
-                    ) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                            if (isTestingSync) { CircularProgressIndicator(color = PrimarySky, strokeWidth = 2.dp, modifier = Modifier.size(14.dp)); Spacer(modifier = Modifier.width(8.dp)) }
-                            else { Icon(Icons.Default.CloudSync, null, tint = PrimarySky, modifier = Modifier.size(16.dp)); Spacer(modifier = Modifier.width(6.dp)) }
-                            Text(if (isTestingSync) "Testing..." else "Test & Sync Now", color = PrimarySky, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    syncResultMsg?.let { Text(it, color = if (it.startsWith("✓")) AccentEmerald else AccentRed, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp)) }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0x1538BDF8), border = androidx.compose.foundation.BorderStroke(0.5.dp, PrimarySky.copy(alpha = 0.3f)), modifier = Modifier.fillMaxWidth().clickable { showFormatGuide = !showFormatGuide }) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Info, null, tint = PrimarySky, modifier = Modifier.size(14.dp)); Spacer(modifier = Modifier.width(6.dp)); Text(if (showFormatGuide) "Hide Guide" else "View JSON Format Guide", color = PrimarySky, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
-                            Text(if (showFormatGuide) "▲" else "▼", color = PrimarySky, fontSize = 10.sp)
-                        }
-                    }
-                    AnimatedVisibility(visible = showFormatGuide) {
-                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFF030712), border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor), modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Sample JSON:", color = TextSecondary, fontSize = 10.sp)
-                                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(sampleJson)); Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show() }, modifier = Modifier.size(20.dp)) {
-                                        Icon(Icons.Default.ContentCopy, "Copy", tint = PrimarySky, modifier = Modifier.size(13.dp))
-                                    }
-                                }
-                                Text(sampleJson, color = AccentEmerald, fontSize = 10.sp, fontFamily = FontFamily.Monospace, lineHeight = 14.sp)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Surface(
-                        shape = RoundedCornerShape(10.dp), color = PrimarySky, modifier = Modifier.fillMaxWidth().clickable {
-                            viewModel.setVipWebUrl(webUrlInput)
-                            if (webUrlInput.isNotBlank()) viewModel.syncVipLeaderboardFromWeb { _, msg -> Toast.makeText(context, "Saved! $msg", Toast.LENGTH_SHORT).show() }
-                            else Toast.makeText(context, "Cleared", Toast.LENGTH_SHORT).show()
-                            onDismiss()
-                        }
-                    ) {
-                        Box(modifier = Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) { Text("Save Web Link", color = DarkBackground, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                    }
-                }
             }
         }
     }

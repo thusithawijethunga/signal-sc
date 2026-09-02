@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IB Partner & Trading Analytics System</title>
+  
+  <!-- Libraries -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      background-color: #0b1329; 
+      color: #f8fafc; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      padding-bottom: 2rem;
+    }
+    
+    .card, .sec { 
+      background-color: #162032; 
+      border: 1px solid #2a3a52; 
+      border-radius: 16px; 
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+    }
+
+    .form-control, .form-select { 
+      background-color: #0b1329 !important; 
+      border: 1px solid #334155 !important; 
+      color: #fff !important; 
+      border-radius: 8px; 
+    }
+    .form-control:focus, .form-select:focus { 
+      background-color: #0b1329 !important; 
+      color: #fff !important; 
+      border-color: #3b82f6 !important; 
+      box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+    }
+    label { color: #94a3b8; font-size: 0.85rem; margin-bottom: 4px; }
+
+    .badge-sx { 
+      font-size: 0.85rem; 
+      background: linear-gradient(135deg, #2563eb, #1d4ed8); 
+      color: white; 
+      padding: 4px 10px; 
+      border-radius: 20px; 
+      font-weight: bold; 
+      font-family: monospace;
+    }
+
+    .nav-pills .nav-link {
+      color: #94a3b8;
+      background: #162032;
+      border: 1px solid #2a3a52;
+      margin-right: 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      padding: 10px 20px;
+    }
+    .nav-pills .nav-link.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+
+    /* Single CSV Upload Box */
+    .upload-box {
+      background: #0f1320; 
+      border: 2px dashed #2a3a52; 
+      border-radius: 14px; 
+      padding: 2rem; 
+      text-align: center; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+      position: relative;
+    }
+    .upload-box:hover { border-color: #3b82f6; background: #111825; }
+    .upload-box.ready { border-color: #00e5a0; border-style: solid; background: #0a1f18; }
+    .upload-box.ready .up-icon { color: #00e5a0; }
+    .up-icon { font-size: 38px; color: #3b82f6; margin-bottom: 8px; display: block; }
+    .up-title { font-size: 18px; font-weight: 600; color: #f8fafc; margin-bottom: 4px; }
+    .up-sub { font-size: 13px; color: #94a3b8; }
+    .up-fname { font-size: 14px; color: #00e5a0; margin-top: 8px; font-family: monospace; font-weight: bold; }
+    .up-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+    /* Run Button */
+    .btn-run { 
+      background: #0a1f18; 
+      color: #00e5a0; 
+      border: 1px solid #00e5a0; 
+      border-radius: 8px; 
+      padding: 12px 24px; 
+      font-size: 16px; 
+      font-weight: bold;
+      cursor: pointer; 
+      width: 100%; 
+      margin-top: 1.25rem;
+      margin-bottom: 1.25rem; 
+      transition: all 0.2s;
+    }
+    .btn-run:hover { background: #0f2d20; box-shadow: 0 0 15px rgba(0, 229, 160, 0.3); }
+    .btn-run:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+    /* Metrics Grid */
+    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+    .mc { background: #151a28; border: 1px solid #1e2130; border-radius: 12px; padding: 0.9rem 1.1rem; position: relative; overflow: hidden; }
+    .mc-accent { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .mc-label { font-size: 11px; color: #5a6480; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .mc-val { font-size: 22px; font-weight: 600; }
+    .mc-sub { font-size: 11px; color: #5a6480; margin-top: 2px; }
+
+    /* Tables */
+    .table-container { background-color: #162032 !important; border-radius: 8px; }
+    .table-dark-custom { color: #f8fafc !important; background-color: #162032 !important; margin-bottom: 0; }
+    .table-dark-custom th { 
+      background-color: #0b1329 !important; 
+      color: #94a3b8 !important; 
+      border-bottom: 2px solid #2a3a52 !important; 
+      font-weight: 600; position: sticky; top: 0; z-index: 10;
+    }
+    .table-dark-custom td { background-color: #162032 !important; color: #f8fafc !important; border-bottom: 1px solid #2a3a52 !important; vertical-align: middle; }
+    .table-dark-custom tbody tr:hover td { background-color: #1e2d42 !important; }
+
+    tr.no-match td { background: #1a0a0a !important; }
+    tr.no-match:hover td { background: #220d0d !important; }
+    tr.no-match td:first-child { border-left: 3px solid #e05050; }
+
+    /* Search Result Cards */
+    .search-card { background-color: #0b1329; border: 1px solid #3b82f6; border-radius: 12px; }
+    .search-card .lbl { color: #94a3b8 !important; font-weight: 500; }
+    .search-card .val-white { color: #f8fafc !important; }
+    .search-card .val-blue { color: #60a5fa !important; }
+    .search-card .val-green { color: #4ade80 !important; }
+
+    /* Badges & Tags */
+    .broker-xm { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #0a1f18; color: #00e5a0; border: 1px solid #00e5a030; }
+    .broker-o { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #1a1520; color: #a06af0; border: 1px solid #3a2060; }
+    .badge-match { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #0a1f18; color: #00e5a0; border: 1px solid #00e5a030; }
+    .badge-nomatch { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #220808; color: #e05050; border: 1px solid #50101030; }
+    .badge-warn { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #1a1408; color: #f5c842; border: 1px solid #f5c84230; }
+    
+    .av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0; }
+    .bar-bg { height: 5px; border-radius: 3px; background: #1a1f30; flex: 1; max-width: 70px; }
+    .bar-fill { height: 5px; border-radius: 3px; background: #00e5a0; }
+
+    /* Top 10 List */
+    .top10-list { display: flex; flex-direction: column; gap: 8px; }
+    .top10-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #13192a; border-radius: 10px; border: 1px solid #1e2130; }
+    .top10-item.gold { border-color: #f5c84240; background: #1a1408; }
+    .top10-item.silver { border-color: #c0c8d840; background: #14141e; }
+    .top10-item.bronze { border-color: #e5905a40; background: #1a100a; }
+    .t10-rank { font-size: 18px; font-weight: 600; min-width: 28px; text-align: center; }
+    .t10-name { flex: 1; font-size: 14px; font-weight: 500; color: #e8eaf0; }
+    .t10-bar-bg { height: 4px; border-radius: 2px; background: #1e2130; width: 100%; }
+    .t10-bar-fill { height: 4px; border-radius: 2px; }
+
+    /* Internal Analytics Tabs */
+    .sub-tabs { display: flex; gap: 6px; margin-bottom: 1.1rem; flex-wrap: wrap; }
+    .sub-tab { padding: 7px 16px; font-size: 14px; border: 1px solid #1e2130; border-radius: 8px; cursor: pointer; background: #151a28; color: #5a6480; transition: all 0.15s; }
+    .sub-tab.on { background: #0a1f18; color: #00e5a0; border-color: #00e5a040; }
+
+    @media(max-width: 768px){
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body class="p-3 p-md-4">
+
+  <div class="container-fluid" style="max-width: 1350px;">
+    
+    <!-- Top Bar / Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+      <div class="d-flex align-items-center gap-3">
+        <div class="p-2 rounded-3 bg-dark border border-primary">
+          <i class="fa-solid fa-user-shield text-primary fs-3"></i>
+        </div>
+        <div>
+          <h3 class="m-0 text-white fw-bold fs-4">IB Partner & Trading Analytics System</h3>
+          <small class="text-secondary">Google Sheet Dynamic Sync & Automated Trading CSV Analytics</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-primary text-white" onclick="loadData()">
+          <i class="fa-solid fa-rotate me-1"></i> Refresh Sheet
+        </button>
+        <span id="syncStatus" class="badge bg-warning text-dark">Connecting...</span>
+      </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <ul class="nav nav-pills mb-4" id="mainTab" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="db-tab" data-bs-toggle="pill" data-bs-target="#db-panel" type="button">
+          <i class="fa-solid fa-database me-2"></i>Partner System (Database & Registration)
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="csv-tab" data-bs-toggle="pill" data-bs-target="#csv-panel" type="button">
+          <i class="fa-solid fa-chart-line me-2"></i>Trading Trades CSV Analytics
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="mainTabContent">
+      
+      <!-- TAB 1: IB Partner System -->
+      <div class="tab-pane fade show active" id="db-panel">
+        
+        <div class="row g-4">
+          <!-- Search Card -->
+          <div class="col-12">
+            <div class="card p-4">
+              <h5 class="text-white mb-3">
+                <i class="fa-solid fa-magnifying-glass text-primary me-2"></i>සෙවීම (Search by SX ID / Account ID / NIC)
+              </h5>
+              <div class="input-group">
+                <input type="text" id="searchInput" class="form-control form-control-lg" onkeyup="searchUser()" placeholder="SX ID (උදා: 1012 හෝ SX1012), Account ID හෝ NIC එක ඇතුළත් කරන්න...">
+                <button class="btn btn-primary px-4" onclick="searchUser()">
+                  <i class="fa-solid fa-search me-1"></i> Search
+                </button>
+              </div>
+              <div id="searchResult" class="mt-3"></div>
+            </div>
+          </div>
+
+          <!-- Form: Add Member -->
+          <div class="col-lg-5">
+            <div class="card p-4 h-100">
+              <h5 class="text-white mb-3">
+                <i class="fa-solid fa-user-plus text-success me-2"></i>අලුත් සාමාජිකයෙක් ඇතුළත් කිරීම
+              </h5>
+              <form id="addForm" onsubmit="saveMember(event)">
+                <div class="mb-2">
+                  <label>නම (Name)</label>
+                  <input type="text" id="name" class="form-control" placeholder="සාමාජිකයාගේ නම" required>
+                </div>
+                
+                <div class="row mb-2">
+                  <div class="col-6">
+                    <label>Broker Name</label>
+                    <input type="text" id="broker" class="form-control" value="XM">
+                  </div>
+                  <div class="col-6">
+                    <label>Account ID</label>
+                    <input type="text" id="accountId" class="form-control" placeholder="Account ID" required>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <label>NIC / Passport Number</label>
+                  <input type="text" id="nic" class="form-control" placeholder="ID නම්‍බර් එක" required>
+                </div>
+
+                <div class="row mb-2">
+                  <div class="col-6">
+                    <label>WhatsApp Number</label>
+                    <input type="text" id="whatsapp" class="form-control" placeholder="07XXXXXXXX">
+                  </div>
+                  <div class="col-6">
+                    <label>Telegram Username</label>
+                    <input type="text" id="telegram" class="form-control" placeholder="@username">
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label>Partner Name</label>
+                  <div class="input-group">
+                    <select id="partnerSelect" class="form-select">
+                      <option value="Tharindu">Tharindu</option>
+                      <option value="Malaka">Malaka</option>
+                      <option value="Asanka">Asanka</option>
+                      <option value="Wajira">Wajira</option>
+                      <option value="Nadun">Nadun</option>
+                      <option value="Wijenayaka Sir">Wijenayaka Sir</option>
+                      <option value="Tharanga Akka">Tharanga Akka</option>
+                      <option value="Menala">Menala</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-secondary text-white" onclick="addPartner()">+ Partner</button>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 py-2 mt-2" id="saveBtn">
+                  <i class="fa-solid fa-floppy-disk me-1"></i> Save Member
+                </button>
+              </form>
+              <div id="status" class="mt-3"></div>
+            </div>
+          </div>
+
+          <!-- Database Members Table -->
+          <div class="col-lg-7">
+            <div class="card p-4 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white m-0">
+                  <i class="fa-solid fa-list-ul text-info me-2"></i>සාමාජිකයින් ලැයිස්තුව
+                </h5>
+                <span id="totalBadge" class="badge bg-secondary fs-6">Total: 0</span>
+              </div>
+              <div class="table-responsive table-container" style="max-height: 480px; overflow-y: auto;">
+                <table class="table table-dark-custom">
+                  <thead>
+                    <tr>
+                      <th>SX ID</th>
+                      <th>Name</th>
+                      <th>Account ID</th>
+                      <th>Partner</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableBody">
+                    <tr><td colspan="4" class="text-center text-muted py-4">Google Sheet එකෙන් දත්ත Load වෙමින් පවතී...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: SX Partner Dashboard (CSV Analytics) -->
+      <div class="tab-pane fade" id="csv-panel">
+        
+        <!-- Single Upload Box (Trading CSV Only) -->
+        <div class="row">
+          <div class="col-12">
+            <div class="upload-box" id="box2">
+              <input type="file" class="up-input" accept=".csv" id="f2" onchange="handleFile2(this)">
+              <i class="ti ti-receipt up-icon" id="ic2"></i>
+              <div class="up-title">Trading Trades CSV File එක මෙතැනට Upload කරන්න</div>
+              <div class="up-sub">Trades & Commission data අඩංගු CSV එක upload කළ පසු Direct Analysis සිදු වේ</div>
+              <div class="up-fname" id="fn2"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-run" id="runBtn" onclick="processData()" disabled>
+          <i class="ti ti-player-play me-2"></i> Trading CSV එක Analysis කර Analytics Dashboard එක ලබාගන්න
+        </button>
+
+        <!-- CSV Results Section -->
+        <div id="results" style="display:none">
+          
+          <div class="metrics">
+            <div class="mc"><div class="mc-accent" style="background:#00e5a0"></div><div class="mc-label">Partners</div><div class="mc-val" id="m1" style="color:#00e5a0">—</div><div class="mc-sub">Total Partners</div></div>
+            <div class="mc"><div class="mc-accent" style="background:#6a8aff"></div><div class="mc-label">Active traders</div><div class="mc-val" id="m2" style="color:#6a8aff">—</div><div class="mc-sub">With trade records</div></div>
+            <div class="mc"><div class="mc-accent" style="background:#f5c842"></div><div class="mc-label">Total trades</div><div class="mc-val" id="m3" style="color:#f5c842">—</div><div class="mc-sub">All positions</div></div>
+            <div class="mc"><div class="mc-accent" style="background:#00cfff"></div><div class="mc-label">Total lots</div><div class="mc-val" id="m4" style="color:#00cfff">—</div><div class="mc-sub">All trades combined</div></div>
+            <div class="mc"><div class="mc-accent" style="background:#a06af0"></div><div class="mc-label">Total commission</div><div class="mc-val" id="m5" style="color:#a06af0">—</div><div class="mc-sub">Affiliate earned</div></div>
+          </div>
+
+          <!-- TOP 10 & CHARTS SECTION -->
+          <div class="row g-3 mb-4">
+            <!-- Top 10 List -->
+            <div class="col-lg-4">
+              <div class="sec h-100 p-3">
+                <div class="sec-title text-secondary mb-3"><i class="ti ti-trophy me-1"></i> Top 10 — Lots අනුව</div>
+                <div id="top10list" class="top10-list"></div>
+              </div>
+            </div>
+
+            <!-- Chart 1: Partner Match Status (Doughnut Chart) -->
+            <div class="col-lg-4">
+              <div class="sec h-100 p-3">
+                <div class="sec-title text-secondary mb-3 text-center"><i class="ti ti-chart-donut me-1"></i> Partner Match Status</div>
+                <div style="height:270px; position:relative;">
+                  <canvas id="c1"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart 2: Traded Currencies / Pairs (Horizontal Bar Chart) -->
+            <div class="col-lg-4">
+              <div class="sec h-100 p-3">
+                <div class="sec-title text-secondary mb-3 text-center"><i class="ti ti-chart-bar me-1"></i> Traded Currencies / Pairs (Lots)</div>
+                <div style="height:270px; position:relative;">
+                  <canvas id="c2"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-tabs">
+            <div class="sub-tab on" onclick="showT('partners',this)"><i class="ti ti-id-badge me-1"></i> Partner directory</div>
+            <div class="sub-tab" onclick="showT('trades',this)"><i class="ti ti-receipt me-1"></i> Trades by account</div>
+            <div class="sub-tab" onclick="showT('nomatch',this)"><i class="ti ti-alert-triangle me-1"></i> No account match</div>
+          </div>
+
+          <!-- Partner Directory -->
+          <div id="t-partners">
+            <div class="sec p-3">
+              <div class="sec-title text-secondary mb-2"><i class="ti ti-search me-1"></i> Partner search</div>
+              <input class="form-control mb-3" id="srch" placeholder="Name, SX ID, Account ID, Broker..." oninput="filterP()">
+              <div class="table-responsive">
+                <table class="table table-dark-custom">
+                  <thead>
+                    <tr>
+                      <th style="width:40px">#</th>
+                      <th style="width:90px">SX ID</th>
+                      <th>Name</th>
+                      <th style="width:80px">Broker</th>
+                      <th style="width:120px">Account ID</th>
+                      <th style="width:100px">Match</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ptb"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trades by Account -->
+          <div id="t-trades" style="display:none">
+            <div class="sec p-3">
+              <div class="sec-title text-secondary mb-2"><i class="ti ti-table me-1"></i> Trades by account</div>
+              <div class="table-responsive">
+                <table class="table table-dark-custom">
+                  <thead>
+                    <tr>
+                      <th style="width:110px">Account</th>
+                      <th style="width:95px">SX ID</th>
+                      <th>Name</th>
+                      <th style="width:80px;text-align:center">Trades</th>
+                      <th style="width:110px">Lots</th>
+                      <th style="width:100px;text-align:right">Comm $</th>
+                      <th style="width:100px;text-align:right">Aff $</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ttb"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Match -->
+          <div id="t-nomatch" style="display:none">
+            <div class="sec p-3">
+              <div class="sec-title text-danger mb-2"><i class="ti ti-alert-triangle me-1"></i> Account match නැති partners</div>
+              <div class="table-responsive">
+                <table class="table table-dark-custom">
+                  <thead>
+                    <tr>
+                      <th style="width:90px">SX ID</th>
+                      <th>Name</th>
+                      <th style="width:80px">Broker</th>
+                      <th style="width:135px">Account ID</th>
+                      <th style="width:115px">Issue</th>
+                    </tr>
+                  </thead>
+                  <tbody id="nmtb"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    /* =========================================================
+       SYSTEM 1: GOOGLE SHEET INTEGRATION & DATA STORE
+       ========================================================= */
+    const SHEET_ID = '1W6WlUMm9dgMsrXT737pccsg7r66BoIB-rHKQsmW6Pd0';
+    
+    // Updated Apps Script Web App URL
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdQaPf438ajxtiNeYEYTG9AynSYaw2JhKaKDmCnxUNDwiXZNESpo7XyjzZ4NZKRwmm/exec';
+    
+    let dbData = [];
+
+    window.onload = function() { 
+      let cached = localStorage.getItem('cached_sheet_data');
+      if (cached) {
+        dbData = JSON.parse(cached);
+        renderTable();
+      }
+      loadData(); 
+    };
+
+    function loadData() {
+      document.getElementById('syncStatus').innerText = 'Syncing...';
+      document.getElementById('syncStatus').className = 'badge bg-warning text-dark';
+
+      let oldScript = document.getElementById('gvizScript');
+      if (oldScript) oldScript.remove();
+
+      let gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=responseHandler:handleGvizResponse&t=${new Date().getTime()}`;
+
+      let script = document.createElement('script');
+      script.id = 'gvizScript';
+      script.src = gvizUrl;
+      script.onerror = function() {
+        document.getElementById('syncStatus').innerText = 'Offline Mode';
+        document.getElementById('syncStatus').className = 'badge bg-secondary';
+      };
+      document.body.appendChild(script);
+    }
+
+    function handleGvizResponse(response) {
+      if (!response || !response.table || !response.table.rows) {
+        document.getElementById('syncStatus').innerText = 'Error';
+        return;
+      }
+
+      let rows = response.table.rows;
+      dbData = [];
+
+      rows.forEach(row => {
+        let cols = row.c;
+        if (!cols) return;
+
+        let getVal = (idx) => (cols[idx] && cols[idx].v !== null && cols[idx].v !== undefined) ? String(cols[idx].v).trim() : '';
+
+        let rowObj = [
+          getVal(0),  // Timestamp
+          getVal(1),  // Name
+          getVal(2),  // Broker Name
+          getVal(3),  // Account ID
+          getVal(4),  // Telegram
+          getVal(5),  // WhatsApp
+          getVal(6),  // Email
+          getVal(7),  // Age
+          getVal(8),  // NIC
+          getVal(9),  // SX ID
+          getVal(10), // Add Group
+          getVal(11)  // Partner
+        ];
+
+        if (rowObj[1] || rowObj[3] || rowObj[9]) {
+          dbData.push(rowObj);
+        }
+      });
+
+      localStorage.setItem('cached_sheet_data', JSON.stringify(dbData));
+      renderTable();
+
+      document.getElementById('syncStatus').innerText = 'Live Synced';
+      document.getElementById('syncStatus').className = 'badge bg-success';
+    }
+
+    function renderTable() {
+      let tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      
+      document.getElementById('totalBadge').innerText = 'Total: ' + dbData.length;
+
+      if (dbData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">තවම දත්ත ඇතුළත් කර නැත.</td></tr>';
+        return;
+      }
+
+      [...dbData].reverse().forEach(item => {
+        tbody.innerHTML += `<tr>
+          <td><span class="badge-sx">${item[9] || 'N/A'}</span></td>
+          <td class="text-white fw-bold">${item[1] || '-'}</td>
+          <td class="text-info">${item[3] || '-'}</td>
+          <td><span class="badge bg-secondary">${item[11] || '-'}</span></td>
+        </tr>`;
+      });
+    }
+
+    function addPartner() {
+      let p = prompt("අලුත් Partner ගේ නම:");
+      if(p && p.trim()) {
+        let sel = document.getElementById('partnerSelect');
+        let opt = document.createElement('option');
+        opt.value = p.trim(); 
+        opt.innerHTML = p.trim(); 
+        opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function saveMember(e) {
+      e.preventDefault();
+
+      let formObj = {
+        name: document.getElementById('name').value,
+        broker: document.getElementById('broker').value,
+        accountId: document.getElementById('accountId').value,
+        nic: document.getElementById('nic').value,
+        whatsapp: document.getElementById('whatsapp').value,
+        telegram: document.getElementById('telegram').value,
+        partner: document.getElementById('partnerSelect').value
+      };
+
+      let saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      document.getElementById('status').innerHTML = '<div class="alert alert-info p-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Google Sheet එකට Save වෙමින් පවතී...</div>';
+
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formObj)
+      })
+      .then(() => {
+        document.getElementById('status').innerHTML = `<div class="alert alert-success p-2 mb-0">✅ සාර්ථකව Google Sheet එකට Save විය!</div>`;
+        document.getElementById('addForm').reset();
+        saveBtn.disabled = false;
+        
+        setTimeout(loadData, 2000);
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('status').innerHTML = '<div class="alert alert-danger p-2 mb-0">❌ Save කිරීම අසාර්ථක විය!</div>';
+        saveBtn.disabled = false;
+      });
+    }
+
+    /* SEARCH USER FUNCTION */
+    function searchUser() {
+      let rawQuery = document.getElementById('searchInput').value.trim();
+      let resDiv = document.getElementById('searchResult');
+      if(!rawQuery) { resDiv.innerHTML = ''; return; }
+
+      let q = rawQuery.toLowerCase();
+      let sxFormat = q.startsWith('sx') ? q : 'sx' + q;
+
+      let matches = dbData.filter(r => {
+        let sxVal = (r[9] || '').toString().trim().toLowerCase();
+        let accVal = (r[3] || '').toString().trim().toLowerCase();
+        let nicVal = (r[8] || '').toString().trim().toLowerCase();
+        let nameVal = (r[1] || '').toString().trim().toLowerCase();
+
+        if (sxVal === q || sxVal === sxFormat) return true;
+        if (accVal === q) return true;
+        if (nicVal && nicVal === q) return true;
+        if (nameVal && nameVal.includes(q)) return true;
+
+        return false;
+      });
+
+      if(matches.length === 0) {
+        resDiv.innerHTML = '<div class="alert alert-danger p-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i>දත්ත හමු නොවීය!</div>';
+        return;
+      }
+
+      let html = '';
+      matches.forEach(m => {
+        html += `<div class="p-3 search-card mb-2">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="m-0 text-white"><span class="badge-sx me-2">${m[9] || 'N/A'}</span> ${m[1] || 'No Name'}</h4>
+            <span class="badge bg-primary fs-6">Partner: ${m[11] || 'N/A'}</span>
+          </div>
+          <hr class="my-2 border-secondary">
+          <div class="row g-2">
+            <div class="col-md-3 col-6"><span class="lbl">Broker:</span> <span class="val-white">${m[2] || '-'}</span></div>
+            <div class="col-md-3 col-6"><span class="lbl">Account ID:</span> <span class="val-blue">${m[3] || '-'}</span></div>
+            <div class="col-md-3 col-6"><span class="lbl">NIC/Passport:</span> <span class="val-white">${m[8] || '-'}</span></div>
+            <div class="col-md-3 col-6"><span class="lbl">WhatsApp:</span> <span class="val-green">${m[5] || '-'}</span></div>
+            <div class="col-md-3 col-6"><span class="lbl">Telegram:</span> <span class="val-blue">${m[4] || '-'}</span></div>
+          </div>
+        </div>`;
+      });
+      resDiv.innerHTML = html;
+    }
+
+    /* =========================================================
+       SYSTEM 2: CSV ANALYTICS (DIRECT GOOGLE SHEET SYNC)
+       ========================================================= */
+    let tradesCsvData = null;
+    let parsedP = [], tradeStats = [], partnerMap = {};
+    let chart1 = null, chart2 = null;
+    let activeAccs = new Set();
+    let currencyLotsMap = {};
+
+    function handleFile2(inp) {
+      const f = inp.files[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        tradesCsvData = e.target.result;
+        document.getElementById('fn2').textContent = f.name;
+        document.getElementById('box2').classList.add('ready');
+        document.getElementById('ic2').style.color = '#00e5a0';
+        
+        document.getElementById('runBtn').disabled = false;
+      };
+      reader.readAsText(f);
+    }
+
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      return lines.slice(1).map(line => {
+        const vals = []; let cur = '', inQ = false;
+        for (let c of line) {
+          if (c === '"') { inQ = !inQ; }
+          else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+          else cur += c;
+        }
+        vals.push(cur.trim());
+        const obj = {}; headers.forEach((h, i) => obj[h] = (vals[i] || '').replace(/"/g, '').trim());
+        return obj;
+      });
+    }
+
+    function cleanAcc(v) { return (v || '').toString().replace(/\.0$/, '').replace(/,/g, '').trim(); }
+
+    function processData() {
+      if (!tradesCsvData) {
+        alert("කරුණාකර Trading Trades CSV ගොනුව upload කරන්න.");
+        return;
+      }
+
+      // Directly use Google Sheet Database
+      parsedP = dbData.map((item, idx) => ({
+        idx: idx + 1,
+        sx: item[9] || 'N/A',
+        name: item[1] || '—',
+        broker: item[2] || '—',
+        acc: cleanAcc(item[3])
+      })).filter(p => p.sx !== 'N/A' || p.name !== '—');
+
+      const tRows = parseCSV(tradesCsvData);
+      const tAccKey = Object.keys(tRows[0]).find(k => k.toLowerCase().includes('mt4') || k.toLowerCase().includes('mt5') || k.toLowerCase().includes('account'));
+      const tLotsKey = Object.keys(tRows[0]).find(k => k.toLowerCase() === 'lots');
+      const tCommKey = Object.keys(tRows[0]).find(k => k.toLowerCase().includes('total comm'));
+      const tAffKey = Object.keys(tRows[0]).find(k => k.toLowerCase().includes('affiliate'));
+      const tSymbolKey = Object.keys(tRows[0]).find(k => k.toLowerCase().includes('symbol') || k.toLowerCase().includes('instrument') || k.toLowerCase().includes('item') || k.toLowerCase().includes('pair'));
+
+      const statsMap = {};
+      currencyLotsMap = {};
+
+      tRows.forEach(r => {
+        const a = cleanAcc(r[tAccKey]);
+        const lots = parseFloat(r[tLotsKey]) || 0;
+        
+        let symbol = (r[tSymbolKey] || 'UNKNOWN').toUpperCase().replace(/[^A-Z0-9#._]/g, '');
+        if (symbol.includes('GOLD') || symbol.includes('XAU')) symbol = 'GOLD';
+        else if (symbol.includes('SILVER') || symbol.includes('XAG')) symbol = 'SILVER';
+
+        currencyLotsMap[symbol] = (currencyLotsMap[symbol] || 0) + lots;
+
+        if (!a || a === 'nan') return;
+        if (!statsMap[a]) statsMap[a] = { acc: a, t: 0, lots: 0, comm: 0, aff: 0 };
+        statsMap[a].t++;
+        statsMap[a].lots += lots;
+        statsMap[a].comm += parseFloat(r[tCommKey]) || 0;
+        statsMap[a].aff += parseFloat(r[tAffKey]) || 0;
+      });
+
+      tradeStats = Object.values(statsMap);
+      partnerMap = {};
+      parsedP.forEach(p => partnerMap[p.acc] = p);
+      activeAccs = new Set(tradeStats.map(t => t.acc));
+
+      const totalTrades = tradeStats.reduce((s, t) => s + t.t, 0);
+      const totalLots = tradeStats.reduce((s, t) => s + t.lots, 0);
+      const totalComm = tradeStats.reduce((s, t) => s + t.comm, 0);
+
+      document.getElementById('m1').textContent = parsedP.length;
+      document.getElementById('m2').textContent = tradeStats.length;
+      document.getElementById('m3').textContent = totalTrades;
+      document.getElementById('m4').textContent = totalLots.toFixed(2);
+      document.getElementById('m5').textContent = '$' + totalComm.toFixed(2);
+
+      document.getElementById('results').style.display = 'block';
+
+      renderTop10List();
+      renderPartnerStatusChart(parsedP);
+      renderCurrencyBarChart();
+      renderPartners(parsedP);
+      renderTrades();
+      renderNoMatch(parsedP);
+    }
+
+    const rankColors = ['#f5c842', '#c0c8d8', '#e5905a', '#6a8aff', '#a06af0', '#00e5a0', '#e06060', '#5ae0c0', '#f0d050', '#80a0ff'];
+
+    function renderTop10List() {
+      const top = [...tradeStats].sort((a, b) => b.lots - a.lots).slice(0, 10);
+      const maxLots = top[0] ? top[0].lots : 1;
+      document.getElementById('top10list').innerHTML = top.map((t, i) => {
+        const p = partnerMap[t.acc];
+        const name = p ? p.name : 'Unknown';
+        const sxId = p ? p.sx : '—';
+        const pct = Math.round((t.lots / maxLots) * 100);
+        const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+        const rankDisp = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span style="font-size:13px;color:#5a6480;font-weight:500">#${i + 1}</span>`;
+        return `<div class="top10-item ${cls}">
+          <div class="t10-rank">${rankDisp}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <span class="t10-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>
+              <span class="badge-sx">${sxId}</span>
+            </div>
+            <div style="width:100%">
+              <div class="t10-bar-bg"><div class="t10-bar-fill" style="width:${pct}%;background:${rankColors[i]}"></div></div>
+            </div>
+          </div>
+          <div style="text-align:right;min-width:60px">
+            <div style="font-size:14px;font-weight:bold;color:${rankColors[i]}">${t.lots.toFixed(2)}</div>
+            <div style="font-size:11px;color:#5a6480">lots</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderPartnerStatusChart(list) {
+      const matchedCount = list.filter(p => activeAccs.has(p.acc)).length;
+      const noAccCount = list.filter(p => !p.acc || p.acc === '—').length;
+      const noTradeCount = list.length - matchedCount - noAccCount;
+
+      if (chart1) chart1.destroy();
+      chart1 = new Chart(document.getElementById('c1'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Matched', 'No account', 'No trades'],
+          datasets: [{
+            data: [matchedCount, noAccCount, noTradeCount],
+            backgroundColor: ['#00e5a0', '#f5c842', '#e06060'],
+            borderColor: '#0b1329',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94a3b8', font: { size: 11 }, padding: 12, boxWidth: 12 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${ctx.raw} Partners`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderCurrencyBarChart() {
+      const sortedPairs = Object.keys(currencyLotsMap)
+        .sort((a, b) => currencyLotsMap[b] - currencyLotsMap[a])
+        .slice(0, 8);
+
+      const pairValues = sortedPairs.map(k => parseFloat(currencyLotsMap[k].toFixed(2)));
+
+      if (chart2) chart2.destroy();
+      chart2 = new Chart(document.getElementById('c2'), {
+        type: 'bar',
+        data: {
+          labels: sortedPairs.length ? sortedPairs : ['No Data'],
+          datasets: [{
+            label: 'Traded Lots',
+            data: pairValues.length ? pairValues : [0],
+            backgroundColor: 'rgba(59, 130, 246, 0.85)',
+            borderColor: '#3b82f6',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` Lot Size: ${ctx.raw} Lots`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#1e2d42' },
+              ticks: { color: '#94a3b8', font: { size: 10 } }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#f8fafc', font: { size: 11, weight: 'bold' } }
+            }
+          }
+        }
+      });
+    }
+
+    const avBgs = ['#0a1f18', '#0a1230', '#1a0f18', '#181408', '#0f1520'];
+    const avFgs = ['#00e5a0', '#6a8aff', '#e080c0', '#f5c842', '#a06af0'];
+    function ini(n) { return (n || '?').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase(); }
+    function av(name, i) { const b = avBgs[i % 5], f = avFgs[i % 5]; return `<div class="av" style="background:${b};color:${f};border:1px solid ${f}30">${ini(name)}</div>`; }
+
+    let allParsed = [];
+    function renderPartners(list) { allParsed = list; _renderP(list); }
+    function filterP() {
+      const q = (document.getElementById('srch').value || '').toLowerCase();
+      _renderP(allParsed.filter(p => p.name.toLowerCase().includes(q) || p.sx.toLowerCase().includes(q) || p.broker.toLowerCase().includes(q) || p.acc.toLowerCase().includes(q)));
+    }
+
+    function _renderP(list) {
+      document.getElementById('ptb').innerHTML = list.map((p, i) => {
+        const matched = activeAccs.has(p.acc); const noAcc = !p.acc || p.acc === '—' || p.acc === 'nan';
+        const bk = p.broker === 'XM' ? `<span class="broker-xm">XM</span>` : p.broker === '—' ? `<span style="color:#3a4060">—</span>` : `<span class="broker-o">${p.broker}</span>`;
+        let badge, rowCls = '';
+        if (noAcc) { badge = '<span class="badge-warn">No account</span>'; rowCls = 'no-match'; }
+        else if (matched) { badge = '<span class="badge-match">Matched</span>'; }
+        else { badge = '<span class="badge-nomatch">No match</span>'; rowCls = 'no-match'; }
+        const nm = p.name !== '—' ? `<div style="display:flex;align-items:center;gap:8px">${av(p.name, i)}<span>${p.name}</span></div>` : `<span style="color:#3a4060">—</span>`;
+        return `<tr class="${rowCls}">
+          <td style="color:#5a6480;font-size:13px">${p.idx}</td>
+          <td><span class="badge-sx">${p.sx}</span></td>
+          <td>${nm}</td>
+          <td>${bk}</td>
+          <td style="font-family:monospace;font-size:13px;color:${noAcc || !matched ? '#e05050' : '#60a5fa'}">${p.acc}</td>
+          <td>${badge}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderTrades() {
+      const sorted = [...tradeStats].sort((a, b) => b.lots - a.lots);
+      const mx = Math.max(...sorted.map(t => t.lots));
+      document.getElementById('ttb').innerHTML = sorted.map(t => {
+        const p = partnerMap[t.acc];
+        const sx = p ? `<span class="badge-sx">${p.sx}</span>` : '<span style="color:#e05050">—</span>';
+        const nm = p ? p.name : 'Unknown';
+        const bw = Math.round((t.lots / mx) * 100);
+        return `<tr>
+          <td style="font-family:monospace;font-size:13px;color:#60a5fa">${t.acc}</td>
+          <td>${sx}</td>
+          <td>${nm}</td>
+          <td style="text-align:center;color:#f5c842;font-weight:bold">${t.t}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-weight:500;color:#e8eaf0;min-width:30px">${t.lots.toFixed(2)}</span>
+              <div class="bar-bg"><div class="bar-fill" style="width:${bw}%"></div></div>
+            </div>
+          </td>
+          <td style="text-align:right;color:#a06af0;font-weight:500">$${t.comm.toFixed(3)}</td>
+          <td style="text-align:right;color:#00e5a0;font-weight:500">$${t.aff.toFixed(3)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderNoMatch(list) {
+      const nm = list.filter(p => !activeAccs.has(p.acc));
+      const tb = document.getElementById('nmtb');
+      if (!nm.length) {
+        tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-success fs-6">ඔක්කොම partners match වෙලා තියෙනවා!</td></tr>';
+        return;
+      }
+      tb.innerHTML = nm.map(p => {
+        const noAcc = !p.acc || p.acc === '—';
+        const issue = noAcc ? '<span class="badge-warn">Account නැත</span>' : '<span class="badge-nomatch">Trades නැත</span>';
+        const bk = p.broker === 'XM' ? `<span class="broker-xm">XM</span>` : p.broker === '—' ? `<span style="color:#3a4060">—</span>` : `<span class="broker-o">${p.broker}</span>`;
+        return `<tr class="no-match">
+          <td><span class="badge-sx">${p.sx}</span></td>
+          <td style="color:#e8eaf0">${p.name}</td>
+          <td>${bk}</td>
+          <td style="font-family:monospace;font-size:13px;color:#e05050">${p.acc || '—'}</td>
+          <td>${issue}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function showT(id, el) {
+      ['partners', 'trades', 'nomatch'].forEach(t => document.getElementById('t-' + t).style.display = t === id ? 'block' : 'none');
+      document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('on'));
+      el.classList.add('on');
+    }
+  </script>
+</body>
+</html>
