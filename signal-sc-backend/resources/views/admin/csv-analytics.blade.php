@@ -242,20 +242,51 @@ function csvAnalyticsApp() {
       reader.readAsText(this.csvFile);
     },
 
+    parseCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; }
+            else { inQuotes = false; }
+          } else { current += ch; }
+        } else {
+          if (ch === '"') { inQuotes = true; }
+          else if (ch === ',') { result.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+      }
+      result.push(current.trim());
+      return result;
+    },
+
     parseCsvData(text) {
       const lines = text.split('\n').filter(l => l.trim() !== '');
       if (lines.length < 2) return;
+
+      const headers = this.parseCSVLine(lines[0]);
+      const hMap = {};
+      headers.forEach((h, i) => { hMap[h.trim().toLowerCase()] = i; });
+
+      const getIdx = (...names) => { for (const n of names) { if (hMap[n] !== undefined) return hMap[n]; } return -1; };
+      const idxAcc = getIdx('mt4/mt5 id', 'account', 'account_id', 'login');
+      const idxSym = getIdx('instrument', 'symbol', 'pair');
+      const idxLots = getIdx('lots', 'volume');
+      const idxComm = getIdx('affiliate comm.', 'commission', 'total comm.', 'comm');
 
       let totalLots = 0, totalCommission = 0, totalTrades = lines.length - 1;
       let accountsMap = {}, currencyMap = {};
 
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const cols = this.parseCSVLine(lines[i]);
         if (cols.length < 3) continue;
-        const accId = cols[0] || 'Unknown';
-        const symbol = cols[1] || 'Other';
-        const lots = parseFloat(cols[2]) || 0;
-        const comm = parseFloat(cols[3]) || 0;
+        const accId = idxAcc >= 0 ? (cols[idxAcc] || 'Unknown') : (cols[1] || 'Unknown');
+        const symbol = idxSym >= 0 ? (cols[idxSym] || 'Other') : (cols[10] || 'Other');
+        const lots = idxLots >= 0 ? (parseFloat(cols[idxLots]) || 0) : (parseFloat(cols[12]) || 0);
+        const comm = idxComm >= 0 ? (parseFloat(cols[idxComm]) || 0) : (parseFloat(cols[16]) || 0);
         totalLots += lots;
         totalCommission += comm;
         if (!accountsMap[accId]) accountsMap[accId] = { trades: 0, lots: 0, comm: 0 };

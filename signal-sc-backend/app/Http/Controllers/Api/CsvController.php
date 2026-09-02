@@ -31,27 +31,45 @@ class CsvController extends Controller
             $handle = fopen($file->getPathname(), 'r');
             $header = fgetcsv($handle);
 
+            $headerMap = array_map(fn($h) => strtolower(trim($h)), $header);
+
+            $findCol = function (...$names) use ($headerMap) {
+                foreach ($names as $name) {
+                    $idx = array_search(strtolower($name), $headerMap);
+                    if ($idx !== false) return $idx;
+                }
+                return -1;
+            };
+
+            $idxAcc = $findCol('MT4/MT5 ID', 'Account', 'account_id', 'Login');
+            $idxSym = $findCol('Instrument', 'Symbol', 'Pair');
+            $idxLots = $findCol('Lots', 'Volume');
+            $idxComm = $findCol('Affiliate Comm.', 'Commission', 'Total Comm.', 'Comm');
+
             $totalLots = 0;
             $totalCommission = 0;
             $recordCount = 0;
 
             while (($row = fgetcsv($handle)) !== false) {
-                if (count($row) < count($header)) {
+                if (count($row) < 3) {
                     continue;
                 }
 
-                $data = array_combine($header, $row);
+                $accId = $idxAcc >= 0 ? ($row[$idxAcc] ?? null) : ($row[1] ?? null);
+                $symbol = $idxSym >= 0 ? ($row[$idxSym] ?? null) : ($row[10] ?? null);
+                $lots = $idxLots >= 0 ? (float) ($row[$idxLots] ?? 0) : (float) ($row[12] ?? 0);
+                $comm = $idxComm >= 0 ? (float) ($row[$idxComm] ?? 0) : (float) ($row[16] ?? 0);
 
                 CsvTradeRecord::create([
                     'csv_upload_id' => $upload->id,
-                    'account_id' => $data['Account'] ?? $data['account_id'] ?? null,
-                    'symbol' => $data['Symbol'] ?? $data['symbol'] ?? null,
-                    'lots' => $data['Lots'] ?? $data['lots'] ?? 0,
-                    'commission' => $data['Commission'] ?? $data['commission'] ?? 0,
+                    'account_id' => $accId,
+                    'symbol' => $symbol,
+                    'lots' => $lots,
+                    'commission' => $comm,
                 ]);
 
-                $totalLots += (float) ($data['Lots'] ?? $data['lots'] ?? 0);
-                $totalCommission += (float) ($data['Commission'] ?? $data['commission'] ?? 0);
+                $totalLots += $lots;
+                $totalCommission += $comm;
                 $recordCount++;
             }
 
