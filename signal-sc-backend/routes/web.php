@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
 
     // CSV Analytics
     Route::get('/admin/csv-analytics', [CsvAnalyticsController::class, 'index'])->name('admin.csv-analytics');
+    Route::post('/admin/csv-analytics/auto-create-members', [CsvAnalyticsController::class, 'autoCreateMembers'])->name('admin.csv-analytics.auto-create');
 
     // Community Management
     Route::get('/admin/community', [AdminCommunityController::class, 'index'])->name('admin.community');

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -61,5 +62,10 @@ class User extends Authenticatable
     public function syncQueue(): HasMany
     {
         return $this->hasMany(SyncQueue::class);
+    }
+
+    public function ibMember(): HasOne
+    {
+        return $this->hasOne(IbMember::class);
     }
 }

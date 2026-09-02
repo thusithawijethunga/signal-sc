@@ -11,6 +11,7 @@ class IbMember extends Model
 
     protected $fillable = [
         'sx_id',
+        'user_id',
         'name',
         'broker',
         'account_id',
@@ -36,5 +37,10 @@ class IbMember extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(IbPartner::class, 'partner_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

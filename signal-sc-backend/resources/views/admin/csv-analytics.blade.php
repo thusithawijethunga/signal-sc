@@ -210,6 +210,7 @@ function csvAnalyticsApp() {
     csvMatchedTrades: [],
     csvUnmatchedTrades: [],
     csvMembersData: @json($ibMembersJson),
+    csvUniqueAccounts: [],
 
     chartInstances: {},
 
@@ -238,6 +239,7 @@ function csvAnalyticsApp() {
       const reader = new FileReader();
       reader.onload = (e) => {
         this.parseCsvData(e.target.result);
+        this.autoCreateMembersFromCsv();
       };
       reader.readAsText(this.csvFile);
     },
@@ -276,9 +278,10 @@ function csvAnalyticsApp() {
       const idxSym = getIdx('instrument', 'symbol', 'pair');
       const idxLots = getIdx('lots', 'volume');
       const idxComm = getIdx('affiliate comm.', 'commission', 'total comm.', 'comm');
+      const idxBroker = getIdx('account brand', 'broker');
 
       let totalLots = 0, totalCommission = 0, totalTrades = lines.length - 1;
-      let accountsMap = {}, currencyMap = {};
+      let accountsMap = {}, currencyMap = {}, uniqueAccounts = {};
 
       for (let i = 1; i < lines.length; i++) {
         const cols = this.parseCSVLine(lines[i]);
@@ -287,6 +290,7 @@ function csvAnalyticsApp() {
         const symbol = idxSym >= 0 ? (cols[idxSym] || 'Other') : (cols[10] || 'Other');
         const lots = idxLots >= 0 ? (parseFloat(cols[idxLots]) || 0) : (parseFloat(cols[12]) || 0);
         const comm = idxComm >= 0 ? (parseFloat(cols[idxComm]) || 0) : (parseFloat(cols[16]) || 0);
+        const broker = idxBroker >= 0 ? (cols[idxBroker] || 'XM') : 'XM';
         totalLots += lots;
         totalCommission += comm;
         if (!accountsMap[accId]) accountsMap[accId] = { trades: 0, lots: 0, comm: 0 };
@@ -295,6 +299,7 @@ function csvAnalyticsApp() {
         accountsMap[accId].comm += comm;
         if (!currencyMap[symbol]) currencyMap[symbol] = 0;
         currencyMap[symbol] += lots;
+        if (!uniqueAccounts[accId]) uniqueAccounts[accId] = broker;
       }
 
       const uniqueTradersCount = Object.keys(accountsMap).length;
@@ -359,6 +364,7 @@ function csvAnalyticsApp() {
           return { id: item.id, name: member ? member.name : null, lots: item.lots, comm: item.comm };
         });
 
+      this.csvUniqueAccounts = Object.keys(uniqueAccounts).map(id => ({ account_id: id, broker: uniqueAccounts[id] }));
       this.csvResultsReady = true;
 
       this.$nextTick(() => this.renderCsvCharts(matchedCount, unmatchedCount, currencyMap));
@@ -408,6 +414,134 @@ function csvAnalyticsApp() {
                (row.broker || '').toLowerCase().includes(q) ||
                (row.partner || '').toLowerCase().includes(q);
       });
+    },
+
+    async autoCreateMembersFromCsv() {
+      if (!this.csvUniqueAccounts.length) return;
+
+      const existingIds = new Set(this.csvMembersData.map(m => String(m.account_id || m.accountId || '')));
+      const newAccounts = this.csvUniqueAccounts.filter(a => !existingIds.has(String(a.account_id)));
+
+      if (!newAccounts.length) {
+        this.showToast('All CSV accounts already exist as members');
+        return;
+      }
+
+      try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const resp = await fetch('{{ route("admin.csv-analytics.auto-create") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+          body: JSON.stringify({ accounts: newAccounts })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          this.csvMembersData = data.ib_members;
+          this.showToast(data.created_count + ' new member(s) created, ' + data.existing_count + ' already existed');
+          this.rebuildAnalyticsFromCsv();
+        }
+      } catch (err) {
+        console.error('Auto-create members error:', err);
+        this.showToast('Failed to auto-create members', 'error');
+      }
+    },
+
+    rebuildAnalyticsFromCsv() {
+      let totalLots = 0, totalCommission = 0;
+      let accountsMap = {}, currencyMap = {};
+
+      const accountsMapTemp = {};
+      for (let i = 0; i < this.csvUniqueAccounts.length; i++) {
+        const acc = this.csvUniqueAccounts[i];
+        accountsMapTemp[acc.account_id] = acc.broker;
+      }
+
+      if (!this.csvFile) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(l => l.trim() !== '');
+        if (lines.length < 2) return;
+
+        const headers = this.parseCSVLine(lines[0]);
+        const hMap = {};
+        headers.forEach((h, i) => { hMap[h.trim().toLowerCase()] = i; });
+        const getIdx = (...names) => { for (const n of names) { if (hMap[n] !== undefined) return hMap[n]; } return -1; };
+        const idxAcc = getIdx('mt4/mt5 id', 'account', 'account_id', 'login');
+        const idxSym = getIdx('instrument', 'symbol', 'pair');
+        const idxLots = getIdx('lots', 'volume');
+        const idxComm = getIdx('affiliate comm.', 'commission', 'total comm.', 'comm');
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = this.parseCSVLine(lines[i]);
+          if (cols.length < 3) continue;
+          const accId = idxAcc >= 0 ? (cols[idxAcc] || 'Unknown') : (cols[1] || 'Unknown');
+          const symbol = idxSym >= 0 ? (cols[idxSym] || 'Other') : (cols[10] || 'Other');
+          const lots = idxLots >= 0 ? (parseFloat(cols[idxLots]) || 0) : (parseFloat(cols[12]) || 0);
+          const comm = idxComm >= 0 ? (parseFloat(cols[idxComm]) || 0) : (parseFloat(cols[16]) || 0);
+          totalLots += lots;
+          totalCommission += comm;
+          if (!accountsMap[accId]) accountsMap[accId] = { trades: 0, lots: 0, comm: 0 };
+          accountsMap[accId].trades += 1;
+          accountsMap[accId].lots += lots;
+          accountsMap[accId].comm += comm;
+          if (!currencyMap[symbol]) currencyMap[symbol] = 0;
+          currencyMap[symbol] += lots;
+        }
+
+        const totalTrades = lines.length - 1;
+        const uniqueTradersCount = Object.keys(accountsMap).length;
+        this.csvMetrics = {
+          partners: this.csvMembersData.length || 0,
+          activeTraders: uniqueTradersCount,
+          totalTrades: totalTrades,
+          totalLots: totalLots.toFixed(2),
+          totalCommission: '$' + totalCommission.toFixed(2)
+        };
+
+        let matchedCount = 0, unmatchedCount = 0;
+        this.csvFilteredPartners = this.csvMembersData.map((m, idx) => {
+          const acc = accountsMap[m.accountId || m.account_id || m.account];
+          if (acc) { matchedCount++; }
+          return {
+            sxId: m.sx_id || m.sxId || '—',
+            name: m.name || '—',
+            broker: m.broker || 'XM',
+            accountId: m.accountId || m.account_id || m.account || '—',
+            partner: m.partner || '—',
+            trades: acc ? acc.trades : 0,
+            lots: acc ? acc.lots : 0,
+            comm: acc ? acc.comm : 0,
+            matched: !!acc
+          };
+        });
+        this.csvFilteredPartnersSource = [...this.csvFilteredPartners];
+
+        this.csvMatchedTrades = [];
+        this.csvUnmatchedTrades = [];
+        Object.keys(accountsMap).forEach(accId => {
+          const m = this.csvMembersData.find(x => (x.accountId || x.account_id || x.account) == accId);
+          const acc = accountsMap[accId];
+          if (m) {
+            this.csvMatchedTrades.push({ accountId: accId, partnerName: m.name || '—', sxId: m.sx_id || m.sxId || '—', trades: acc.trades, lots: acc.lots, comm: acc.comm });
+          } else {
+            unmatchedCount++;
+            this.csvUnmatchedTrades.push({ accountId: accId, trades: acc.trades, lots: acc.lots, comm: acc.comm });
+          }
+        });
+
+        this.csvTop10 = Object.keys(accountsMap)
+          .map(id => ({ id, ...accountsMap[id] }))
+          .sort((a, b) => b.lots - a.lots)
+          .slice(0, 10)
+          .map(item => {
+            const member = this.csvMembersData.find(x => (x.accountId || x.account_id || x.account) == item.id);
+            return { id: item.id, name: member ? member.name : null, lots: item.lots, comm: item.comm };
+          });
+
+        this.$nextTick(() => this.renderCsvCharts(matchedCount, unmatchedCount, currencyMap));
+      };
+      reader.readAsText(this.csvFile);
     }
   };
 }
