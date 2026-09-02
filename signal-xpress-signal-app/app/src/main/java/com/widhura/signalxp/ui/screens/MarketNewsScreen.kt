@@ -32,7 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.widhura.signalxp.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.widhura.signalxp.ui.MainViewModel
@@ -83,40 +88,33 @@ fun MarketNewsScreen(
             // Forex Factory Calendar Header Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "📅 FOREX FACTORY",
-                            color = textOnBg,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(primary.copy(alpha = 0.2f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "CALENDAR",
-                                color = primary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.signal_xpress_icon_1786298386233)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Logo",
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "🇱🇰 Sri Lanka Standard Time (SLST / GMT+5:30)",
+                        text = "Forex Factory",
+                        color = textOnBg,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Economic Calendar & News",
                         color = textSec,
                         fontSize = 11.sp
                     )
                 }
-
-                // Sync Live Feed Button
                 IconButton(
                     onClick = { viewModel.syncForexFactoryNews() },
                     enabled = !isSyncing
@@ -174,9 +172,9 @@ fun MarketNewsScreen(
                 items(impacts) { imp ->
                     val isSelected = selectedImpact.equals(imp, ignoreCase = true)
                     val chipLabel = when (imp) {
-                        "HIGH" -> "🔴 High Impact"
-                        "MEDIUM" -> "🟠 Medium Impact"
-                        "LOW" -> "🟡 Low Impact"
+                        "HIGH" -> "🔴 High"
+                        "MEDIUM" -> "🟠 Medium"
+                        "LOW" -> "🟡 Low"
                         else -> "All Impact Levels"
                     }
                     Box(

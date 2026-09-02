@@ -102,11 +102,10 @@ fun CreatePostDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableIntStateOf(0) } // 0 = 📸 Screenshot & Idea Post, 1 = 💎 Custom P&L Profit Card
+    var selectedTab by remember { mutableIntStateOf(0) }
 
-    // Trader Info
-    var authorName by remember { mutableStateOf("Kasun Trader LK") }
-    var authorBadge by remember { mutableStateOf("VIP Trader") }
+    val authorName = com.widhura.signalxp.data.api.ApiClient.getCurrentUserName(context)
+    val authorBadge = com.widhura.signalxp.data.api.ApiClient.getCurrentUserRole(context)
     val avatarColors = listOf(0xFF10B981, 0xFF38BDF8, 0xFFF59E0B, 0xFF8B5CF6, 0xFFEC4899)
     var selectedAvatarHex by remember { mutableStateOf(avatarColors[0]) }
 
@@ -267,51 +266,7 @@ fun CreatePostDialog(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
-                    // Trader Identity Row
-                    Text(
-                        text = "YOUR TRADER IDENTITY",
-                        fontSize = 11.sp,
-                        color = PrimarySky,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = authorName,
-                            onValueChange = { authorName = it },
-                            label = { Text("Name / Nickname") },
-                            modifier = Modifier.weight(0.6f),
-                            textStyle = TextStyle(color = TextLight, fontSize = 13.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimarySky,
-                                unfocusedBorderColor = BorderColor,
-                                focusedContainerColor = DarkBackground,
-                                unfocusedContainerColor = DarkBackground
-                            ),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        OutlinedTextField(
-                            value = authorBadge,
-                            onValueChange = { authorBadge = it },
-                            label = { Text("Badge / Title") },
-                            modifier = Modifier.weight(0.4f),
-                            textStyle = TextStyle(color = TextLight, fontSize = 13.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimarySky,
-                                unfocusedBorderColor = BorderColor,
-                                focusedContainerColor = DarkBackground,
-                                unfocusedContainerColor = DarkBackground
-                            ),
-                            singleLine = true
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
+                    // TAB 0: Screenshot & Idea
 
                     if (selectedTab == 0) {
                         // ==========================================
@@ -320,7 +275,7 @@ fun CreatePostDialog(
 
                         // Typed Thought / Idea Input
                         Text(
-                            text = "TYPE YOUR THOUGHTS / TRADE IDEA / COMMENTS",
+                            text = "YOUR THOUGHTS / TRADE IDEA / COMMENTS",
                             fontSize = 11.sp,
                             color = PrimarySky,
                             fontWeight = FontWeight.Bold,
@@ -353,7 +308,7 @@ fun CreatePostDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "ATTACH SCREENSHOT (MT5 / CHART / TRADE)",
+                                text = "SCREENSHOT (MT5 / CHART / TRADE)",
                                 fontSize = 11.sp,
                                 color = PrimarySky,
                                 fontWeight = FontWeight.Bold,
@@ -377,7 +332,7 @@ fun CreatePostDialog(
                                             modifier = Modifier.size(12.dp)
                                         )
                                         Spacer(modifier = Modifier.width(3.dp))
-                                        Text("Remove", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+//                                        Text("Remove", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -526,7 +481,7 @@ fun CreatePostDialog(
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Gallery Photo", color = PrimarySky, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Photo", color = PrimarySky, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
 
                             Button(
@@ -536,7 +491,7 @@ fun CreatePostDialog(
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("🟡 Gold Profit Shot", color = TextLight, fontSize = 10.sp)
+                                Text("🟡 Gold Profit", color = TextLight, fontSize = 10.sp)
                             }
 
                             Button(
@@ -546,7 +501,7 @@ fun CreatePostDialog(
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("📊 Chart Setup", color = TextLight, fontSize = 10.sp)
+                                Text("📊 Chart", color = TextLight, fontSize = 10.sp)
                             }
                         }
 
@@ -692,7 +647,7 @@ fun CreatePostDialog(
                             OutlinedTextField(
                                 value = optionalProfitText,
                                 onValueChange = { optionalProfitText = it },
-                                label = { Text("Profit Amount $ (Optional)") },
+                                label = { Text("Profit $ (Optional)") },
                                 modifier = Modifier.weight(0.5f),
                                 textStyle = TextStyle(color = AccentEmerald, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -775,7 +730,7 @@ fun CreatePostDialog(
                             OutlinedTextField(
                                 value = pnlProfitAmountText,
                                 onValueChange = { pnlProfitAmountText = it },
-                                label = { Text("Profit Amount ($)") },
+                                label = { Text("Profit ($)") },
                                 modifier = Modifier.weight(0.5f),
                                 textStyle = TextStyle(color = AccentEmerald, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -973,7 +928,7 @@ fun CreatePostDialog(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (selectedTab == 0) "Publish Post & Screenshot 🚀" else "Publish Profit Card 💎",
+                            text = if (selectedTab == 0) "Publish 🚀" else "Publish 💎",
                             color = DarkBackground,
                             fontWeight = FontWeight.Bold
                         )

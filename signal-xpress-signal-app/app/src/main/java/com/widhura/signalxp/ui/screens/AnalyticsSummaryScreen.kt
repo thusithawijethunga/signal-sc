@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,12 +27,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.widhura.signalxp.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -113,31 +119,27 @@ fun AnalyticsSummaryScreen(viewModel: MainViewModel, isDarkMode: Boolean = true)
             // Header Summary Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "📊 Signal Xpress ",
-                            color = textOnBg,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(accentEmerald)
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                                Text(
-                                    text = "Analytics",
-                                    color = textOnBg,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.signal_xpress_icon_1786298386233)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Logo",
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Signal Xpress",
+                        color = textOnBg,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                     Text(
                         text = "Performance Breakdown",
                         color = textSec,
@@ -456,6 +458,24 @@ fun LedgerRow(sig: SignalEntity, isDarkMode: Boolean = true) {
     val resText = if (isWin) Color(0xFF10B981) else accentRed
     val dirColor = if (sig.type.uppercase() == "BUY") Color(0xFF3B82F6) else Color(0xFFF59E0B)
 
+    val displayDate = remember(sig.date) {
+        try {
+            val clean = sig.date.replace("Z", "").substringBefore(".")
+            val parts = clean.split("T")
+            val dateParts = parts[0].split("-")
+            val timeParts = if (parts.size > 1) parts[1].split(":") else listOf("00", "00")
+            val month = dateParts.getOrElse(1) { "01" }
+            val day = dateParts.getOrElse(2) { "01" }
+            val hour = timeParts.getOrElse(0) { "00" }.toIntOrNull() ?: 0
+            val min = timeParts.getOrElse(1) { "00" }
+            val amPm = if (hour < 12) "AM" else "PM"
+            val h12 = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+            "$day/$month ${h12}:${min} $amPm"
+        } catch (e: Exception) {
+            sig.date.take(10)
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -463,7 +483,7 @@ fun LedgerRow(sig: SignalEntity, isDarkMode: Boolean = true) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(sig.no.toString(), color = textOnBg, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.5f))
-        Text(sig.date, color = textSec, fontSize = 9.sp, modifier = Modifier.weight(1.5f))
+        Text(displayDate, color = textSec, fontSize = 9.sp, modifier = Modifier.weight(1.5f))
         Text(sig.pair, color = textOnBg, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
         Text(sig.type, color = dirColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         Text(sig.pips.toString(), color = textOnBg, fontSize = 11.sp, textAlign = TextAlign.End, modifier = Modifier.weight(1f))

@@ -131,7 +131,7 @@ fun NewsCard(news: NewsEntity, isDarkMode: Boolean = true) {
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "${news.impact.uppercase()} IMPACT",
+                            text = "${news.impact.uppercase()}",
                             color = impactBadgeText,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold

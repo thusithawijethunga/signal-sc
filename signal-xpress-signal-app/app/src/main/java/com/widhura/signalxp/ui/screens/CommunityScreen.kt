@@ -55,8 +55,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.widhura.signalxp.R
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -131,52 +135,33 @@ fun CommunityScreen(
             // Screen Top Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Traders Community",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = textOnBg
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = accentEmerald.copy(alpha = 0.15f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, accentEmerald.copy(alpha = 0.4f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(accentEmerald)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "3.4K Online",
-                                    color = accentEmerald,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(R.drawable.signal_xpress_icon_1786298386233)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Logo",
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Traders Community",
+                        color = textOnBg,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                     Text(
                         text = "Share Profit Cards, Ideas & Market Thoughts",
-                        fontSize = 12.sp,
-                        color = textSec
+                        color = textSec,
+                        fontSize = 11.sp
                     )
                 }
-
-
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -241,7 +226,7 @@ fun CommunityScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { viewModel.setCommunitySearchQuery(it) },
-                        placeholder = { Text("Search traders, pairs, brokers, #hashtags...", fontSize = 12.sp) },
+                        placeholder = { Text("Search...", fontSize = 12.sp) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
