@@ -1731,7 +1731,8 @@ function dashboardApp() {
       for (let i = 1; i < lines.length; i++) {
         const cols = this.parseCSVLine(lines[i]);
         if (cols.length < 3) continue;
-        const accId = idxAcc >= 0 ? (cols[idxAcc] || 'Unknown') : (cols[1] || 'Unknown');
+        const accId = idxAcc >= 0 ? (cols[idxAcc] || '').trim() : (cols[1] || '').trim();
+        if (!accId || accId.toLowerCase() === 'unknown') continue;
         const symbol = idxSym >= 0 ? (cols[idxSym] || 'Other') : (cols[10] || 'Other');
         const lots = idxLots >= 0 ? (parseFloat(cols[idxLots]) || 0) : (parseFloat(cols[12]) || 0);
         const comm = idxComm >= 0 ? (parseFloat(cols[idxComm]) || 0) : (parseFloat(cols[16]) || 0);
@@ -1913,10 +1914,12 @@ function dashboardApp() {
         for (let i = 1; i < lines.length; i++) {
           const cols = this.parseCSVLine(lines[i]);
           if (cols.length < 3) continue;
-          const accId = idxAcc >= 0 ? (cols[idxAcc] || 'Unknown') : (cols[1] || 'Unknown');
+          const accId = idxAcc >= 0 ? (cols[idxAcc] || '').trim() : (cols[1] || '').trim();
+          if (!accId || accId.toLowerCase() === 'unknown') continue;
           const symbol = idxSym >= 0 ? (cols[idxSym] || 'Other') : (cols[10] || 'Other');
           const lots = idxLots >= 0 ? (parseFloat(cols[idxLots]) || 0) : (parseFloat(cols[12]) || 0);
           const comm = idxComm >= 0 ? (parseFloat(cols[idxComm]) || 0) : (parseFloat(cols[16]) || 0);
+          if (lots <= 0) continue;
           totalLots += lots;
           totalCommission += comm;
           if (!accountsMap[accId]) accountsMap[accId] = { trades: 0, lots: 0, comm: 0 };
@@ -1927,7 +1930,7 @@ function dashboardApp() {
           currencyMap[symbol] += lots;
         }
 
-        const totalTrades = lines.length - 1;
+        const totalTrades = Object.values(accountsMap).reduce((s, a) => s + a.trades, 0);
         const uniqueTradersCount = Object.keys(accountsMap).length;
         this.csvMetrics = {
           partners: this.csvMembersData.length || 0,

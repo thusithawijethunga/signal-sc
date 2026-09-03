@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\IbMember;
 use App\Models\IbPartner;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -137,6 +138,23 @@ class IbPartnerManageController extends Controller
         }
         unset($data['partner']);
 
+        $accountId = $data['account_id'] ?? null;
+        $userId = null;
+
+        if ($accountId) {
+            $email = 'trader' . $accountId . '@signalxpress.local';
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $data['name'],
+                    'password' => 'SignalXp',
+                    'role' => 'member',
+                ]
+            );
+            $userId = $user->id;
+        }
+
+        $data['user_id'] = $userId;
         IbMember::create($data);
 
         return response()->json(['message' => 'Member saved successfully']);

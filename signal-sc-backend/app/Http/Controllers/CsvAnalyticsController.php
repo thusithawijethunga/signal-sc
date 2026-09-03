@@ -39,10 +39,11 @@ class CsvAnalyticsController extends Controller
         $defaultPassword = 'SignalXp';
         $created = [];
         $existing = [];
+        $errors = [];
 
         foreach ($request->accounts as $item) {
             $accountId = trim($item['account_id']);
-            $broker = $item['broker'] ?? 'XM';
+            $broker = trim($item['broker'] ?? 'XM');
 
             if (empty($accountId)) continue;
 
@@ -58,17 +59,17 @@ class CsvAnalyticsController extends Controller
                 continue;
             }
 
-            DB::beginTransaction();
-
             try {
-                $email = strtolower('trader' . $accountId) . '@signalxpress.local';
+                $email = 'trader' . $accountId . '@signalxpress.local';
 
-                $user = User::create([
-                    'name' => 'Trader ' . $accountId,
-                    'email' => $email,
-                    'password' => $defaultPassword,
-                    'role' => 'member',
-                ]);
+                $user = User::firstOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => 'Trader ' . $accountId,
+                        'password' => $defaultPassword,
+                        'role' => 'member',
+                    ]
+                );
 
                 $member = IbMember::create([
                     'user_id' => $user->id,
@@ -76,8 +77,6 @@ class CsvAnalyticsController extends Controller
                     'broker' => $broker,
                     'account_id' => $accountId,
                 ]);
-
-                DB::commit();
 
                 $created[] = [
                     'sx_id' => $member->sx_id,
@@ -88,7 +87,7 @@ class CsvAnalyticsController extends Controller
                     'status' => 'created',
                 ];
             } catch (\Exception $e) {
-                DB::rollBack();
+                $errors[] = ['account_id' => $accountId, 'error' => $e->getMessage()];
             }
         }
 
@@ -104,6 +103,7 @@ class CsvAnalyticsController extends Controller
             'ok' => true,
             'created' => $created,
             'existing' => $existing,
+            'errors' => $errors,
             'created_count' => count($created),
             'existing_count' => count($existing),
             'default_password' => $defaultPassword,
