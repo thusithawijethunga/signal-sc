@@ -114,7 +114,10 @@ class ApiRepository(
                 if (signalData != null) {
                     val entity = parseSignalFromMap(signalData)
                     if (entity != null) {
-                        signalDao.updateSignal(entity)
+                        val existing = signalDao.getSignalById(id)
+                        signalDao.updateSignal(entity.copy(
+                            userReactedEmoji = existing?.userReactedEmoji
+                        ))
                     }
                 }
                 Result.success(Unit)

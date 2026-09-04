@@ -159,34 +159,38 @@ class TradeManageController extends Controller
 
     private function syncTradeToSignal(Trade $trade, ?string $action = null): void
     {
-        $signalData = [
-            'no' => $trade->no,
-            'date' => $trade->date,
-            'pair' => $trade->pair,
-            'direction' => $trade->direction,
-            'entry1' => $trade->entry1,
-            'entry2' => $trade->entry2,
-            'sl' => $trade->sl,
-            'tp1' => $trade->tp1,
-            'tp2' => $trade->tp2,
-            'tp3' => $trade->tp3,
-            'tp4' => $trade->tp4,
-            'pips' => $trade->pips,
-            'profit' => $trade->profit,
-            'result' => $trade->result,
-            'channel' => $trade->channel,
-            'hit_level' => $trade->hit_level,
-            'user_id' => $trade->user_id,
-        ];
+        try {
+            $signalData = [
+                'no' => $trade->no,
+                'date' => $trade->date,
+                'pair' => $trade->pair,
+                'direction' => $trade->direction,
+                'entry1' => $trade->entry1,
+                'entry2' => $trade->entry2,
+                'sl' => $trade->sl,
+                'tp1' => $trade->tp1,
+                'tp2' => $trade->tp2,
+                'tp3' => $trade->tp3,
+                'tp4' => $trade->tp4,
+                'pips' => $trade->pips,
+                'profit' => $trade->profit,
+                'result' => $trade->result,
+                'channel' => $trade->channel,
+                'hit_level' => $trade->hit_level,
+                'user_id' => $trade->user_id,
+            ];
 
-        $existing = Signal::where('no', $trade->no)->first();
+            $existing = Signal::where('no', $trade->no)->first();
 
-        if ($existing) {
-            $existing->update($signalData);
-            SignalUpdated::dispatch($existing, $action);
-        } else {
-            $signal = Signal::create($signalData);
-            SignalCreated::dispatch($signal);
+            if ($existing) {
+                $existing->update($signalData);
+                SignalUpdated::dispatch($existing, $action);
+            } else {
+                $signal = Signal::create($signalData);
+                SignalCreated::dispatch($signal);
+            }
+        } catch (\Exception $e) {
+            \Log::error("syncTradeToSignal failed for trade #{$trade->no}: " . $e->getMessage());
         }
     }
 }

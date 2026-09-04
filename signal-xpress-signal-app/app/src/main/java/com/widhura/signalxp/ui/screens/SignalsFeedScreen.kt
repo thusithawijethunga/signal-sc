@@ -80,7 +80,7 @@ fun SignalsFeedScreen(
             if (index >= 0) {
                 coroutineScope.launch {
                     delay(100)
-                    listState.animateScrollToItem(index = index, scrollOffset = -50, animationSpec = tween(durationMillis = 400))
+                    listState.animateScrollToItem(index = index, scrollOffset = -50)
                 }
                 delay(3000)
                 viewModel.clearHighlight()

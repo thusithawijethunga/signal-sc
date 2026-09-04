@@ -5,7 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Events\TradeCreated;
 use App\Events\TradeUpdated;
+use App\Events\SignalCreated;
+use App\Events\SignalUpdated;
+use App\Events\SignalDeleted;
 use App\Models\AccountBalance;
+use App\Models\Signal;
 use App\Models\Trade;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,6 +112,7 @@ class TradeController extends Controller
             ]);
 
             TradeCreated::dispatch($trade);
+            $this->syncTradeToSignal($trade);
 
             return response()->json($trade, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -136,6 +141,7 @@ class TradeController extends Controller
             $trade->update($data);
 
             TradeUpdated::dispatch($trade, $oldResult, $hitType);
+            $this->syncTradeToSignal($trade, $hitType);
 
             return response()->json($trade);
         } catch (\Exception $e) {
@@ -146,10 +152,54 @@ class TradeController extends Controller
     public function destroy(Request $request, Trade $trade): JsonResponse
     {
         try {
+            $signal = Signal::where('no', $trade->no)->first();
             $trade->delete();
+
+            if ($signal) {
+                SignalDeleted::dispatch($signal->id, $signal->no);
+                $signal->delete();
+            }
+
             return response()->json(['message' => 'Trade deleted']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to delete trade', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function syncTradeToSignal(Trade $trade, ?string $action = null): void
+    {
+        try {
+            $signalData = [
+                'no' => $trade->no,
+                'date' => $trade->date,
+                'pair' => $trade->pair,
+                'direction' => $trade->direction,
+                'entry1' => $trade->entry1,
+                'entry2' => $trade->entry2,
+                'sl' => $trade->sl,
+                'tp1' => $trade->tp1,
+                'tp2' => $trade->tp2,
+                'tp3' => $trade->tp3,
+                'tp4' => $trade->tp4,
+                'pips' => $trade->pips,
+                'profit' => $trade->profit,
+                'result' => $trade->result,
+                'channel' => $trade->channel,
+                'hit_level' => $trade->hit_level,
+                'user_id' => $trade->user_id,
+            ];
+
+            $existing = Signal::where('no', $trade->no)->first();
+
+            if ($existing) {
+                $existing->update($signalData);
+                SignalUpdated::dispatch($existing, $action);
+            } else {
+                $signal = Signal::create($signalData);
+                SignalCreated::dispatch($signal);
+            }
+        } catch (\Exception $e) {
+            \Log::error("syncTradeToSignal failed for trade #{$trade->no}: " . $e->getMessage());
         }
     }
 }

@@ -6,6 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,11 +25,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,6 +63,7 @@ import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.SignalXpressTheme
 import com.widhura.signalxp.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class NavTab { SIGNALS, SUMMARY, NEWS, COMMUNITY, VIP_LEADERBOARD }
@@ -127,6 +136,16 @@ fun MainAppContent(
     val bg = if (isDarkMode) DarkBackground else LightTheme.Background
     val headerBg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
     val border = if (isDarkMode) BorderColor else LightTheme.BorderColor
+    val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
+
+    val activeNotification by viewModel.activeNotification.collectAsState()
+
+    LaunchedEffect(activeNotification) {
+        activeNotification?.let {
+            delay(4000)
+            viewModel.clearNotification()
+        }
+    }
 
     when {
         showProfile -> ProfileScreen(
@@ -173,6 +192,54 @@ fun MainAppContent(
                     NavTab.NEWS -> MarketNewsScreen(viewModel = viewModel, isDarkMode = isDarkMode)
                     NavTab.COMMUNITY -> CommunityScreen(viewModel = viewModel, isDarkMode = isDarkMode)
                     NavTab.VIP_LEADERBOARD -> VipLeaderboardScreen(viewModel = viewModel, isDarkMode = isDarkMode)
+                }
+
+                // Real-time notification banner
+                AnimatedVisibility(
+                    visible = activeNotification != null,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+                ) {
+                    activeNotification?.let { notification ->
+                        val notifBg = when (notification.type) {
+                            "trade" -> Color(0xFF10B981)
+                            "trade_hit" -> Color(0xFFF59E0B)
+                            "signal_deleted" -> Color(0xFFEF4444)
+                            else -> primary
+                        }
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp)),
+                            color = notifBg,
+                            shape = RoundedCornerShape(12.dp),
+                            shadowElevation = 8.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = notification.title,
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = notification.body,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -55,6 +55,13 @@ data class HighlightedSignal(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+data class NotificationMessage(
+    val title: String,
+    val body: String,
+    val type: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: SignalRepository
@@ -75,6 +82,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Highlight State ───────────────────────────────
     private val _highlightedSignal = MutableStateFlow<HighlightedSignal?>(null)
     val highlightedSignal: StateFlow<HighlightedSignal?> = _highlightedSignal.asStateFlow()
+
+    // ── Notification State ────────────────────────────
+    private val _activeNotification = MutableStateFlow<NotificationMessage?>(null)
+    val activeNotification: StateFlow<NotificationMessage?> = _activeNotification.asStateFlow()
 
     private var centrifugoService: CentrifugoWebSocketService? = null
 
@@ -165,6 +176,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _highlightedSignal.value = null
     }
 
+    fun clearNotification() {
+        _activeNotification.value = null
+    }
+
     // ── Real-time Handlers ────────────────────────────
 
     private suspend fun handleRealtimeSignalUpdate(event: SignalRealtimeEvent) {
@@ -174,6 +189,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             db.signalDao().deleteSignalById(event.id)
             withContext(Dispatchers.Main) {
                 _lastSyncTime.value = "Live • Signal #${event.no} deleted"
+                _activeNotification.value = NotificationMessage(
+                    title = "Signal Deleted",
+                    body = "Signal #${event.no} ${event.pair} removed",
+                    type = "signal_deleted"
+                )
             }
             return
         }
@@ -235,17 +255,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 signalNo = event.no,
                 action = event.action.ifBlank { "updated" }
             )
+            _activeNotification.value = NotificationMessage(
+                title = "Signal #${event.no} ${event.pair}",
+                body = "${event.direction} • ${event.result}",
+                type = "signal"
+            )
         }
     }
 
     private suspend fun handleRealtimeTradeUpdate(event: TradeRealtimeEvent) {
-        Log.d("Centrifugo", "Trade update: ${event.pair} ${event.result}")
+        val db = AppDatabase.getDatabase(getApplication())
+        Log.d("Centrifugo", "Trade update: ${event.pair} ${event.result} action=${event.action}")
+
+        if (event.eventType == "trade" && event.action == "created") {
+            val entry = ""
+            val entity = SignalEntity(
+                id = event.id,
+                no = event.no,
+                date = "",
+                pair = event.pair,
+                type = event.direction,
+                entry = entry,
+                tp1 = "", tp2 = "", tp3 = "", tp4 = "", sl = "",
+                pips = event.pips.toInt(),
+                profit = event.profit,
+                hitLevel = event.hitLevel.ifBlank { "NONE" },
+                status = "active",
+                result = event.result
+            )
+            db.signalDao().insertSignal(entity)
+            withContext(Dispatchers.Main) {
+                _lastSyncTime.value = "Live • New trade #${event.no} ${event.pair}"
+                _activeNotification.value = NotificationMessage(
+                    title = "New Trade: ${event.pair}",
+                    body = "${event.direction} • ${event.result}",
+                    type = "trade"
+                )
+            }
+            return
+        }
+
         if (event.eventType == "trade_hit" || event.action == "updated") {
             withContext(Dispatchers.Main) {
                 _highlightedSignal.value = HighlightedSignal(
                     signalId = event.id,
                     signalNo = event.no,
                     action = event.action.ifBlank { "updated" }
+                )
+                _activeNotification.value = NotificationMessage(
+                    title = "Signal #${event.no} Updated",
+                    body = "${event.pair} • ${event.result}",
+                    type = "trade_hit"
                 )
             }
         }
