@@ -116,7 +116,7 @@ fun NewsCard(news: NewsEntity, isDarkMode: Boolean = true) {
                             modifier = Modifier.padding(end = 6.dp)
                         )
                         Text(
-                            text = "\u23F0 ${news.time}",
+                            text = if (news.time.isNotBlank()) "\u23F0 ${news.time}" else "",
                             color = textSec,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium

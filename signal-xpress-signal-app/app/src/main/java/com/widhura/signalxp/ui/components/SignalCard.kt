@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +62,7 @@ import com.widhura.signalxp.ui.theme.TextSecondary
 fun SignalCard(
     signal: SignalEntity,
     onReactionToggle: (String) -> Unit,
+    isHighlighted: Boolean = false,
     isDarkMode: Boolean = true
 ) {
     val bg = if (isDarkMode) DarkBackground else LightTheme.Background
@@ -80,6 +82,25 @@ fun SignalCard(
     val accentAmber = if (isDarkMode) AccentAmber else LightTheme.AccentAmber
     val accentEmerald = if (isDarkMode) AccentEmerald else LightTheme.AccentEmerald
     val accentRed = if (isDarkMode) AccentRed else LightTheme.AccentRed
+
+    // Highlight animation
+    val highlightTransition = rememberInfiniteTransition(label = "highlight")
+    val highlightAlpha by highlightTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "highlightAlpha"
+    )
+    val highlightBorderWidth by animateFloatAsState(
+        targetValue = if (isHighlighted) 2.5f else 0f,
+        animationSpec = tween(300),
+        label = "highlightBorder"
+    )
+    val highlightBorderPrimary = Color(0xFF00FF88)
+    val highlightGlowColor = highlightBorderPrimary.copy(alpha = if (isHighlighted) highlightAlpha else 0f)
 
     val leftBorderColor = when (signal.result.uppercase()) {
         "WIN" -> profitBorder
@@ -106,7 +127,15 @@ fun SignalCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .border(width = 1.dp, color = border, shape = RoundedCornerShape(16.dp)),
+            .then(
+                if (isHighlighted) {
+                    Modifier
+                        .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp), ambientColor = highlightGlowColor, spotColor = highlightGlowColor)
+                        .border(width = highlightBorderWidth.dp, color = highlightBorderPrimary.copy(alpha = highlightAlpha), shape = RoundedCornerShape(16.dp))
+                } else {
+                    Modifier.border(width = 1.dp, color = border, shape = RoundedCornerShape(16.dp))
+                }
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBg)
     ) {

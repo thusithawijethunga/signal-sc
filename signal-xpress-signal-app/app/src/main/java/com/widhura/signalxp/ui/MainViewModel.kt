@@ -48,6 +48,13 @@ enum class TimeFilter { ALL, DAILY, WEEKLY, MONTHLY, CUSTOM }
 enum class ResultFilter { ALL, WIN, LOSS }
 enum class CommunityFilter { ALL, SCREENSHOTS, PROFIT_CARDS, DISCUSSIONS, TOP_GAINERS, TOP_PROFITS }
 
+data class HighlightedSignal(
+    val signalId: Long,
+    val signalNo: Int,
+    val action: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: SignalRepository
@@ -64,6 +71,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _lastSyncTime = MutableStateFlow("")
     val lastSyncTime: StateFlow<String> = _lastSyncTime.asStateFlow()
+
+    // ── Highlight State ───────────────────────────────
+    private val _highlightedSignal = MutableStateFlow<HighlightedSignal?>(null)
+    val highlightedSignal: StateFlow<HighlightedSignal?> = _highlightedSignal.asStateFlow()
 
     private var centrifugoService: CentrifugoWebSocketService? = null
 
@@ -150,6 +161,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         centrifugoService?.disconnect()
     }
 
+    fun clearHighlight() {
+        _highlightedSignal.value = null
+    }
+
     // ── Real-time Handlers ────────────────────────────
 
     private suspend fun handleRealtimeSignalUpdate(event: SignalRealtimeEvent) {
@@ -215,19 +230,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         withContext(Dispatchers.Main) {
             _lastSyncTime.value = "Live • ${sdf.format(Date())} (SLST)"
+            _highlightedSignal.value = HighlightedSignal(
+                signalId = event.id,
+                signalNo = event.no,
+                action = event.action.ifBlank { "updated" }
+            )
         }
     }
 
     private suspend fun handleRealtimeTradeUpdate(event: TradeRealtimeEvent) {
-        // Trade updates are handled via the trade summary refresh
         Log.d("Centrifugo", "Trade update: ${event.pair} ${event.result}")
+        if (event.eventType == "trade_hit" || event.action == "updated") {
+            withContext(Dispatchers.Main) {
+                _highlightedSignal.value = HighlightedSignal(
+                    signalId = event.id,
+                    signalNo = event.no,
+                    action = event.action.ifBlank { "updated" }
+                )
+            }
+        }
     }
 
     private suspend fun handleRealtimeNewsUpdate(event: NewsRealtimeEvent) {
         val db = AppDatabase.getDatabase(getApplication())
+        val slTimeZone = java.util.TimeZone.getTimeZone("Asia/Colombo")
+        val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US).apply { timeZone = slTimeZone }
+        val nowStr = timeFormat.format(java.util.Date())
         val entity = NewsEntity(
             id = event.id,
-            time = "",
+            time = "Just now \u2022 $nowStr (SLST)",
             currency = event.currency,
             title = event.title,
             impact = event.impact,

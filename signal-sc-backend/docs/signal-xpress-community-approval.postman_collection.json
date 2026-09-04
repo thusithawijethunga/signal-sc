@@ -1,0 +1,706 @@
+{
+  "info": {
+    "name": "Signal Xpress - Community Post Approval",
+    "description": "Complete API collection for the Community Post Approval flow.\n\n## Authentication\nAll endpoints require a Bearer token or X-Api-Token header.\nLogin first to obtain a token.\n\n## Flow\n1. Login (POST /auth/login)\n2. Create Post (POST /community/posts) → status: pending\n3. Admin views pending posts (GET /admin/community/pending-posts)\n4. Admin approves (POST /admin/community/posts/{id}/approve)\n5. Post becomes visible to all users",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "signal-xpress"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://your-domain.com/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "post_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "comment_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "    pm.test('Login successful', () => {",
+                  "        pm.expect(pm.response.code).to.equal(200);",
+                  "        pm.expect(jsonData.token).to.not.be.null;",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Login failed', () => {",
+                  "        pm.expect(pm.response.code).to.not.equal(200);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Community Posts (User)",
+      "item": [
+        {
+          "name": "Get Community Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/community/posts?per_page=20",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts"],
+              "query": [
+                {
+                  "key": "post_type",
+                  "value": "",
+                  "description": "Filter: text, trade_update, screenshot, signal_card",
+                  "disabled": true
+                },
+                {
+                  "key": "pair",
+                  "value": "",
+                  "description": "Filter by trading pair",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search content, author name, hashtags",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter by status (admin only)",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "description": "Results per page"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Post (Text)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Great trade setup on GBPUSD! Waiting for breakout above 1.2500\",\n  \"post_type\": \"text\",\n  \"hashtags\": \"#forex #GBPUSD #setup\",\n  \"pair\": \"GBPUSD\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/community/posts",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Post created', () => {",
+                  "    pm.expect(pm.response.code).to.equal(201);",
+                  "    pm.expect(jsonData.post).to.not.be.null;",
+                  "    pm.expect(jsonData.status).to.be.oneOf(['pending', 'approved']);",
+                  "    if (jsonData.post && jsonData.post.id) {",
+                  "        pm.collectionVariables.set('post_id', jsonData.post.id.toString());",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Post (Trade Update / Profit Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Closed GBPUSD buy for +100 pips profit!\",\n  \"post_type\": \"trade_update\",\n  \"pair\": \"GBPUSD\",\n  \"trade_type\": \"buy\",\n  \"entry_price\": \"1.2500\",\n  \"exit_price\": \"1.2600\",\n  \"lot_size\": \"0.10\",\n  \"profit_amount\": 100.00,\n  \"pips_gain\": 100,\n  \"roi_percentage\": 10.0,\n  \"broker_name\": \"XM\",\n  \"card_theme\": \"dark\",\n  \"is_verified_trade\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/community/posts",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Trade update post created', () => {",
+                  "    pm.expect(pm.response.code).to.equal(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Post (Screenshot)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Screenshot of my chart analysis\",\n  \"post_type\": \"screenshot\",\n  \"hashtags\": \"#analysis #chart\",\n  \"image_uri\": \"https://example.com/screenshot.png\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/community/posts",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/community/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts", "{{post_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "React to Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emoji\": \"thumbs\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/community/posts/{{post_id}}/react",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts", "{{post_id}}", "react"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Community Comments (User)",
+      "item": [
+        {
+          "name": "Get Post Comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/community/posts/{{post_id}}/comments?per_page=50",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts", "{{post_id}}", "comments"],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "50",
+                  "description": "Results per page"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Nice setup!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/community/posts/{{post_id}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["community", "posts", "{{post_id}}", "comments"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Comment created', () => {",
+                  "    pm.expect(pm.response.code).to.equal(201);",
+                  "    pm.expect(jsonData.status).to.be.oneOf(['pending', 'approved']);",
+                  "    if (jsonData.comment && jsonData.comment.id) {",
+                  "        pm.collectionVariables.set('comment_id', jsonData.comment.id.toString());",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Community Settings",
+      "item": [
+        {
+          "name": "Get Community Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/community/settings",
+              "host": ["{{base_url}}"],
+              "path": ["community", "settings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Community Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"require_post_approval\": true,\n  \"require_comment_approval\": false,\n  \"max_post_length\": \"5000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/community/settings",
+              "host": ["{{base_url}}"],
+              "path": ["community", "settings"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin - Post Moderation",
+      "item": [
+        {
+          "name": "Get Moderation Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/pending-posts?per_page=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "pending-posts"],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "description": "Results per page"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Pending posts fetched', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    if (jsonData.data && jsonData.data.length > 0) {",
+                  "        pm.collectionVariables.set('post_id', jsonData.data[0].id.toString());",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Posts (with status filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/posts?status=pending&per_page=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "posts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "Filter: pending, approved, rejected"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "description": "Results per page"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Post",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/posts/{{post_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "posts", "{{post_id}}", "approve"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Post approved', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.post.status).to.equal('approved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve All Pending Posts",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/posts/approve-all",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "posts", "approve-all"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('All posts approved', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.count).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejection_reason\": \"Does not meet community guidelines\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/community/posts/{{post_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "posts", "{{post_id}}", "reject"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Post rejected', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.post.status).to.equal('rejected');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Post (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "posts", "{{post_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin - Comment Moderation",
+      "item": [
+        {
+          "name": "Get Pending Comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/pending-comments?per_page=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "pending-comments"],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "description": "Results per page"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Pending comments fetched', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    if (jsonData.data && jsonData.data.length > 0) {",
+                  "        pm.collectionVariables.set('comment_id', jsonData.data[0].id.toString());",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/comments/{{comment_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "comments", "{{comment_id}}", "approve"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Comment approved', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.comment.status).to.equal('approved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve All Pending Comments",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/comments/approve-all",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "comments", "approve-all"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('All comments approved', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    pm.expect(jsonData.count).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject Comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/community/comments/{{comment_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "community", "comments", "{{comment_id}}", "reject"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Comment rejected', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

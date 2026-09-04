@@ -1,5 +1,6 @@
 package com.widhura.signalxp.ui.screens
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,18 +16,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +54,8 @@ import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.TextLight
 import com.widhura.signalxp.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SignalsFeedScreen(
@@ -59,9 +66,27 @@ fun SignalsFeedScreen(
 ) {
     val signals by viewModel.filteredSignals.collectAsState()
     val selectedPair by viewModel.selectedPairFilter.collectAsState()
+    val highlightedSignal by viewModel.highlightedSignal.collectAsState()
     var tapCount by remember { mutableIntStateOf(0) }
 
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
     val pairs = listOf("ALL", "XAU/USD", "EUR/USD", "GBP/JPY")
+
+    LaunchedEffect(highlightedSignal) {
+        highlightedSignal?.let { highlight ->
+            val index = signals.indexOfFirst { it.id == highlight.signalId }
+            if (index >= 0) {
+                coroutineScope.launch {
+                    delay(100)
+                    listState.animateScrollToItem(index = index, scrollOffset = -50, animationSpec = tween(durationMillis = 400))
+                }
+                delay(3000)
+                viewModel.clearHighlight()
+            }
+        }
+    }
 
     val bg = if (isDarkMode) DarkBackground else LightTheme.Background
     val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
@@ -228,12 +253,14 @@ fun SignalsFeedScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(signals, key = { it.id }) { signal ->
                         SignalCard(
                             signal = signal,
+                            isHighlighted = highlightedSignal?.signalId == signal.id,
                             onReactionToggle = { emoji -> viewModel.toggleReaction(signal, emoji) }
                         )
                     }

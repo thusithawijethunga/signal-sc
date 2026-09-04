@@ -393,9 +393,10 @@ class ApiRepository(
     }
 
     private fun NewsResponse.toEntity(): NewsEntity {
+        val tsMs = parseDateTime(eventTime)
         return NewsEntity(
             id = id,
-            time = eventTime ?: "",
+            time = formatNewsTime(eventTime, tsMs),
             currency = currency,
             title = title,
             impact = impact ?: "LOW",
@@ -403,7 +404,7 @@ class ApiRepository(
             previous = previous ?: "-",
             actual = actual ?: "-",
             description = description ?: "",
-            timestamp = parseDateTime(eventTime)
+            timestamp = tsMs
         )
     }
 
@@ -509,6 +510,33 @@ class ApiRepository(
             } catch (_: Exception) { }
         }
         return System.currentTimeMillis()
+    }
+
+    private fun formatNewsTime(dateStr: String?, timestampMs: Long): String {
+        if (dateStr.isNullOrBlank()) return ""
+        val slTimeZone = java.util.TimeZone.getTimeZone("Asia/Colombo")
+        val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US).apply { timeZone = slTimeZone }
+        val dayFormat = java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.US).apply { timeZone = slTimeZone }
+        val nowCal = java.util.Calendar.getInstance(slTimeZone)
+        val eventCal = java.util.Calendar.getInstance(slTimeZone).apply { timeInMillis = timestampMs }
+
+        val timeStr = timeFormat.format(java.util.Date(timestampMs))
+
+        val isToday = eventCal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR) &&
+                eventCal.get(java.util.Calendar.DAY_OF_YEAR) == nowCal.get(java.util.Calendar.DAY_OF_YEAR)
+
+        val tomorrowCal = java.util.Calendar.getInstance(slTimeZone).apply {
+            timeInMillis = nowCal.timeInMillis
+            add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+        val isTomorrow = eventCal.get(java.util.Calendar.YEAR) == tomorrowCal.get(java.util.Calendar.YEAR) &&
+                eventCal.get(java.util.Calendar.DAY_OF_YEAR) == tomorrowCal.get(java.util.Calendar.DAY_OF_YEAR)
+
+        return when {
+            isToday -> "Today \u2022 $timeStr (SLST)"
+            isTomorrow -> "Tomorrow \u2022 $timeStr (SLST)"
+            else -> "${dayFormat.format(java.util.Date(timestampMs))} \u2022 $timeStr (SLST)"
+        }
     }
 
     private fun parseSignalFromMap(data: Map<*, *>): SignalEntity? {
