@@ -215,31 +215,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val entry = if (event.entry2 > 0) "${event.entry1} / ${event.entry2}" else event.entry1.toString()
+        val existing = db.signalDao().getSignalById(event.id)
+
+        val entry = if (event.entry2 > 0) "${event.entry1} / ${event.entry2}"
+                    else if (event.entry1 > 0) event.entry1.toString()
+                    else existing?.entry ?: ""
+
+        val tp1 = if (event.tp1 > 0) event.tp1.toString() else existing?.tp1 ?: ""
+        val tp2 = if (event.tp2 > 0) event.tp2.toString() else existing?.tp2 ?: ""
+        val tp3 = if (event.tp3 > 0) event.tp3.toString() else existing?.tp3 ?: ""
+        val tp4 = if (event.tp4 > 0) event.tp4.toString() else existing?.tp4 ?: ""
+        val sl = if (event.sl > 0) event.sl.toString() else existing?.sl ?: ""
+
         val entity = SignalEntity(
             id = event.id,
             no = event.no,
-            date = event.date,
-            pair = event.pair,
-            type = event.direction,
+            date = event.date.ifBlank { existing?.date ?: "" },
+            pair = event.pair.ifBlank { existing?.pair ?: "" },
+            type = event.direction.ifBlank { existing?.type ?: "BUY" },
             entry = entry,
-            tp1 = event.tp1.toString(),
-            tp2 = event.tp2.toString(),
-            tp3 = event.tp3.toString(),
-            tp4 = event.tp4.toString(),
-            sl = event.sl.toString(),
-            pips = event.pips.toInt(),
-            profit = event.profit,
-            hitLevel = event.hitLevel.ifBlank { "NONE" },
-            status = event.status.ifBlank { "active" },
-            result = event.result,
-            thumbsCount = event.thumbsCount,
-            fireCount = event.fireCount,
-            rocketCount = event.rocketCount,
-            brokenHeartCount = event.brokenHeartCount
+            tp1 = tp1, tp2 = tp2, tp3 = tp3, tp4 = tp4, sl = sl,
+            pips = event.pips.toInt().let { if (it != 0) it else existing?.pips ?: 0 },
+            profit = if (event.profit != 0.0) event.profit else existing?.profit ?: 0.0,
+            hitLevel = event.hitLevel.ifBlank { existing?.hitLevel ?: "NONE" },
+            status = event.status.ifBlank { existing?.status ?: "active" },
+            result = event.result.ifBlank { existing?.result ?: "RUNNING" },
+            thumbsCount = event.thumbsCount.let { if (it > 0) it else existing?.thumbsCount ?: 0 },
+            fireCount = event.fireCount.let { if (it > 0) it else existing?.fireCount ?: 0 },
+            rocketCount = event.rocketCount.let { if (it > 0) it else existing?.rocketCount ?: 0 },
+            brokenHeartCount = event.brokenHeartCount.let { if (it > 0) it else existing?.brokenHeartCount ?: 0 }
         )
 
-        if (event.eventType == "signal" && event.action != "updated") {
+        if (existing == null) {
             db.signalDao().insertSignal(entity)
         } else {
             db.signalDao().updateSignal(entity)
@@ -268,22 +275,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         Log.d("Centrifugo", "Trade update: ${event.pair} ${event.result} action=${event.action}")
 
         if (event.eventType == "trade" && event.action == "created") {
-            val entry = ""
+            val existing = db.signalDao().getSignalById(event.id)
             val entity = SignalEntity(
                 id = event.id,
                 no = event.no,
-                date = "",
-                pair = event.pair,
-                type = event.direction,
-                entry = entry,
-                tp1 = "", tp2 = "", tp3 = "", tp4 = "", sl = "",
-                pips = event.pips.toInt(),
-                profit = event.profit,
-                hitLevel = event.hitLevel.ifBlank { "NONE" },
-                status = "active",
-                result = event.result
+                date = existing?.date ?: "",
+                pair = event.pair.ifBlank { existing?.pair ?: "" },
+                type = event.direction.ifBlank { existing?.type ?: "BUY" },
+                entry = existing?.entry ?: "",
+                tp1 = existing?.tp1 ?: "", tp2 = existing?.tp2 ?: "",
+                tp3 = existing?.tp3 ?: "", tp4 = existing?.tp4 ?: "",
+                sl = existing?.sl ?: "",
+                pips = event.pips.toInt().let { if (it != 0) it else existing?.pips ?: 0 },
+                profit = if (event.profit != 0.0) event.profit else existing?.profit ?: 0.0,
+                hitLevel = event.hitLevel.ifBlank { existing?.hitLevel ?: "NONE" },
+                status = existing?.status ?: "active",
+                result = event.result.ifBlank { existing?.result ?: "RUNNING" }
             )
-            db.signalDao().insertSignal(entity)
+            if (existing == null) {
+                db.signalDao().insertSignal(entity)
+            } else {
+                db.signalDao().updateSignal(entity)
+            }
             withContext(Dispatchers.Main) {
                 _lastSyncTime.value = "Live • New trade #${event.no} ${event.pair}"
                 _activeNotification.value = NotificationMessage(

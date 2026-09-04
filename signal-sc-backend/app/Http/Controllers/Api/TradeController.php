@@ -169,18 +169,13 @@ class TradeController extends Controller
     private function syncTradeToSignal(Trade $trade, ?string $action = null): void
     {
         try {
+            $existing = Signal::where('no', $trade->no)->first();
+
             $signalData = [
                 'no' => $trade->no,
                 'date' => $trade->date,
                 'pair' => $trade->pair,
                 'direction' => $trade->direction,
-                'entry1' => $trade->entry1,
-                'entry2' => $trade->entry2,
-                'sl' => $trade->sl,
-                'tp1' => $trade->tp1,
-                'tp2' => $trade->tp2,
-                'tp3' => $trade->tp3,
-                'tp4' => $trade->tp4,
                 'pips' => $trade->pips,
                 'profit' => $trade->profit,
                 'result' => $trade->result,
@@ -189,12 +184,25 @@ class TradeController extends Controller
                 'user_id' => $trade->user_id,
             ];
 
-            $existing = Signal::where('no', $trade->no)->first();
-
             if ($existing) {
+                if ($trade->entry1 !== null) $signalData['entry1'] = $trade->entry1;
+                if ($trade->entry2 !== null) $signalData['entry2'] = $trade->entry2;
+                if ($trade->sl !== null) $signalData['sl'] = $trade->sl;
+                if ($trade->tp1 !== null) $signalData['tp1'] = $trade->tp1;
+                if ($trade->tp2 !== null) $signalData['tp2'] = $trade->tp2;
+                if ($trade->tp3 !== null) $signalData['tp3'] = $trade->tp3;
+                if ($trade->tp4 !== null) $signalData['tp4'] = $trade->tp4;
+
                 $existing->update($signalData);
                 SignalUpdated::dispatch($existing, $action);
             } else {
+                $signalData['entry1'] = $trade->entry1;
+                $signalData['entry2'] = $trade->entry2;
+                $signalData['sl'] = $trade->sl;
+                $signalData['tp1'] = $trade->tp1;
+                $signalData['tp2'] = $trade->tp2;
+                $signalData['tp3'] = $trade->tp3;
+                $signalData['tp4'] = $trade->tp4;
                 $signal = Signal::create($signalData);
                 SignalCreated::dispatch($signal);
             }
