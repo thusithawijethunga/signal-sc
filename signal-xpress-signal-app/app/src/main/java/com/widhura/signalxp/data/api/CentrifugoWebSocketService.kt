@@ -30,7 +30,7 @@ class CentrifugoWebSocketService(
         .connectTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    private var wsUrl: String = "wss://backend.signalxpress.com/connection/websocket"
+    private var wsUrl: String = "wss://socket.signalxpress.com/connection/websocket"
     private var token: String = ""
     private var isConnected = false
     private var reconnectAttempt = 0

@@ -160,7 +160,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val body = response.body?.string() ?: return@launch
                     val json = JSONObject(body)
                     val wsToken = json.getString("token")
-                    centrifugoService?.connect("wss://backend.signalxpress.com/connection/websocket", wsToken)
+                    val wsUrl = json.optString("ws_url", "wss://socket.signalxpress.com/connection/websocket")
+                    centrifugoService?.connect(wsUrl, wsToken)
                 }
             } catch (e: Exception) {
                 Log.e("Centrifugo", "Failed to get WS token: ${e.message}")

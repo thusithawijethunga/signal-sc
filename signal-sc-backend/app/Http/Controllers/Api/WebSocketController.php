@@ -17,8 +17,14 @@ class WebSocketController extends Controller
 
         $token = $centrifugo->generateConnectionToken($userId);
 
+        $apiUrl = config('centrifugo.api_url', '');
+        $wsUrl = str_replace('/api', '/connection/websocket', $apiUrl);
+        $wsUrl = str_replace('https://', 'wss://', $wsUrl);
+        $wsUrl = str_replace('http://', 'ws://', $wsUrl);
+
         return response()->json([
             'token' => $token,
+            'ws_url' => $wsUrl,
             'channels' => [
                 'trading' => CentrifugoService::CHANNEL_TRADING,
                 'trades' => CentrifugoService::CHANNEL_TRADES,

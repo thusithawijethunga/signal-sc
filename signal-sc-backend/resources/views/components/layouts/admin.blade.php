@@ -336,7 +336,7 @@ window.wsStore = { signals: [], trades: [], news: [], community: [], lastTrade: 
       const data = await resp.json();
       if (!data.token) return;
 
-      const centrifuge = new Centrifuge('wss://socket.signalxpress.com/connection/websocket', {
+      const centrifuge = new Centrifuge(data.ws_url || 'wss://socket.signalxpress.com/connection/websocket', {
         token: data.token
       });
 

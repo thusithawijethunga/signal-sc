@@ -82,13 +82,13 @@ function chatApp() {
       try {
         const resp = await fetch('{{ route("admin.chat.token") }}');
         const data = await resp.json();
-        this.connectWebSocket(data.token);
+        this.connectWebSocket(data.token, data.ws_url);
       } catch(e) { console.error('Token fetch failed:', e); }
     },
 
-    connectWebSocket(token) {
-      const wsUrl = 'wss://backend.signalxpress.com/connection/websocket';
-      this.ws = new WebSocket(wsUrl);
+    connectWebSocket(token, wsUrl) {
+      const url = wsUrl || 'wss://socket.signalxpress.com/connection/websocket';
+      this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
         this.ws.send(JSON.stringify({ id: 1, connect: { token } }));
@@ -116,7 +116,7 @@ function chatApp() {
 
       this.ws.onclose = () => {
         this.connected = false;
-        setTimeout(() => this.connectWebSocket(token), 3000);
+        setTimeout(() => this.connectWebSocket(token, url), 3000);
       };
 
       this.ws.onerror = () => { this.connected = false; };

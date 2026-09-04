@@ -284,7 +284,8 @@ function feedApp() {
 
     connectWs() {
       fetch('/admin/chat/token').then(r => r.json()).then(data => {
-        const ws = new WebSocket('wss://backend.signalxpress.com/connection/websocket');
+        const wsUrl = data.ws_url || 'wss://socket.signalxpress.com/connection/websocket';
+        const ws = new WebSocket(wsUrl);
         ws.onopen = () => ws.send(JSON.stringify({ id: 1, connect: { token: data.token } }));
         ws.onmessage = (e) => {
           const d = JSON.parse(e.data);
