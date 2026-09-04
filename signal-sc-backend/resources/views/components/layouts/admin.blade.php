@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>SIGNAL XPRESS — Unified Master Trading & IB Partner Admin Portal</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -300,6 +301,9 @@
         </li>
         <li class="nav-item m-0">
           <a href="{{ route('admin.csv-analytics') }}" class="nav-link {{ request()->routeIs('admin.csv-analytics') ? 'active' : '' }}">📈 Trading CSV Analytics</a>
+        </li>
+        <li class="nav-item m-0">
+          <a href="{{ route('admin.db-backup') }}" class="nav-link {{ request()->routeIs('admin.db-backup') ? 'active' : '' }}">🗄️ DB Backup</a>
         </li>
       </ul>
     </div>

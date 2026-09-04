@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>SIGNAL XPRESS — Unified Master Trading & IB Partner Admin Portal</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -964,7 +965,14 @@
       <!-- No Account Match -->
       <div x-show="csvActiveTab === 'nomatch'">
         <div class="sec-ib p-3">
-          <div class="text-secondary mb-2"><i class="ti ti-alert-triangle me-1"></i> Unmatched trades from CSV</div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-secondary"><i class="ti ti-alert-triangle me-1"></i> Unmatched trades from CSV</div>
+            <button class="btn btn-sm btn-warning" @click="autoCreateMembersFromCsv()" x-show="csvUnmatchedTrades.length > 0" :disabled="creatingMembers">
+              <i class="ti ti-user-plus me-1"></i>
+              <span x-show="!creatingMembers">Create <span x-text="csvUnmatchedTrades.length"></span> Members</span>
+              <span x-show="creatingMembers"><i class="ti ti-loader ti-spin me-1"></i>Creating...</span>
+            </button>
+          </div>
           <div class="table-responsive">
             <table class="table table-dark-custom">
               <thead>
@@ -1098,6 +1106,7 @@ function dashboardApp() {
     csvMembersData: @json($ibMembersJson),
     csvUniqueAccounts: [],
 
+    creatingMembers: false,
     modal: { show: false, title: '', pips: 0, profit: 0 },
     modalResolve: null,
 
@@ -1684,7 +1693,6 @@ function dashboardApp() {
       const reader = new FileReader();
       reader.onload = (e) => {
         this.parseCsvData(e.target.result);
-        this.autoCreateMembersFromCsv();
       };
       reader.readAsText(this.csvFile);
     },
@@ -1862,7 +1870,7 @@ function dashboardApp() {
     },
 
     async autoCreateMembersFromCsv() {
-      if (!this.csvUniqueAccounts.length) return;
+      if (!this.csvUniqueAccounts.length || this.creatingMembers) return;
 
       const existingIds = new Set(this.csvMembersData.map(m => String(m.account_id || m.accountId || '')));
       const newAccounts = this.csvUniqueAccounts.filter(a => !existingIds.has(String(a.account_id)));
@@ -1872,6 +1880,7 @@ function dashboardApp() {
         return;
       }
 
+      this.creatingMembers = true;
       try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
         const resp = await fetch('{{ route("admin.csv-analytics.auto-create") }}', {
@@ -1888,6 +1897,8 @@ function dashboardApp() {
       } catch (err) {
         console.error('Auto-create members error:', err);
         this.showToast('Failed to auto-create members', 'error');
+      } finally {
+        this.creatingMembers = false;
       }
     },
 

@@ -12,6 +12,7 @@ use App\Http\Controllers\AdminCommunityController;
 use App\Http\Controllers\AdminNewsController;
 use App\Http\Controllers\AdminChatController;
 use App\Http\Controllers\AdminFeedController;
+use App\Http\Controllers\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn() => redirect()->route('login'));
@@ -84,6 +85,13 @@ Route::middleware('auth')->group(function () {
 
     // Settings
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
+
+    // Database Backup
+    Route::get('/admin/database-backup', [DatabaseBackupController::class, 'index'])->name('admin.db-backup');
+    Route::get('/admin/database-backup/export', [DatabaseBackupController::class, 'export'])->name('admin.db-backup.export');
+    Route::post('/admin/database-backup/import', [DatabaseBackupController::class, 'import'])->name('admin.db-backup.import');
+    Route::get('/admin/database-backup/download/{filename}', [DatabaseBackupController::class, 'download'])->name('admin.db-backup.download');
+    Route::delete('/admin/database-backup/delete/{filename}', [DatabaseBackupController::class, 'delete'])->name('admin.db-backup.delete');
 
     // Signal Reactions (admin view)
     Route::get('/admin/signals/{signal}/reactions', function ($signal) {

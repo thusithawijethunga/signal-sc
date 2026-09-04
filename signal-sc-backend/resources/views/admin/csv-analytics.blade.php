@@ -163,7 +163,14 @@
 
     <div x-show="csvActiveTab === 'nomatch'">
       <div class="sec-ib p-3">
-        <div class="text-secondary mb-2"><i class="ti ti-alert-triangle me-1"></i> Unmatched trades from CSV</div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="text-secondary"><i class="ti ti-alert-triangle me-1"></i> Unmatched trades from CSV</div>
+          <button class="btn btn-sm btn-warning" @click="autoCreateMembersFromCsv()" x-show="csvUnmatchedTrades.length > 0" :disabled="creatingMembers">
+            <i class="ti ti-user-plus me-1"></i>
+            <span x-show="!creatingMembers">Create <span x-text="csvUnmatchedTrades.length"></span> Members</span>
+            <span x-show="creatingMembers"><i class="ti ti-loader ti-spin me-1"></i>Creating...</span>
+          </button>
+        </div>
         <div class="table-responsive">
           <table class="table table-dark-custom">
             <thead>
@@ -212,6 +219,7 @@ function csvAnalyticsApp() {
     csvMembersData: @json($ibMembersJson),
     csvUniqueAccounts: [],
 
+    creatingMembers: false,
     chartInstances: {},
 
     toastVisible: false,
@@ -239,7 +247,6 @@ function csvAnalyticsApp() {
       const reader = new FileReader();
       reader.onload = (e) => {
         this.parseCsvData(e.target.result);
-        this.autoCreateMembersFromCsv();
       };
       reader.readAsText(this.csvFile);
     },
@@ -420,7 +427,7 @@ function csvAnalyticsApp() {
     },
 
     async autoCreateMembersFromCsv() {
-      if (!this.csvUniqueAccounts.length) return;
+      if (!this.csvUniqueAccounts.length || this.creatingMembers) return;
 
       const existingIds = new Set(this.csvMembersData.map(m => String(m.account_id || m.accountId || '')));
       const newAccounts = this.csvUniqueAccounts.filter(a => !existingIds.has(String(a.account_id)));
@@ -430,6 +437,7 @@ function csvAnalyticsApp() {
         return;
       }
 
+      this.creatingMembers = true;
       try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
         const resp = await fetch('{{ route("admin.csv-analytics.auto-create") }}', {
@@ -446,6 +454,8 @@ function csvAnalyticsApp() {
       } catch (err) {
         console.error('Auto-create members error:', err);
         this.showToast('Failed to auto-create members', 'error');
+      } finally {
+        this.creatingMembers = false;
       }
     },
 
