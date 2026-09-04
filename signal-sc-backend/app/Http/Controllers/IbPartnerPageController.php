@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\IbMember;
 use App\Models\IbPartner;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class IbPartnerPageController extends Controller
@@ -11,7 +11,7 @@ class IbPartnerPageController extends Controller
     public function index(Request $request)
     {
         $ibPartners = IbPartner::withCount('members')->get();
-        $ibMembers = IbMember::with('partner')->latest()->get();
+        $ibMembers = User::ibMembers()->with('partner')->latest()->get();
 
         $ibMembersJson = $ibMembers->map(fn ($m) => [
             'sx_id' => $m->sx_id,

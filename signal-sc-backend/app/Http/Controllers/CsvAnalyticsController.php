@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\IbMember;
-use App\Models\CsvUpload;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class CsvAnalyticsController extends Controller
 {
     public function index(Request $request)
     {
-        $ibMembers = IbMember::with('partner')->latest()->get();
+        $ibMembers = User::ibMembers()->with('partner')->latest()->get();
 
         $ibMembersJson = $ibMembers->map(fn ($m) => [
             'sx_id' => $m->sx_id,
@@ -23,9 +20,7 @@ class CsvAnalyticsController extends Controller
             'partner' => $m->partner->name ?? '',
         ])->toArray();
 
-        $csvUploads = CsvUpload::latest()->get();
-
-        return view('admin.csv-analytics', compact('ibMembersJson', 'csvUploads'));
+        return view('admin.csv-analytics', compact('ibMembersJson'));
     }
 
     public function autoCreateMembers(Request $request)
@@ -47,7 +42,7 @@ class CsvAnalyticsController extends Controller
 
             if (empty($accountId)) continue;
 
-            $existingMember = IbMember::where('account_id', $accountId)->first();
+            $existingMember = User::where('account_id', $accountId)->where('role', 'ib_member')->first();
 
             if ($existingMember) {
                 $existing[] = [
@@ -60,28 +55,26 @@ class CsvAnalyticsController extends Controller
             }
 
             try {
-                $email = 'trader' . $accountId . '@signalxpress.local';
+                $email = 'ib' . $accountId . '@signalxpress.local';
 
-                $user = User::firstOrCreate(
-                    ['email' => $email],
-                    [
-                        'name' => 'Trader ' . $accountId,
-                        'password' => $defaultPassword,
-                        'role' => 'member',
-                    ]
-                );
+                $lastMember = User::ibMembers()->orderByDesc('id')->first();
+                $nextNumber = $lastMember ? intval(substr($lastMember->sx_id, 2)) + 1 : 1;
+                $sxId = 'SX' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
-                $member = IbMember::create([
-                    'user_id' => $user->id,
+                $user = User::create([
                     'name' => 'Trader ' . $accountId,
+                    'email' => $email,
+                    'password' => $defaultPassword,
+                    'role' => 'ib_member',
+                    'sx_id' => $sxId,
                     'broker' => $broker,
                     'account_id' => $accountId,
                 ]);
 
                 $created[] = [
-                    'sx_id' => $member->sx_id,
+                    'sx_id' => $sxId,
                     'account_id' => $accountId,
-                    'name' => $member->name,
+                    'name' => $user->name,
                     'email' => $email,
                     'password' => $defaultPassword,
                     'status' => 'created',
@@ -91,7 +84,7 @@ class CsvAnalyticsController extends Controller
             }
         }
 
-        $allMembers = IbMember::with('partner')->latest()->get()->map(fn ($m) => [
+        $allMembers = User::ibMembers()->with('partner')->latest()->get()->map(fn ($m) => [
             'sx_id' => $m->sx_id,
             'name' => $m->name,
             'broker' => $m->broker,

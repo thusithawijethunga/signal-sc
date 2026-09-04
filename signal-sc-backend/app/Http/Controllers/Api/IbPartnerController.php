@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\IbMember;
 use App\Models\IbPartner;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,7 +13,7 @@ class IbPartnerController extends Controller
     public function members(Request $request): JsonResponse
     {
         try {
-            $query = IbMember::with('partner');
+            $query = User::ibMembers()->with('partner');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -51,10 +51,22 @@ class IbPartnerController extends Controller
                 'partner_id' => 'nullable|exists:ib_partners,id',
             ]);
 
-            $member = IbMember::create($request->only([
-                'name', 'broker', 'account_id', 'nic',
-                'whatsapp', 'telegram', 'partner_id',
-            ]));
+            $accountId = $request->account_id;
+            $email = 'ib' . ($accountId ?? uniqid()) . '@signalxpress.local';
+
+            $lastMember = User::ibMembers()->orderByDesc('id')->first();
+            $nextNumber = $lastMember ? intval(substr($lastMember->sx_id, 2)) + 1 : 1;
+            $sxId = 'SX' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
+            $member = User::create(array_merge(
+                $request->only(['name', 'broker', 'account_id', 'nic', 'whatsapp', 'telegram', 'partner_id']),
+                [
+                    'email' => $email,
+                    'password' => 'SignalXp',
+                    'role' => 'ib_member',
+                    'sx_id' => $sxId,
+                ]
+            ));
 
             return response()->json($member, 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -102,7 +114,7 @@ class IbPartnerController extends Controller
             ]);
 
             $search = $request->query('query');
-            $members = IbMember::with('partner')
+            $members = User::ibMembers()->with('partner')
                 ->where('sx_id', 'like', "%{$search}%")
                 ->orWhere('name', 'like', "%{$search}%")
                 ->orWhere('account_id', 'like', "%{$search}%")

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\IbMember;
 use App\Models\IbPartner;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,7 +12,7 @@ class IbPartnerManageController extends Controller
     public function index()
     {
         $partners = IbPartner::withCount('members')->get();
-        $members = IbMember::with('partner')->latest()->get();
+        $members = User::ibMembers()->with('partner')->latest()->get();
 
         return view('dashboard');
     }
@@ -52,20 +51,18 @@ class IbPartnerManageController extends Controller
                 $partnerName = $row['partner'] ?? $row['Partner'] ?? $row['partner_name'] ?? $row['referral'] ?? null;
                 $sxId = $row['sx_id'] ?? $row['SX ID'] ?? $row['sxId'] ?? $row['id'] ?? null;
 
-                // Resolve partner_id
                 $partnerId = null;
                 if (! empty($partnerName)) {
                     $partner = IbPartner::firstOrCreate(['name' => $partnerName]);
                     $partnerId = $partner->id;
                 }
 
-                // Try to find existing member by sx_id or account_id
                 $existing = null;
                 if (! empty($sxId)) {
-                    $existing = IbMember::where('sx_id', $sxId)->first();
+                    $existing = User::ibMembers()->where('sx_id', $sxId)->first();
                 }
                 if (! $existing && ! empty($accountId)) {
-                    $existing = IbMember::where('account_id', $accountId)->first();
+                    $existing = User::ibMembers()->where('account_id', $accountId)->first();
                 }
 
                 if ($existing) {
@@ -80,8 +77,17 @@ class IbPartnerManageController extends Controller
                     ]);
                     $updated++;
                 } else {
-                    IbMember::create([
+                    $lastMember = User::ibMembers()->orderByDesc('id')->first();
+                    $nextNumber = $lastMember ? intval(substr($lastMember->sx_id, 2)) + 1 : 1;
+                    $newSxId = 'SX' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
+                    $email = 'ib' . ($accountId ?? uniqid()) . '@signalxpress.local';
+                    User::create([
                         'name' => $name,
+                        'email' => $email,
+                        'password' => 'SignalXp',
+                        'role' => 'ib_member',
+                        'sx_id' => $newSxId,
                         'broker' => $broker,
                         'account_id' => $accountId,
                         'nic' => $nic,
@@ -101,7 +107,7 @@ class IbPartnerManageController extends Controller
                 'synced' => $synced,
                 'created' => $created,
                 'updated' => $updated,
-                'members' => IbMember::with('partner')->latest()->get()->map(fn ($m) => [
+                'members' => User::ibMembers()->with('partner')->latest()->get()->map(fn ($m) => [
                     'sx_id' => $m->sx_id,
                     'name' => $m->name,
                     'broker' => $m->broker,
@@ -139,23 +145,18 @@ class IbPartnerManageController extends Controller
         unset($data['partner']);
 
         $accountId = $data['account_id'] ?? null;
-        $userId = null;
+        $email = 'ib' . ($accountId ?? uniqid()) . '@signalxpress.local';
 
-        if ($accountId) {
-            $email = 'trader' . $accountId . '@signalxpress.local';
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $data['name'],
-                    'password' => 'SignalXp',
-                    'role' => 'member',
-                ]
-            );
-            $userId = $user->id;
-        }
+        $lastMember = User::ibMembers()->orderByDesc('id')->first();
+        $nextNumber = $lastMember ? intval(substr($lastMember->sx_id, 2)) + 1 : 1;
+        $sxId = 'SX' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
-        $data['user_id'] = $userId;
-        IbMember::create($data);
+        User::create(array_merge($data, [
+            'email' => $email,
+            'password' => 'SignalXp',
+            'role' => 'ib_member',
+            'sx_id' => $sxId,
+        ]));
 
         return response()->json(['message' => 'Member saved successfully']);
     }
@@ -175,7 +176,7 @@ class IbPartnerManageController extends Controller
     {
         $query = $request->input('q', '');
 
-        $members = IbMember::with('partner')
+        $members = User::ibMembers()->with('partner')
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
                   ->orWhere('sx_id', 'like', "%{$query}%")

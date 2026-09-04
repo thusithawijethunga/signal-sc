@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -18,6 +18,13 @@ class User extends Authenticatable
         'password',
         'role',
         'api_token',
+        'sx_id',
+        'broker',
+        'account_id',
+        'nic',
+        'whatsapp',
+        'telegram',
+        'partner_id',
     ];
 
     protected $hidden = [
@@ -64,8 +71,13 @@ class User extends Authenticatable
         return $this->hasMany(SyncQueue::class);
     }
 
-    public function ibMember(): HasOne
+    public function partner(): BelongsTo
     {
-        return $this->hasOne(IbMember::class);
+        return $this->belongsTo(IbPartner::class, 'partner_id');
+    }
+
+    public function scopeIbMembers($query)
+    {
+        return $query->where('role', 'ib_member');
     }
 }
