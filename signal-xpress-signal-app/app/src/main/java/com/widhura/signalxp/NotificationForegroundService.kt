@@ -115,7 +115,7 @@ class NotificationForegroundService : Service() {
         scope.launch {
             try {
                 val request = Request.Builder()
-                    .url("https://market.signalxpress.com/api/mobile/centrifugo/token?user_id=$userId")
+                    .url("https://backend.signalxpress.com/api/websocket/token")
                     .header("Authorization", "Bearer $authToken")
                     .header("X-API-KEY", API_KEY)
                     .header("Accept", "application/json")
