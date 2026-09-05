@@ -242,12 +242,12 @@ data class SignalRealtimeEvent(
     val result: String = "RUNNING",
     val channel: String = "VIP",
     val date: String = "",
-    val hitLevel: String = "",
+    @SerializedName("hit_level") val hitLevel: String = "",
     val status: String = "active",
-    val thumbsCount: Int = -1,
-    val fireCount: Int = -1,
-    val rocketCount: Int = -1,
-    val brokenHeartCount: Int = -1,
+    @SerializedName("thumbs_count") val thumbsCount: Int = -1,
+    @SerializedName("fire_count") val fireCount: Int = -1,
+    @SerializedName("rocket_count") val rocketCount: Int = -1,
+    @SerializedName("broken_heart_count") val brokenHeartCount: Int = -1,
     val type: String = "signal",
     val action: String = ""
 ) {
@@ -262,7 +262,7 @@ data class TradeRealtimeEvent(
     val result: String = "RUNNING",
     val pips: Double = Double.NaN,
     val profit: Double = Double.NaN,
-    val hitLevel: String = "",
+    @SerializedName("hit_level") val hitLevel: String = "",
     val type: String = "trade",
     val action: String = ""
 ) {
@@ -281,12 +281,12 @@ data class NewsRealtimeEvent(
 
 data class CommunityRealtimeEvent(
     val id: Long = 0,
-    val author_name: String = "",
-    val post_type: String = "",
+    @SerializedName("author_name") val author_name: String = "",
+    @SerializedName("post_type") val post_type: String = "",
     val content: String = "",
     val pair: String = "",
-    val profit_amount: Double = 0.0,
-    val pips_gain: Int = 0
+    @SerializedName("profit_amount") val profit_amount: Double = 0.0,
+    @SerializedName("pips_gain") val pips_gain: Int = 0
 ) {
     val authorName: String get() = author_name
     val postType: String get() = post_type
@@ -299,8 +299,8 @@ data class NotificationEvent(
     val title: String = "",
     val body: String = "",
     val type: String = "info",
-    val signal_id: Long = 0,
-    val trade_id: Long = 0,
+    @SerializedName("signal_id") val signal_id: Long = 0,
+    @SerializedName("trade_id") val trade_id: Long = 0,
     val result: String = ""
 ) {
     val signalId: Long get() = signal_id
