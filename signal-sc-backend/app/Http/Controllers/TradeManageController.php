@@ -50,7 +50,7 @@ class TradeManageController extends Controller
                 TradeCreated::dispatch($trade);
             }
 
-            $this->syncTradeToSignal($trade);
+            $this->syncTradeToSignal($trade, null, false);
 
             $count++;
         }
@@ -157,7 +157,7 @@ class TradeManageController extends Controller
         return response()->json(['message' => 'Trade deleted']);
     }
 
-    private function syncTradeToSignal(Trade $trade, ?string $action = null): void
+    private function syncTradeToSignal(Trade $trade, ?string $action = null, bool $broadcast = true): void
     {
         try {
             $existing = Signal::where('no', $trade->no)->first();
@@ -185,7 +185,11 @@ class TradeManageController extends Controller
                 if ($trade->tp4 !== null) $signalData['tp4'] = $trade->tp4;
 
                 $existing->update($signalData);
-                SignalUpdated::dispatch($existing, $action);
+                // Only broadcast update events when $broadcast is true
+                // (import/resync passes false to avoid re-sending already-sent signals)
+                if ($broadcast) {
+                    SignalUpdated::dispatch($existing, $action);
+                }
             } else {
                 $signalData['entry1'] = $trade->entry1;
                 $signalData['entry2'] = $trade->entry2;
@@ -195,6 +199,7 @@ class TradeManageController extends Controller
                 $signalData['tp3'] = $trade->tp3;
                 $signalData['tp4'] = $trade->tp4;
                 $signal = Signal::create($signalData);
+                // Always broadcast genuinely new signals
                 SignalCreated::dispatch($signal);
             }
         } catch (\Exception $e) {
