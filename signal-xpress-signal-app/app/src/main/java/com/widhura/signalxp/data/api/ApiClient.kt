@@ -12,7 +12,10 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    private const val BASE_URL = "https://backend.signalxpress.com/api/"
+    // Was private - exposed so raw OkHttp callers outside Retrofit/ApiService
+    // (e.g. NotificationForegroundService's websocket token fetch) build
+    // requests against the same host instead of hardcoding a divergent URL.
+    const val BASE_URL = "https://backend.signalxpress.com/api/"
     private const val PREFS_NAME = "signal_xpress_auth"
     private const val KEY_TOKEN = "api_token"
     private const val KEY_USER_NAME = "user_name"

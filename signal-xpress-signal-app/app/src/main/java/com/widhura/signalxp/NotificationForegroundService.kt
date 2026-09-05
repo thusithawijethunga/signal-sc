@@ -46,7 +46,12 @@ class NotificationForegroundService : Service() {
         private const val ACTION_STOP = "ACTION_STOP"
         private const val EXTRA_USER_ID = "user_id"
         private const val RETRY_DELAY_MS = 5_000L
-        private const val API_KEY = "Eky8ml0WwPG0Hp2swTtDgpugjtRX9NNa"
+
+        // Real token endpoint lives on the same backend as everything else in
+        // ApiClient/ApiService (Route::get('/websocket/token', ...) in routes/api.php,
+        // now behind the api.auth middleware). There is no separate
+        // market.signalxpress.com mobile gateway and no X-API-KEY check on this route.
+        private val WS_TOKEN_URL = ApiClient.BASE_URL + "websocket/token"
 
         fun start(context: Context, userId: String) {
             val intent = Intent(context, NotificationForegroundService::class.java).apply {
@@ -105,6 +110,16 @@ class NotificationForegroundService : Service() {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
+            // START_STICKY can redeliver a null/empty intent after the process is
+            // killed and restarted by the OS. Reconnect using the last known user
+            // instead of silently doing nothing until the app is reopened.
+            else -> {
+                val userId = ApiClient.getCurrentUserId(this).toString()
+                if (ApiClient.isLoggedIn(this) && !isActivelyConnected) {
+                    startForeground(NOTIFICATION_ID, buildNotification("Reconnecting..."))
+                    connectWebSocket(userId)
+                }
+            }
         }
         return START_STICKY
     }
@@ -115,40 +130,41 @@ class NotificationForegroundService : Service() {
         scope.launch {
             try {
                 val request = Request.Builder()
-                    .url("https://backend.signalxpress.com/api/websocket/token")
+                    .url(WS_TOKEN_URL)
                     .header("Authorization", "Bearer $authToken")
-                    .header("X-API-KEY", API_KEY)
                     .header("Accept", "application/json")
                     .build()
 
                 val client = OkHttpClient()
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
-                    val body = response.body?.string() ?: return@launch
+                    val body = response.body?.string() ?: run {
+                        Log.e(TAG, "Token endpoint returned an empty body")
+                        scheduleRetry(userId)
+                        return@launch
+                    }
                     val json = JSONObject(body)
 
-                    if (json.optBoolean("error", true)) {
-                        Log.e(TAG, "Token endpoint returned error: ${json.optString("message")}")
+                    // WebSocketController::token() returns a flat object:
+                    // { "token": "...", "ws_url": "...", "channels": {...}, ... }
+                    val tokenValue = json.optString("token", "")
+                    val urlValue = json.optString("ws_url", "")
+
+                    if (tokenValue.isBlank() || urlValue.isBlank()) {
+                        Log.e(TAG, "Token response missing token/ws_url: $body")
                         scheduleRetry(userId)
                         return@launch
                     }
 
-                    val data = json.optJSONObject("data")
-                    if (data == null) {
-                        Log.e(TAG, "Token response missing data field")
-                        scheduleRetry(userId)
-                        return@launch
-                    }
-
-                    wsToken = data.getString("token")
-                    wsUrl = "wss://socket.signalxpress.com/connection/websocket"
+                    wsToken = tokenValue
+                    wsUrl = urlValue
 
                     createCentrifugoService()
                     centrifugoService?.connect(wsUrl!!, wsToken!!)
 
                     updateNotification("Connected to Signal Xpress")
                 } else {
-                    Log.e(TAG, "Failed to fetch WS token: ${response.code}")
+                    Log.e(TAG, "Failed to fetch WS token: ${response.code} ${response.body?.string()}")
                     scheduleRetry(userId)
                 }
             } catch (e: Exception) {
