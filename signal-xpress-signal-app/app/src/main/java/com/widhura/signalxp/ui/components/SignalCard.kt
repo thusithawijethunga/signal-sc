@@ -121,7 +121,13 @@ fun SignalCard(
     }
 
     val hitLevel = signal.hitLevel
-    val hitLevelInt = hitLevel.toIntOrNull() ?: 0
+    val hitLevelInt = hitLevel.toIntOrNull() ?: when (hitLevel.uppercase()) {
+        "TP1" -> 1
+        "TP2" -> 2
+        "TP3" -> 3
+        "TP4" -> 4
+        else -> 0
+    }
 
     Card(
         modifier = Modifier

@@ -42,10 +42,13 @@ class PublishSignalUpdateToWebSocket
             'timestamp' => now()->toISOString(),
         ]);
 
-        $label = match($action) {
-            'tp1_hit', 'tp2_hit', 'tp3_hit', 'tp4_hit' => '🎯 ' . strtoupper($action) . ' Hit!',
-            'sl_hit' => '🛑 SL Hit!',
-            'be' => '⚖️ BE Hit!',
+        $label = match(strtoupper($action)) {
+            'TP1' => '🎯 TP1 Hit!',
+            'TP2' => '🎯 TP2 Hit!',
+            'TP3' => '🎯 TP3 Hit!',
+            'TP4' => '🎯 TP4 Hit!',
+            'SL' => '🛑 SL Hit!',
+            'BE' => '⚖️ BE Hit!',
             default => '📊 Signal Updated',
         };
 

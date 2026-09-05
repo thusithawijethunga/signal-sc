@@ -140,6 +140,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             },
             onNotification = { event ->
                 Log.d("Centrifugo", "Notification: ${event.title} - ${event.body}")
+                viewModelScope.launch(Dispatchers.Main) {
+                    _activeNotification.value = NotificationMessage(
+                        title = event.title,
+                        body = event.body,
+                        type = event.type
+                    )
+                }
             },
             onConnectionChange = { connected ->
                 _isWebSocketConnected.value = connected
