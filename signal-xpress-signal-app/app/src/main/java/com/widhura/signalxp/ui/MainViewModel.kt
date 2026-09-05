@@ -137,31 +137,14 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             CentrifugoEventBus.notificationEvents.collect { event ->
                 Log.d("Centrifugo", "Notification: ${event.title} - ${event.body} type=${event.type}")
-                withContext(Dispatchers.IO) {
-                    var signalNo = event.signalNo
-                    // Fallback: look up from DB if signal_no not included in the broadcast
-                    if (signalNo == 0 && event.signalId != 0L) {
-                        try {
-                            signalNo = AppDatabase.getDatabase(getApplication())
-                                .signalDao().getSignalById(event.signalId)?.no ?: 0
-                        } catch (e: Exception) {
-                            Log.d("Centrifugo", "signalNo lookup failed: ${e.message}")
-                        }
-                    }
-                    try {
-                        com.widhura.signalxp.util.SignalNotifications.showIfImportant(
-                            getApplication(), event, signalNo
-                        )
-                    } catch (e: Exception) {
-                        Log.d("Centrifugo", "system notification failed: ${e.message}")
-                    }
-                    withContext(Dispatchers.Main) {
-                        _activeNotification.value = NotificationMessage(
-                            title = event.title ?: "",
-                            body = event.body ?: "",
-                            type = event.type ?: "info"
-                        )
-                    }
+                // System notifications are handled by NotificationForegroundService.
+                // Here we only update the in-app UI state (toast/banner).
+                withContext(Dispatchers.Main) {
+                    _activeNotification.value = NotificationMessage(
+                        title = event.title ?: "",
+                        body = event.body ?: "",
+                        type = event.type ?: "info"
+                    )
                 }
             }
         }

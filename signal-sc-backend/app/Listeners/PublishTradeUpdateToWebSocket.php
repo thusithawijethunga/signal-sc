@@ -41,27 +41,7 @@ class PublishTradeUpdateToWebSocket
 
         $this->centrifugo->publish(CentrifugoService::CHANNEL_TRADES, $payload);
 
-        if ($resultChanged) {
-            $label = match($trade->result) {
-                'WIN' => '🎯 TP Hit!',
-                'LOSS' => '🛑 SL Hit!',
-                'BE' => '⚖️ BE Hit!',
-                default => '📊 Result Update',
-            };
-
-            // Include signal_id and signal_no so the Android app can deduplicate notifications
-            // (the same hit arrives from both trading:trades and trading:signals channels).
-            $signalId = \App\Models\Signal::where('no', $trade->no)->value('id');
-
-            $this->centrifugo->broadcastNotification(
-                $label,
-                $trade->pair . ' ' . $trade->direction . ' | ' . $trade->pips . ' pips | $' . $trade->profit,
-                'trade_hit',
-                array_merge(
-                    ['trade_id' => $trade->id, 'result' => $trade->result, 'signal_no' => $trade->no],
-                    $signalId ? ['signal_id' => $signalId] : []
-                )
-            );
-        }
+        // Notification is already sent by PublishSignalUpdateToWebSocket (triggered
+        // via syncTradeToSignal). Skip here to avoid duplicate Android notifications.
     }
 }
