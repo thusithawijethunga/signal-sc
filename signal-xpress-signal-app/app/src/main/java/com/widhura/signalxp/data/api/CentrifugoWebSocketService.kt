@@ -21,8 +21,13 @@ class CentrifugoWebSocketService(
     private val onNewsUpdate: (NewsRealtimeEvent) -> Unit,
     private val onCommunityUpdate: (CommunityRealtimeEvent) -> Unit,
     private val onNotification: (NotificationEvent) -> Unit,
-    private val onConnectionChange: (Boolean) -> Unit
+    private val onConnectionChange: (Boolean) -> Unit,
+    private val onAuthFailed: (() -> Unit)? = null
 ) {
+
+    fun refreshToken(newToken: String) {
+        token = newToken
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var webSocket: WebSocket? = null
     private val client = OkHttpClient.Builder()
@@ -35,6 +40,7 @@ class CentrifugoWebSocketService(
     private var isConnected = false
     private var reconnectAttempt = 0
     private var shouldReconnect = true
+    private var heartbeatJob: kotlinx.coroutines.Job? = null
 
     fun connect(url: String, authToken: String) {
         wsUrl = url
@@ -57,6 +63,7 @@ class CentrifugoWebSocketService(
                     reconnectAttempt = 0
                     onConnectionChange(true)
                     sendConnect()
+                    startHeartbeat()
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
@@ -71,6 +78,7 @@ class CentrifugoWebSocketService(
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     Log.d("Centrifugo", "WebSocket closed: $code $reason")
                     isConnected = false
+                    stopHeartbeat()
                     onConnectionChange(false)
                     scheduleReconnect()
                 }
@@ -78,6 +86,7 @@ class CentrifugoWebSocketService(
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     Log.e("Centrifugo", "WebSocket failure: ${t.message}")
                     isConnected = false
+                    stopHeartbeat()
                     onConnectionChange(false)
                     scheduleReconnect()
                 }
@@ -123,7 +132,12 @@ class CentrifugoWebSocketService(
                     subscribe("trading:community", 5)
                     subscribe("notifications:broadcast", 6)
                 } else if (connectData.has("error")) {
-                    Log.e("Centrifugo", "Connect error: ${connectData.getJSONObject("error")}")
+                    val errObj = connectData.optJSONObject("error")
+                    Log.e("Centrifugo", "Connect error: $errObj")
+                    // Token expired / invalid — ask owner to re-fetch a fresh WS token
+                    try { onAuthFailed?.invoke() } catch (e: Exception) {
+                        Log.e("Centrifugo", "onAuthFailed callback failed: ${e.message}")
+                    }
                 }
             }
 
@@ -136,8 +150,8 @@ class CentrifugoWebSocketService(
             // Handle push messages (publications)
             if (json.has("push")) {
                 val push = json.getJSONObject("push")
+                val channel = push.optString("channel", "")
                 val pub = push.getJSONObject("pub")
-                val channel = pub.getString("channel")
                 val data = pub.getJSONObject("data")
 
                 when (channel) {
@@ -172,17 +186,17 @@ class CentrifugoWebSocketService(
                 tp2 = data.optDouble("tp2", 0.0),
                 tp3 = data.optDouble("tp3", 0.0),
                 tp4 = data.optDouble("tp4", 0.0),
-                pips = data.optDouble("pips", 0.0),
-                profit = data.optDouble("profit", 0.0),
+                pips = if (data.has("pips") && !data.isNull("pips")) data.getDouble("pips") else Double.NaN,
+                profit = if (data.has("profit") && !data.isNull("profit")) data.getDouble("profit") else Double.NaN,
                 result = data.optString("result", "RUNNING"),
                 channel = data.optString("channel", "VIP"),
                 date = data.optString("date", ""),
                 hitLevel = data.optString("hit_level", ""),
                 status = data.optString("status", "active"),
-                thumbsCount = data.optInt("thumbs_count", 0),
-                fireCount = data.optInt("fire_count", 0),
-                rocketCount = data.optInt("rocket_count", 0),
-                brokenHeartCount = data.optInt("broken_heart_count", 0),
+                thumbsCount = if (data.has("thumbs_count")) data.getInt("thumbs_count") else -1,
+                fireCount = if (data.has("fire_count")) data.getInt("fire_count") else -1,
+                rocketCount = if (data.has("rocket_count")) data.getInt("rocket_count") else -1,
+                brokenHeartCount = if (data.has("broken_heart_count")) data.getInt("broken_heart_count") else -1,
                 eventType = data.optString("type", "signal"),
                 action = data.optString("action", "")
             )
@@ -200,8 +214,8 @@ class CentrifugoWebSocketService(
                 pair = data.optString("pair", ""),
                 direction = data.optString("direction", ""),
                 result = data.optString("result", "RUNNING"),
-                pips = data.optDouble("pips", 0.0),
-                profit = data.optDouble("profit", 0.0),
+                pips = if (data.has("pips") && !data.isNull("pips")) data.getDouble("pips") else Double.NaN,
+                profit = if (data.has("profit") && !data.isNull("profit")) data.getDouble("profit") else Double.NaN,
                 hitLevel = data.optString("hit_level", ""),
                 eventType = data.optString("type", "trade"),
                 action = data.optString("action", "")
@@ -270,12 +284,18 @@ class CentrifugoWebSocketService(
         Log.d("Centrifugo", "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
         scope.launch {
             delay(delayMs)
-            doConnect()
+            if (shouldReconnect) {
+                // Close old socket before reconnecting
+                webSocket?.close(1000, "Reconnecting")
+                webSocket = null
+                doConnect()
+            }
         }
     }
 
     fun disconnect() {
         shouldReconnect = false
+        stopHeartbeat()
         webSocket?.close(1000, "Disconnecting")
         webSocket = null
         isConnected = false
@@ -289,6 +309,25 @@ class CentrifugoWebSocketService(
     fun sendPing() {
         val pingMsg = JSONObject().apply { put("ping", 1) }
         webSocket?.send(pingMsg.toString())
+    }
+
+    private fun startHeartbeat() {
+        stopHeartbeat()
+        heartbeatJob = scope.launch {
+            while (isConnected) {
+                delay(25000) // ping every 25 seconds
+                try {
+                    sendPing()
+                } catch (e: Exception) {
+                    Log.e("Centrifugo", "Heartbeat ping failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun stopHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
     }
 }
 

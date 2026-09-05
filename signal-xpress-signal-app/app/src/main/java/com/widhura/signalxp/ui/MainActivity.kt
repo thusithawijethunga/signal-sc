@@ -207,7 +207,10 @@ fun MainAppContent(
                         val notifBg = when (notification.type) {
                             "trade" -> Color(0xFF10B981)
                             "trade_hit" -> Color(0xFFF59E0B)
-                            "signal_deleted" -> Color(0xFFEF4444)
+                            "signal_deleted", "signal_delete" -> Color(0xFFEF4444)
+                            "signal_update" -> Color(0xFF3B82F6)
+                            "signal_reaction" -> Color(0xFF8B5CF6)
+                            "community" -> Color(0xFF06B6D4)
                             else -> primary
                         }
                         Surface(

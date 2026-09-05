@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Events\SignalCreated;
+use App\Events\SignalUpdated;
+use App\Events\SignalDeleted;
 use App\Events\SignalReacted;
 use App\Models\Signal;
 use App\Models\SignalReaction;
@@ -95,6 +97,8 @@ class SignalController extends Controller
                 'result', 'channel', 'hit_level', 'status', 'date',
             ]));
 
+            SignalUpdated::dispatch($signal->fresh(), $request->input('hit_type', 'updated'));
+
             return response()->json($signal);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to update signal', 'error' => $e->getMessage()], 500);
@@ -104,7 +108,10 @@ class SignalController extends Controller
     public function destroy(Request $request, Signal $signal): JsonResponse
     {
         try {
+            $signalId = $signal->id;
+            $signalNo = $signal->no;
             $signal->delete();
+            SignalDeleted::dispatch($signalId, $signalNo);
             return response()->json(['message' => 'Signal deleted']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to delete signal', 'error' => $e->getMessage()], 500);

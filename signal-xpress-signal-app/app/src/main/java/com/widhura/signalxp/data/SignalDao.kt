@@ -27,8 +27,17 @@ interface SignalDao {
     @Query("SELECT * FROM signals WHERE id = :id LIMIT 1")
     suspend fun getSignalById(id: Long): SignalEntity?
 
+    @Query("SELECT * FROM signals WHERE no = :no LIMIT 1")
+    suspend fun getSignalByNo(no: Int): SignalEntity?
+
     @Query("DELETE FROM signals")
     suspend fun deleteAllSignals()
+
+    @androidx.room.Transaction
+    suspend fun replaceAllSignals(signals: List<SignalEntity>) {
+        deleteAllSignals()
+        insertAll(signals)
+    }
 
     @Query("SELECT COUNT(*) FROM signals")
     suspend fun getCount(): Int

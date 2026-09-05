@@ -17,6 +17,7 @@ class PublishSignalToWebSocket
             'id' => $signal->id,
             'no' => $signal->no,
             'type' => 'signal',
+            'action' => 'created',
             'pair' => $signal->pair,
             'direction' => $signal->direction,
             'entry1' => $signal->entry1,
@@ -31,6 +32,12 @@ class PublishSignalToWebSocket
             'result' => $signal->result,
             'channel' => $signal->channel,
             'date' => $signal->date?->format('Y-m-d'),
+            'hit_level' => $signal->hit_level,
+            'status' => $signal->status,
+            'thumbs_count' => $signal->thumbs_count ?? 0,
+            'fire_count' => $signal->fire_count ?? 0,
+            'rocket_count' => $signal->rocket_count ?? 0,
+            'broken_heart_count' => $signal->broken_heart_count ?? 0,
             'timestamp' => now()->toISOString(),
         ]);
 

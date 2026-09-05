@@ -76,15 +76,18 @@ fun SignalsFeedScreen(
 
     LaunchedEffect(highlightedSignal) {
         highlightedSignal?.let { highlight ->
-            val index = signals.indexOfFirst { it.id == highlight.signalId }
+            // Match by id first, fall back to signal number (trade events carry trade.id)
+            var index = signals.indexOfFirst { it.id == highlight.signalId }
+            if (index < 0) index = signals.indexOfFirst { it.no == highlight.signalNo }
             if (index >= 0) {
                 coroutineScope.launch {
                     delay(100)
                     listState.animateScrollToItem(index = index, scrollOffset = -50)
                 }
-                delay(3000)
-                viewModel.clearHighlight()
             }
+            // Always clear after delay so highlight never leaks when filtered out
+            delay(3000)
+            viewModel.clearHighlight()
         }
     }
 

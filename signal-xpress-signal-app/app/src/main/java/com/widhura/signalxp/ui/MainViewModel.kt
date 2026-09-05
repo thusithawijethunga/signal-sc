@@ -150,15 +150,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             },
             onConnectionChange = { connected ->
                 _isWebSocketConnected.value = connected
+            },
+            onAuthFailed = {
+                // WS token expired/invalid — re-fetch fresh token and reconnect (debounced)
+                refreshWsToken()
             }
         )
 
         // Fetch WebSocket token from backend then connect
+        fetchWsTokenAndConnect(token)
+    }
+
+    private var lastWsTokenRefresh = 0L
+
+    private fun refreshWsToken() {
+        val now = System.currentTimeMillis()
+        if (now - lastWsTokenRefresh < 10000) return // debounce: max once per 10s
+        lastWsTokenRefresh = now
+        val context = getApplication<Application>()
+        val token = ApiClient.getToken(context) ?: return
+        Log.d("Centrifugo", "Refreshing expired WS token...")
+        fetchWsTokenAndConnect(token)
+    }
+
+    private fun fetchWsTokenAndConnect(authToken: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val wsTokenRequest = Request.Builder()
                     .url("https://backend.signalxpress.com/api/websocket/token")
-                    .header("Authorization", "Bearer $token")
+                    .header("Authorization", "Bearer $authToken")
                     .header("Accept", "application/json")
                     .build()
 
@@ -168,7 +188,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val json = JSONObject(body)
                     val wsToken = json.getString("token")
                     val wsUrl = json.optString("ws_url", "wss://socket.signalxpress.com/connection/websocket")
-                    centrifugoService?.connect(wsUrl, wsToken)
+                    // If already connected, just swap the token; else full connect
+                    if (_isWebSocketConnected.value) {
+                        centrifugoService?.refreshToken(wsToken)
+                    } else {
+                        centrifugoService?.connect(wsUrl, wsToken)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("Centrifugo", "Failed to get WS token: ${e.message}")
@@ -243,15 +268,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             type = event.direction.ifBlank { existing?.type ?: "BUY" },
             entry = entry,
             tp1 = tp1, tp2 = tp2, tp3 = tp3, tp4 = tp4, sl = sl,
-            pips = event.pips.toInt().let { if (it != 0) it else existing?.pips ?: 0 },
-            profit = if (event.profit != 0.0) event.profit else existing?.profit ?: 0.0,
+            pips = if (!event.pips.isNaN()) event.pips.toInt() else existing?.pips ?: 0,
+            profit = if (!event.profit.isNaN()) event.profit else existing?.profit ?: 0.0,
             hitLevel = event.hitLevel.ifBlank { existing?.hitLevel ?: "NONE" },
             status = event.status.ifBlank { existing?.status ?: "active" },
             result = event.result.ifBlank { existing?.result ?: "RUNNING" },
-            thumbsCount = event.thumbsCount.let { if (it > 0) it else existing?.thumbsCount ?: 0 },
-            fireCount = event.fireCount.let { if (it > 0) it else existing?.fireCount ?: 0 },
-            rocketCount = event.rocketCount.let { if (it > 0) it else existing?.rocketCount ?: 0 },
-            brokenHeartCount = event.brokenHeartCount.let { if (it > 0) it else existing?.brokenHeartCount ?: 0 }
+            thumbsCount = if (event.thumbsCount >= 0) event.thumbsCount else existing?.thumbsCount ?: 0,
+            fireCount = if (event.fireCount >= 0) event.fireCount else existing?.fireCount ?: 0,
+            rocketCount = if (event.rocketCount >= 0) event.rocketCount else existing?.rocketCount ?: 0,
+            brokenHeartCount = if (event.brokenHeartCount >= 0) event.brokenHeartCount else existing?.brokenHeartCount ?: 0
         )
 
         if (existing == null) {
@@ -282,20 +307,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val db = AppDatabase.getDatabase(getApplication())
         Log.d("Centrifugo", "Trade update: ${event.pair} ${event.result} action=${event.action}")
 
+        // Handle trade deleted
+        if (event.action == "deleted") {
+            val existing = db.signalDao().getSignalByNo(event.no)
+            if (existing != null) {
+                db.signalDao().deleteSignalById(existing.id)
+                withContext(Dispatchers.Main) {
+                    _lastSyncTime.value = "Live • Trade #${event.no} deleted"
+                    _activeNotification.value = NotificationMessage(
+                        title = "Trade Deleted",
+                        body = "Signal #${event.no} ${event.pair} removed",
+                        type = "signal_deleted"
+                    )
+                }
+            }
+            return
+        }
+
+        // Look up existing signal by trade number (trade.id != signal.id)
+        val existing = db.signalDao().getSignalByNo(event.no)
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+
         if (event.eventType == "trade" && event.action == "created") {
-            val existing = db.signalDao().getSignalById(event.id)
             val entity = SignalEntity(
-                id = event.id,
+                id = existing?.id ?: 0,
                 no = event.no,
-                date = existing?.date ?: "",
+                date = existing?.date ?: todayStr,
                 pair = event.pair.ifBlank { existing?.pair ?: "" },
                 type = event.direction.ifBlank { existing?.type ?: "BUY" },
                 entry = existing?.entry ?: "",
                 tp1 = existing?.tp1 ?: "", tp2 = existing?.tp2 ?: "",
                 tp3 = existing?.tp3 ?: "", tp4 = existing?.tp4 ?: "",
                 sl = existing?.sl ?: "",
-                pips = event.pips.toInt().let { if (it != 0) it else existing?.pips ?: 0 },
-                profit = if (event.profit != 0.0) event.profit else existing?.profit ?: 0.0,
+                pips = if (!event.pips.isNaN()) event.pips.toInt() else existing?.pips ?: 0,
+                profit = if (!event.profit.isNaN()) event.profit else existing?.profit ?: 0.0,
                 hitLevel = event.hitLevel.ifBlank { existing?.hitLevel ?: "NONE" },
                 status = existing?.status ?: "active",
                 result = event.result.ifBlank { existing?.result ?: "RUNNING" }
@@ -316,16 +361,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        if (event.eventType == "trade_hit" || event.action == "updated") {
+        // Trade hit / updated — persist result, pips, profit, hitLevel to DB
+        if (event.eventType == "trade_hit" || event.action == "updated" || event.eventType == "trade") {
+            if (existing != null) {
+                val updated = existing.copy(
+                    result = event.result.ifBlank { existing.result },
+                    pips = if (!event.pips.isNaN()) event.pips.toInt() else existing.pips,
+                    profit = if (!event.profit.isNaN()) event.profit else existing.profit,
+                    hitLevel = event.hitLevel.ifBlank { existing.hitLevel }
+                )
+                db.signalDao().updateSignal(updated)
+            }
             withContext(Dispatchers.Main) {
+                _lastSyncTime.value = "Live • Trade #${event.no} ${event.result}"
                 _highlightedSignal.value = HighlightedSignal(
-                    signalId = event.id,
+                    signalId = existing?.id ?: event.id,
                     signalNo = event.no,
                     action = event.action.ifBlank { "updated" }
                 )
                 _activeNotification.value = NotificationMessage(
-                    title = "Signal #${event.no} Updated",
-                    body = "${event.pair} • ${event.result}",
+                    title = "Trade #${event.no} ${event.pair}",
+                    body = "${event.direction} • ${event.result} • ${event.pips} pips",
                     type = "trade_hit"
                 )
             }
@@ -334,15 +390,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun handleRealtimeNewsUpdate(event: NewsRealtimeEvent) {
         val db = AppDatabase.getDatabase(getApplication())
+        if (event.id == 0L && event.title.isBlank()) return
         val slTimeZone = java.util.TimeZone.getTimeZone("Asia/Colombo")
         val timeFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US).apply { timeZone = slTimeZone }
         val nowStr = timeFormat.format(java.util.Date())
+        // Normalize impact to HIGH / MEDIUM / LOW (same vocabulary as REST sync + UI filter)
+        val impactNorm = when {
+            event.impact.contains("high", ignoreCase = true) -> "HIGH"
+            event.impact.contains("med", ignoreCase = true) -> "MEDIUM"
+            event.impact.contains("low", ignoreCase = true) -> "LOW"
+            else -> event.impact.ifBlank { "MEDIUM" }
+        }
         val entity = NewsEntity(
-            id = event.id,
+            id = if (event.id != 0L) event.id else 0L,
             time = "Just now \u2022 $nowStr (SLST)",
             currency = event.currency,
             title = event.title,
-            impact = event.impact,
+            impact = impactNorm,
             forecast = event.forecast,
             previous = event.previous,
             actual = event.actual,
@@ -354,16 +418,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun handleRealtimeCommunityUpdate(event: CommunityRealtimeEvent) {
         val db = AppDatabase.getDatabase(getApplication())
-        val entity = CommunityPostEntity(
-            id = event.id,
-            authorName = event.authorName,
-            postType = event.postType,
-            content = event.content,
-            pair = event.pair,
-            profitAmount = event.profitAmount,
-            pipsGain = event.pipsGain
-        )
-        db.communityDao().insertPost(entity)
+        if (event.id == 0L && event.content.isBlank()) return
+        // Normalize post_type to UI vocabulary so filters work
+        val postTypeNorm = when (event.postType.lowercase()) {
+            "screenshot", "screenshot_post" -> "SCREENSHOT_POST"
+            "profit_card", "profit", "trade" -> "PROFIT_CARD"
+            "idea", "discussion", "idea_discussion", "text", "signal_card" -> "IDEA_DISCUSSION"
+            else -> event.postType.ifBlank { "PROFIT_CARD" }
+        }
+        // Merge with existing row instead of wiping likes/badges/images
+        val existing = try { db.communityDao().getPostById(event.id) } catch (e: Exception) { null }
+        if (existing != null) {
+            val updated = existing.copy(
+                authorName = event.authorName.ifBlank { existing.authorName },
+                postType = postTypeNorm,
+                content = event.content.ifBlank { existing.content },
+                pair = event.pair.ifBlank { existing.pair },
+                profitAmount = if (event.profitAmount != 0.0) event.profitAmount else existing.profitAmount,
+                pipsGain = if (event.pipsGain != 0) event.pipsGain else existing.pipsGain
+            )
+            db.communityDao().updatePost(updated)
+        } else {
+            val entity = CommunityPostEntity(
+                id = event.id,
+                authorName = event.authorName,
+                postType = postTypeNorm,
+                content = event.content,
+                pair = event.pair.ifBlank { "XAU/USD" },
+                profitAmount = event.profitAmount,
+                pipsGain = event.pipsGain
+            )
+            db.communityDao().insertPost(entity)
+        }
     }
 
     // ── Sync from API ─────────────────────────────────

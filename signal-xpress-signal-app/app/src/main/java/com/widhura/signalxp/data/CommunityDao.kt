@@ -21,6 +21,9 @@ interface CommunityDao {
     @Update
     suspend fun updatePost(post: CommunityPostEntity)
 
+    @Query("SELECT * FROM community_posts WHERE id = :id LIMIT 1")
+    suspend fun getPostById(id: Long): CommunityPostEntity?
+
     @Query("DELETE FROM community_posts WHERE id = :id")
     suspend fun deletePostById(id: Long)
 

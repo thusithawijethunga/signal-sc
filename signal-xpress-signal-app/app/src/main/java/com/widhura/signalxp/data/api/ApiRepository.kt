@@ -50,8 +50,7 @@ class ApiRepository(
             if (response.isSuccessful) {
                 val signals = response.body()?.data?.map { it.toEntity() } ?: emptyList()
                 if (signals.isNotEmpty()) {
-                    signalDao.deleteAllSignals()
-                    signalDao.insertAll(signals)
+                    signalDao.replaceAllSignals(signals)
                 }
                 Result.success(Unit)
             } else {

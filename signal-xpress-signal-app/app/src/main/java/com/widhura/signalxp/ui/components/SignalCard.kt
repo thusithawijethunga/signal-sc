@@ -214,7 +214,7 @@ fun SignalCard(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        val isSlHit = hitLevel == "SL"
+                        val isSlHit = hitLevel.equals("SL", ignoreCase = true)
                         val slColor by animateColorAsState(
                             targetValue = if (isSlHit) accentRed else accentRed.copy(alpha = 0.8f),
                             animationSpec = tween(500), label = "slColor"
@@ -247,9 +247,9 @@ fun SignalCard(
                     }
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TargetStatusBadge(label = "BE", isHit = hitLevel == "BE", isWarning = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
-                        TargetStatusBadge(label = "SL Hit", isHit = hitLevel == "SL", isDanger = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
-                        if (hitLevel == "CLOSE") {
+                        TargetStatusBadge(label = "BE", isHit = hitLevel.equals("BE", ignoreCase = true), isWarning = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
+                        TargetStatusBadge(label = "SL Hit", isHit = hitLevel.equals("SL", ignoreCase = true), isDanger = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
+                        if (hitLevel.equals("CLOSE", ignoreCase = true)) {
                             TargetStatusBadge(label = "Closed", isHit = true, isGray = true, modifier = Modifier.weight(1f), isDarkMode = isDarkMode)
                         }
                     }

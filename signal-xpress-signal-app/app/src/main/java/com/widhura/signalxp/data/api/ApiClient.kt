@@ -2,6 +2,7 @@ package com.widhura.signalxp.data.api
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.squareup.moshi.Moshi
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -92,10 +93,15 @@ object ApiClient {
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
 
+        // Lenient numbers: backend sends decimals as JSON strings ("4571.00")
+        val moshi = Moshi.Builder()
+            .add(LenientNumberFactory())
+            .build()
+
         retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
 
         apiService = retrofit!!.create(ApiService::class.java)
