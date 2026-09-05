@@ -541,32 +541,51 @@ class ApiRepository(
         }
     }
 
+    /** Backend sends decimals as JSON strings ("4585.00") — accept Number or numeric String. */
+    private fun mapToDouble(v: Any?): Double? = when (v) {
+        is Number -> v.toDouble()
+        is String -> v.toDoubleOrNull()
+        else -> null
+    }
+
+    private fun mapToInt(v: Any?): Int? = when (v) {
+        is Number -> v.toInt()
+        is String -> v.toIntOrNull() ?: v.toDoubleOrNull()?.toInt()
+        else -> null
+    }
+
+    private fun mapToLong(v: Any?): Long? = when (v) {
+        is Number -> v.toLong()
+        is String -> v.toLongOrNull() ?: v.toDoubleOrNull()?.toLong()
+        else -> null
+    }
+
     private fun parseSignalFromMap(data: Map<*, *>): SignalEntity? {
         return try {
             SignalEntity(
-                id = (data["id"] as? Number)?.toLong() ?: return null,
-                no = (data["no"] as? Number)?.toInt() ?: 0,
+                id = mapToLong(data["id"]) ?: return null,
+                no = mapToInt(data["no"]) ?: 0,
                 date = data["date"] as? String ?: "",
                 pair = data["pair"] as? String ?: "",
                 type = data["direction"] as? String ?: "BUY",
                 entry = formatEntry(
-                    (data["entry1"] as? Number)?.toDouble(),
-                    (data["entry2"] as? Number)?.toDouble()
+                    mapToDouble(data["entry1"]),
+                    mapToDouble(data["entry2"])
                 ),
-                tp1 = formatPrice((data["tp1"] as? Number)?.toDouble()),
-                tp2 = formatPrice((data["tp2"] as? Number)?.toDouble()),
-                tp3 = formatPrice((data["tp3"] as? Number)?.toDouble()),
-                tp4 = formatPrice((data["tp4"] as? Number)?.toDouble()),
-                sl = formatPrice((data["sl"] as? Number)?.toDouble()),
-                pips = ((data["pips"] as? Number)?.toDouble() ?: 0.0).toInt(),
-                profit = (data["profit"] as? Number)?.toDouble() ?: 0.0,
+                tp1 = formatPrice(mapToDouble(data["tp1"])),
+                tp2 = formatPrice(mapToDouble(data["tp2"])),
+                tp3 = formatPrice(mapToDouble(data["tp3"])),
+                tp4 = formatPrice(mapToDouble(data["tp4"])),
+                sl = formatPrice(mapToDouble(data["sl"])),
+                pips = (mapToDouble(data["pips"]) ?: 0.0).toInt(),
+                profit = mapToDouble(data["profit"]) ?: 0.0,
                 hitLevel = data["hit_level"] as? String ?: "NONE",
                 status = data["status"] as? String ?: "active",
                 result = data["result"] as? String ?: "RUNNING",
-                thumbsCount = (data["thumbs_count"] as? Number)?.toInt() ?: 0,
-                fireCount = (data["fire_count"] as? Number)?.toInt() ?: 0,
-                rocketCount = (data["rocket_count"] as? Number)?.toInt() ?: 0,
-                brokenHeartCount = (data["broken_heart_count"] as? Number)?.toInt() ?: 0
+                thumbsCount = mapToInt(data["thumbs_count"]) ?: 0,
+                fireCount = mapToInt(data["fire_count"]) ?: 0,
+                rocketCount = mapToInt(data["rocket_count"]) ?: 0,
+                brokenHeartCount = mapToInt(data["broken_heart_count"]) ?: 0
             )
         } catch (e: Exception) {
             null
@@ -576,22 +595,22 @@ class ApiRepository(
     private fun parsePostFromMap(data: Map<*, *>): CommunityPostEntity? {
         return try {
             CommunityPostEntity(
-                id = (data["id"] as? Number)?.toLong() ?: return null,
+                id = mapToLong(data["id"]) ?: return null,
                 authorName = data["author_name"] as? String ?: "",
                 authorBadge = data["author_badge"] as? String ?: "Trader",
-                authorAvatarHex = (data["author_avatar_hex"] as? Number)?.toLong() ?: 0xFF10B981,
+                authorAvatarHex = mapToLong(data["author_avatar_hex"]) ?: 0xFF10B981,
                 postType = data["post_type"] as? String ?: "text",
                 content = data["content"] as? String ?: "",
                 hashtags = data["hashtags"] as? String ?: "",
                 imageUri = data["image_uri"] as? String,
                 pair = data["pair"] as? String ?: "XAU/USD",
                 tradeType = data["trade_type"] as? String ?: "BUY",
-                profitAmount = (data["profit_amount"] as? Number)?.toDouble() ?: 0.0,
-                pipsGain = (data["pips_gain"] as? Number)?.toInt() ?: 0,
-                likesCount = (data["likes_count"] as? Number)?.toInt() ?: 0,
-                fireCount = (data["fire_count"] as? Number)?.toInt() ?: 0,
-                rocketCount = (data["rocket_count"] as? Number)?.toInt() ?: 0,
-                commentsCount = (data["comments_count"] as? Number)?.toInt() ?: 0,
+                profitAmount = mapToDouble(data["profit_amount"]) ?: 0.0,
+                pipsGain = mapToInt(data["pips_gain"]) ?: 0,
+                likesCount = mapToInt(data["likes_count"]) ?: 0,
+                fireCount = mapToInt(data["fire_count"]) ?: 0,
+                rocketCount = mapToInt(data["rocket_count"]) ?: 0,
+                commentsCount = mapToInt(data["comments_count"]) ?: 0,
                 isPinned = data["is_pinned"] as? Boolean ?: false
             )
         } catch (e: Exception) {

@@ -32,6 +32,7 @@ interface ApiService {
         @Query("direction") direction: String? = null,
         @Query("date_from") dateFrom: String? = null,
         @Query("date_to") dateTo: String? = null,
+        @Query("no") no: Int? = null,
         @Query("per_page") perPage: Int = 50
     ): Response<PaginatedResponse<SignalResponse>>
 
