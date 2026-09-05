@@ -12,24 +12,25 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Signal Xpress"
-        android:textColor="#94A3B8"
-        android:textSize="10sp" />
+        android:textColor="#38BDF8"
+        android:textSize="12sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_pair"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="4dp"
         android:text="--"
         android:textColor="#FFFFFF"
-        android:textSize="24sp"
+        android:textSize="22sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_entry"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:text="Entry: --"
         android:textColor="#CBD5E1"
         android:textSize="13sp" />
@@ -47,7 +48,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:gravity="center_vertical">
 
         <TextView
@@ -77,10 +78,20 @@
         android:id="@+id/widget_time"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="4dp"
         android:text=""
         android:textColor="#475569"
         android:textSize="10sp"
         android:gravity="end" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Trade Safe. Trade Smart."
+        android:textColor="#334155"
+        android:textSize="10sp"
+        android:textStyle="italic"
+        android:gravity="center" />
 
 </LinearLayout>
