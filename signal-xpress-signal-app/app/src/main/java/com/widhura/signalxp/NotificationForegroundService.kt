@@ -301,6 +301,7 @@ class NotificationForegroundService : Service() {
             db.signalDao().updateSignal(entity)
         }
 
+        com.widhura.signalxp.data.WidgetPreferences.updateFromSignal(applicationContext, entity)
         SignalWidgetProvider.triggerUpdate(applicationContext)
     }
 
@@ -340,6 +341,7 @@ class NotificationForegroundService : Service() {
             } else {
                 db.signalDao().updateSignal(entity)
             }
+            com.widhura.signalxp.data.WidgetPreferences.updateFromSignal(applicationContext, entity)
             SignalWidgetProvider.triggerUpdate(applicationContext)
         } else if (existing != null) {
             val updated = existing.copy(
@@ -349,6 +351,7 @@ class NotificationForegroundService : Service() {
                 hitLevel = event.hitLevel ?: existing.hitLevel
             )
             db.signalDao().updateSignal(updated)
+            com.widhura.signalxp.data.WidgetPreferences.updateFromSignal(applicationContext, updated)
             SignalWidgetProvider.triggerUpdate(applicationContext)
         }
     }

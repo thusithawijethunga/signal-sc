@@ -8,9 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.widget.RemoteViews
-import com.widhura.signalxp.data.AppDatabase
+import com.widhura.signalxp.data.WidgetPreferences
 import com.widhura.signalxp.ui.MainActivity
-import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -55,7 +54,6 @@ class SignalWidgetProvider : AppWidgetProvider() {
         ) {
             val views = RemoteViews(context.packageName, R.layout.signal_widget_layout)
 
-            // Tap widget → open app
             val launchIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("OPEN_FROM_WIDGET", true)
@@ -66,103 +64,89 @@ class SignalWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            // Read latest signal from DB (blocking is fine — runs briefly for widget update)
-            val db = AppDatabase.getDatabase(context)
-            val signal = runBlocking {
-                db.signalDao().getLatestSignal()
-            }
+            val pair = WidgetPreferences.getPair(context)
+            val signalNo = WidgetPreferences.getSignalNo(context)
 
-            if (signal == null) {
-                views.setTextViewText(R.id.widget_pair, "--")
+            if (pair.isEmpty() || signalNo == 0) {
                 views.setTextViewText(R.id.widget_signal_no, "Signal Xpress")
-                views.setTextViewText(R.id.widget_status_badge, "Waiting…")
-                views.setTextViewText(R.id.widget_direction, "")
-                views.setTextViewText(R.id.widget_entry, "--")
-                views.setTextViewText(R.id.widget_tp1, "--")
-                views.setTextViewText(R.id.widget_tp2, "--")
-                views.setTextViewText(R.id.widget_sl, "--")
-                views.setTextViewText(R.id.widget_pips, "No signals yet")
-                views.setTextViewText(R.id.widget_time, "")
+                views.setTextViewText(R.id.widget_pair, "--")
+                views.setTextViewText(R.id.widget_entry, "Waiting for signal\u2026")
+                views.setTextViewText(R.id.widget_tp1, "")
+                views.setTextViewText(R.id.widget_pips, "")
                 views.setTextViewText(R.id.widget_result, "")
+                views.setTextViewText(R.id.widget_time, "")
                 appWidgetManager.updateAppWidget(appWidgetId, views)
                 return
             }
 
-            // Signal number
-            views.setTextViewText(R.id.widget_signal_no, "Signal #${signal.no}")
+            val direction = WidgetPreferences.getDirection(context)
+            val entry = WidgetPreferences.getEntry(context)
+            val tp1 = WidgetPreferences.getTp1(context)
+            val tp2 = WidgetPreferences.getTp2(context)
+            val sl = WidgetPreferences.getSl(context)
+            val pips = WidgetPreferences.getPips(context)
+            val result = WidgetPreferences.getResult(context)
+            val hitLevel = WidgetPreferences.getHitLevel(context)
+            val date = WidgetPreferences.getDate(context)
 
-            // Pair
-            views.setTextViewText(R.id.widget_pair, signal.pair)
+            val dirLabel = direction.uppercase()
+            val isBuy = dirLabel == "BUY"
+            val pairLine = if (dirLabel.isNotEmpty()) "$pair $dirLabel" else pair
 
-            // Direction badge (BUY green / SELL red)
-            val isBuy = signal.type.uppercase() == "BUY"
-            views.setTextViewText(R.id.widget_direction, signal.type.uppercase())
-            views.setInt(R.id.widget_direction, "setBackgroundResource",
-                if (isBuy) R.drawable.widget_buy_bg else R.drawable.widget_sell_bg)
+            views.setTextViewText(R.id.widget_signal_no, "#$signalNo")
+            views.setTextViewText(R.id.widget_pair, pairLine)
 
-            // Entry
-            views.setTextViewText(R.id.widget_entry, signal.entry.ifEmpty { "--" })
+            val entryText = buildString {
+                append("Entry: ")
+                append(entry.ifEmpty { "--" })
+            }
+            views.setTextViewText(R.id.widget_entry, entryText)
 
-            // TP1 / TP2 / SL
-            views.setTextViewText(R.id.widget_tp1, signal.tp1.ifEmpty { "--" })
-            views.setTextViewText(R.id.widget_tp2, signal.tp2.ifEmpty { "--" })
-            views.setTextViewText(R.id.widget_sl, signal.sl.ifEmpty { "--" })
+            val tpParts = mutableListOf<String>()
+            if (tp1.isNotEmpty()) tpParts.add("TP1 $tp1")
+            if (tp2.isNotEmpty()) tpParts.add("TP2 $tp2")
+            if (sl.isNotEmpty()) tpParts.add("SL $sl")
+            views.setTextViewText(R.id.widget_tp1, tpParts.joinToString("   "))
 
-            // Pips
-            val pipsText = if (signal.pips != 0) {
-                val prefix = if (signal.pips > 0) "+" else ""
-                "$prefix${signal.pips} pips"
-            } else "--"
+            val pipsText = if (pips != 0) {
+                val prefix = if (pips > 0) "+" else ""
+                "${prefix}${pips} pips"
+            } else "-- pips"
             views.setTextViewText(R.id.widget_pips, pipsText)
             views.setTextColor(R.id.widget_pips, when {
-                signal.pips > 0 -> Color.parseColor("#10B981")
-                signal.pips < 0 -> Color.parseColor("#EF4444")
+                pips > 0 -> Color.parseColor("#10B981")
+                pips < 0 -> Color.parseColor("#EF4444")
                 else -> Color.parseColor("#C9D1D9")
             })
 
-            // Status badge
-            val statusText = when (signal.result.uppercase()) {
+            val statusText = when (result.uppercase()) {
                 "WIN" -> "WIN"
                 "LOSS" -> "LOSS"
                 "BE" -> "BE"
-                else -> signal.hitLevel.let {
-                    if (it == "NONE" || it.isEmpty()) "RUNNING" else it
-                }
+                else -> if (hitLevel != "NONE" && hitLevel.isNotEmpty()) hitLevel else "RUN"
             }
-            views.setTextViewText(R.id.widget_status_badge, statusText)
-
-            // Status badge color
-            val statusColor = when (signal.result.uppercase()) {
-                "WIN" -> Color.parseColor("#10B981")
-                "LOSS" -> Color.parseColor("#EF4444")
-                "BE" -> Color.parseColor("#F59E0B")
-                else -> Color.parseColor("#38BDF8")
-            }
-            views.setTextColor(R.id.widget_status_badge, statusColor)
-
-            // Result text
-            views.setTextViewText(R.id.widget_result, signal.result.ifEmpty { "RUNNING" })
-            views.setTextColor(R.id.widget_result, when (signal.result.uppercase()) {
-                "WIN" -> Color.parseColor("#10B981")
-                "LOSS" -> Color.parseColor("#EF4444")
-                "BE" -> Color.parseColor("#F59E0B")
-                else -> Color.parseColor("#38BDF8")
+            views.setTextViewText(R.id.widget_result, statusText)
+            views.setInt(R.id.widget_result, "setBackgroundResource", R.drawable.widget_badge_bg)
+            views.setTextColor(R.id.widget_result, when (result.uppercase()) {
+                "WIN" -> Color.parseColor("#34D399")
+                "LOSS" -> Color.parseColor("#F87171")
+                "BE" -> Color.parseColor("#FBBF24")
+                else -> Color.parseColor("#7DD3FC")
             })
 
-            // Time ago
             val timeAgo = try {
-                val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(signal.date)
-                if (date != null) {
-                    val diff = System.currentTimeMillis() - date.time
+                val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(date)
+                if (parsed != null) {
+                    val diff = System.currentTimeMillis() - parsed.time
                     when {
                         diff < TimeUnit.MINUTES.toMillis(1) -> "just now"
                         diff < TimeUnit.HOURS.toMillis(1) -> "${diff / TimeUnit.MINUTES.toMillis(1)}m ago"
                         diff < TimeUnit.DAYS.toMillis(1) -> "${diff / TimeUnit.HOURS.toMillis(1)}h ago"
-                        else -> signal.date
+                        else -> date
                     }
-                } else signal.date
+                } else date
             } catch (e: Exception) {
-                signal.date
+                date
             }
             views.setTextViewText(R.id.widget_time, timeAgo)
 
