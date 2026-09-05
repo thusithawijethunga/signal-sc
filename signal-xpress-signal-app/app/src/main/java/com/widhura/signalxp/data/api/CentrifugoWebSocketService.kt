@@ -1,19 +1,29 @@
 package com.widhura.signalxp.data.api
 
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import io.github.centrifugal.centrifuge.Client
+import io.github.centrifugal.centrifuge.ConnectedEvent
+import io.github.centrifugal.centrifuge.ConnectingEvent
+import io.github.centrifugal.centrifuge.DisconnectedEvent
+import io.github.centrifugal.centrifuge.ErrorEvent
+import io.github.centrifugal.centrifuge.EventListener
+import io.github.centrifugal.centrifuge.Options
+import io.github.centrifugal.centrifuge.PublicationEvent
+import io.github.centrifugal.centrifuge.Subscription
+import io.github.centrifugal.centrifuge.SubscribedEvent
+import io.github.centrifugal.centrifuge.SubscribingEvent
+import io.github.centrifugal.centrifuge.SubscriptionEventListener
+import io.github.centrifugal.centrifuge.SubscriptionState
+import io.github.centrifugal.centrifuge.UnsubscribedEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
+import kotlin.math.min
 
 class CentrifugoWebSocketService(
     private val onSignalUpdate: (SignalRealtimeEvent) -> Unit,
@@ -25,24 +35,24 @@ class CentrifugoWebSocketService(
     private val onAuthFailed: (() -> Unit)? = null
 ) {
 
-    fun refreshToken(newToken: String) {
-        token = newToken
+    companion object {
+        private const val TAG = "CentrifugoClient"
     }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var webSocket: WebSocket? = null
-    private val client = OkHttpClient.Builder()
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .build()
+    private var client: Client? = null
+    private val gson = Gson()
 
     private var wsUrl: String = "wss://socket.signalxpress.com/connection/websocket"
     private var token: String = ""
-    private var isConnected = false
+    private var shouldReconnect = false
     private var reconnectAttempt = 0
-    private var shouldReconnect = true
-    private var heartbeatJob: kotlinx.coroutines.Job? = null
+    private var reconnectJob: kotlinx.coroutines.Job? = null
+
+    private val channels = mutableMapOf<String, Subscription>()
 
     fun connect(url: String, authToken: String) {
+        disconnect()
         wsUrl = url
         token = authToken
         shouldReconnect = true
@@ -52,260 +62,157 @@ class CentrifugoWebSocketService(
 
     private fun doConnect() {
         try {
-            val request = Request.Builder()
-                .url(wsUrl)
-                .build()
+            val opts = Options()
+            client = Client(wsUrl, opts, object : EventListener() {
+                override fun onConnecting(c: Client, event: ConnectingEvent) {
+                    Log.i(TAG, "Connecting to $wsUrl")
+                }
 
-            webSocket = client.newWebSocket(request, object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    Log.d("Centrifugo", "WebSocket connected")
-                    isConnected = true
+                override fun onConnected(c: Client, event: ConnectedEvent) {
+                    Log.i(TAG, "Connected successfully")
                     reconnectAttempt = 0
                     onConnectionChange(true)
-                    sendConnect()
-                    startHeartbeat()
+                    subscribeToAllChannels()
                 }
 
-                override fun onMessage(webSocket: WebSocket, text: String) {
-                    handleMessage(text)
-                }
-
-                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                    Log.d("Centrifugo", "WebSocket closing: $code $reason")
-                    webSocket.close(1000, null)
-                }
-
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    Log.d("Centrifugo", "WebSocket closed: $code $reason")
-                    isConnected = false
-                    stopHeartbeat()
+                override fun onDisconnected(c: Client, event: DisconnectedEvent) {
+                    Log.w(TAG, "Disconnected: code=${event.code}")
                     onConnectionChange(false)
                     scheduleReconnect()
                 }
 
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Log.e("Centrifugo", "WebSocket failure: ${t.message}")
-                    isConnected = false
-                    stopHeartbeat()
-                    onConnectionChange(false)
-                    scheduleReconnect()
+                override fun onError(c: Client, event: ErrorEvent) {
+                    Log.e(TAG, "Error: ${event.error?.message}")
+                    val msg = event.error?.message ?: ""
+                    if (msg.contains("unauthorized", ignoreCase = true) ||
+                        msg.contains("invalid token", ignoreCase = true)) {
+                        try { onAuthFailed?.invoke() } catch (e: Exception) {
+                            Log.e(TAG, "onAuthFailed callback failed: ${e.message}")
+                        }
+                    }
                 }
             })
+
+            client?.setToken(token)
+            client?.connect()
         } catch (e: Exception) {
-            Log.e("Centrifugo", "Connect error: ${e.message}")
+            Log.e(TAG, "Connect error: ${e.message}")
             scheduleReconnect()
         }
     }
 
-    private fun sendConnect() {
-        val connectMsg = JSONObject().apply {
-            put("id", 1)
-            put("connect", JSONObject().apply {
-                put("token", token)
-            })
+    private fun subscribeToAllChannels() {
+        subscribeChannel("trading:signals") { json ->
+            try {
+                val event = gson.fromJson(json, SignalRealtimeEvent::class.java)
+                onSignalUpdate(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "Signal parse error: ${e.message}")
+            }
         }
-        webSocket?.send(connectMsg.toString())
+
+        subscribeChannel("trading:trades") { json ->
+            try {
+                val event = gson.fromJson(json, TradeRealtimeEvent::class.java)
+                onTradeUpdate(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "Trade parse error: ${e.message}")
+            }
+        }
+
+        subscribeChannel("trading:news") { json ->
+            try {
+                val event = gson.fromJson(json, NewsRealtimeEvent::class.java)
+                onNewsUpdate(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "News parse error: ${e.message}")
+            }
+        }
+
+        subscribeChannel("trading:community") { json ->
+            try {
+                val event = gson.fromJson(json, CommunityRealtimeEvent::class.java)
+                onCommunityUpdate(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "Community parse error: ${e.message}")
+            }
+        }
+
+        subscribeChannel("notifications:broadcast") { json ->
+            try {
+                val event = gson.fromJson(json, NotificationEvent::class.java)
+                onNotification(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "Notification parse error: ${e.message}")
+            }
+        }
     }
 
-    private fun subscribe(channel: String, subId: Int) {
-        val subMsg = JSONObject().apply {
-            put("id", subId)
-            put("subscribe", JSONObject().apply {
-                put("channel", channel)
-            })
-        }
-        webSocket?.send(subMsg.toString())
-    }
-
-    private fun handleMessage(text: String) {
-        try {
-            val json = JSONObject(text)
-
-            // Handle connect response
-            if (json.has("connect")) {
-                val connectData = json.getJSONObject("connect")
-                if (connectData.has("result")) {
-                    Log.d("Centrifugo", "Connected successfully, subscribing to channels...")
-                    subscribe("trading:signals", 2)
-                    subscribe("trading:trades", 3)
-                    subscribe("trading:news", 4)
-                    subscribe("trading:community", 5)
-                    subscribe("notifications:broadcast", 6)
-                } else if (connectData.has("error")) {
-                    val errObj = connectData.optJSONObject("error")
-                    Log.e("Centrifugo", "Connect error: $errObj")
-                    // Token expired / invalid — ask owner to re-fetch a fresh WS token
-                    try { onAuthFailed?.invoke() } catch (e: Exception) {
-                        Log.e("Centrifugo", "onAuthFailed callback failed: ${e.message}")
-                    }
+    private fun subscribeChannel(channel: String, onMessage: (String) -> Unit) {
+        val sub = client?.newSubscription(channel, object : SubscriptionEventListener() {
+            override fun onPublication(sub: Subscription, event: PublicationEvent) {
+                try {
+                    val json = String(event.data, Charsets.UTF_8)
+                    Log.d(TAG, "Publication on [$channel]: $json")
+                    onMessage(json)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse publication on $channel", e)
                 }
             }
 
-            // Handle subscribe response
-            if (json.has("subscribe")) {
-                val subData = json.getJSONObject("subscribe")
-                Log.d("Centrifugo", "Subscribed: $subData")
+            override fun onSubscribed(sub: Subscription, event: SubscribedEvent) {
+                Log.i(TAG, "Subscribed to: $channel")
             }
 
-            // Handle push messages (publications)
-            if (json.has("push")) {
-                val push = json.getJSONObject("push")
-                val channel = push.optString("channel", "")
-                val pub = push.getJSONObject("pub")
-                val data = pub.getJSONObject("data")
-
-                when (channel) {
-                    "trading:signals" -> handleSignalData(data)
-                    "trading:trades" -> handleTradeData(data)
-                    "trading:news" -> handleNewsData(data)
-                    "trading:community" -> handleCommunityData(data)
-                    "notifications:broadcast" -> handleNotificationData(data)
-                }
+            override fun onUnsubscribed(sub: Subscription, event: UnsubscribedEvent) {
+                Log.i(TAG, "Unsubscribed from: $channel")
             }
 
-            // Handle pong
-            if (json.has("pong")) {
-                Log.d("Centrifugo", "Pong received")
+            override fun onSubscribing(sub: Subscription, event: SubscribingEvent) {
+                Log.i(TAG, "Subscribing to: $channel")
             }
+        }) ?: return
 
-            // Handle server ping - respond with pong
-            if (json.has("ping")) {
-                Log.d("Centrifugo", "Ping received, sending pong")
-                val pongMsg = JSONObject().apply { put("pong", 1) }
-                webSocket?.send(pongMsg.toString())
-            }
-        } catch (e: Exception) {
-            Log.e("Centrifugo", "Parse error: ${e.message}")
-        }
-    }
-
-    private fun handleSignalData(data: JSONObject) {
-        try {
-            val event = SignalRealtimeEvent(
-                id = data.optLong("id", 0),
-                no = data.optInt("no", 0),
-                pair = data.optString("pair", ""),
-                direction = data.optString("direction", ""),
-                entry1 = data.optDouble("entry1", 0.0),
-                entry2 = data.optDouble("entry2", 0.0),
-                sl = data.optDouble("sl", 0.0),
-                tp1 = data.optDouble("tp1", 0.0),
-                tp2 = data.optDouble("tp2", 0.0),
-                tp3 = data.optDouble("tp3", 0.0),
-                tp4 = data.optDouble("tp4", 0.0),
-                pips = if (data.has("pips") && !data.isNull("pips")) data.getDouble("pips") else Double.NaN,
-                profit = if (data.has("profit") && !data.isNull("profit")) data.getDouble("profit") else Double.NaN,
-                result = data.optString("result", "RUNNING"),
-                channel = data.optString("channel", "VIP"),
-                date = data.optString("date", ""),
-                hitLevel = data.optString("hit_level", ""),
-                status = data.optString("status", "active"),
-                thumbsCount = if (data.has("thumbs_count")) data.getInt("thumbs_count") else -1,
-                fireCount = if (data.has("fire_count")) data.getInt("fire_count") else -1,
-                rocketCount = if (data.has("rocket_count")) data.getInt("rocket_count") else -1,
-                brokenHeartCount = if (data.has("broken_heart_count")) data.getInt("broken_heart_count") else -1,
-                eventType = data.optString("type", "signal"),
-                action = data.optString("action", "")
-            )
-            onSignalUpdate(event)
-        } catch (e: Exception) {
-            Log.e("Centrifugo", "Signal parse error: ${e.message}")
-        }
-    }
-
-    private fun handleTradeData(data: JSONObject) {
-        try {
-            val event = TradeRealtimeEvent(
-                id = data.optLong("id", 0),
-                no = data.optInt("no", 0),
-                pair = data.optString("pair", ""),
-                direction = data.optString("direction", ""),
-                result = data.optString("result", "RUNNING"),
-                pips = if (data.has("pips") && !data.isNull("pips")) data.getDouble("pips") else Double.NaN,
-                profit = if (data.has("profit") && !data.isNull("profit")) data.getDouble("profit") else Double.NaN,
-                hitLevel = data.optString("hit_level", ""),
-                eventType = data.optString("type", "trade"),
-                action = data.optString("action", "")
-            )
-            onTradeUpdate(event)
-        } catch (e: Exception) {
-            Log.e("Centrifugo", "Trade parse error: ${e.message}")
-        }
-    }
-
-    private fun handleNewsData(data: JSONObject) {
-        try {
-            val event = NewsRealtimeEvent(
-                id = data.optLong("id", 0),
-                currency = data.optString("currency", ""),
-                title = data.optString("title", ""),
-                impact = data.optString("impact", ""),
-                forecast = data.optString("forecast", ""),
-                previous = data.optString("previous", ""),
-                actual = data.optString("actual", "")
-            )
-            onNewsUpdate(event)
-        } catch (e: Exception) {
-            Log.e("Centrifugo", "News parse error: ${e.message}")
-        }
-    }
-
-    private fun handleCommunityData(data: JSONObject) {
-        try {
-            val event = CommunityRealtimeEvent(
-                id = data.optLong("id", 0),
-                authorName = data.optString("author_name", ""),
-                postType = data.optString("post_type", ""),
-                content = data.optString("content", ""),
-                pair = data.optString("pair", ""),
-                profitAmount = data.optDouble("profit_amount", 0.0),
-                pipsGain = data.optInt("pips_gain", 0)
-            )
-            onCommunityUpdate(event)
-        } catch (e: Exception) {
-            Log.e("Centrifugo", "Community parse error: ${e.message}")
-        }
-    }
-
-    private fun handleNotificationData(data: JSONObject) {
-        try {
-            val event = NotificationEvent(
-                id = data.optString("id", ""),
-                title = data.optString("title", ""),
-                body = data.optString("body", ""),
-                type = data.optString("type", "info"),
-                signalId = data.optLong("signal_id", 0),
-                tradeId = data.optLong("trade_id", 0),
-                result = data.optString("result", "")
-            )
-            onNotification(event)
-        } catch (e: Exception) {
-            Log.e("Centrifugo", "Notification parse error: ${e.message}")
-        }
+        channels[channel] = sub
+        sub.subscribe()
     }
 
     private fun scheduleReconnect() {
+        reconnectJob?.cancel()
         if (!shouldReconnect) return
+
+        val delayMs = min(1000L * (1 shl reconnectAttempt.coerceAtMost(5)), 30_000L)
         reconnectAttempt++
-        val delayMs = minOf(1000L * reconnectAttempt, 30000L)
-        Log.d("Centrifugo", "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
-        scope.launch {
+        Log.i(TAG, "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
+
+        reconnectJob = scope.launch {
             delay(delayMs)
             if (shouldReconnect) {
-                // Close old socket before reconnecting
-                webSocket?.close(1000, "Reconnecting")
-                webSocket = null
-                doConnect()
+                client?.setToken(token)
+                client?.connect()
+                channels.forEach { (_, sub) ->
+                    if (sub.state != SubscriptionState.SUBSCRIBED) {
+                        sub.subscribe()
+                    }
+                }
             }
         }
+    }
+
+    fun refreshToken(newToken: String) {
+        token = newToken
+        client?.setToken(newToken)
     }
 
     fun disconnect() {
         shouldReconnect = false
-        stopHeartbeat()
-        webSocket?.close(1000, "Disconnecting")
-        webSocket = null
-        isConnected = false
+        reconnectJob?.cancel()
+        reconnectJob = null
+        channels.values.forEach { it.unsubscribe() }
+        channels.clear()
+        client?.disconnect()
+        client = null
+        onConnectionChange(false)
     }
 
     fun destroy() {
@@ -313,99 +220,89 @@ class CentrifugoWebSocketService(
         scope.cancel()
     }
 
-    fun sendPing() {
-        val pingMsg = JSONObject().apply { put("ping", 1) }
-        webSocket?.send(pingMsg.toString())
-    }
-
-    private fun startHeartbeat() {
-        stopHeartbeat()
-        heartbeatJob = scope.launch {
-            while (isConnected) {
-                delay(25000) // ping every 25 seconds
-                try {
-                    sendPing()
-                } catch (e: Exception) {
-                    Log.e("Centrifugo", "Heartbeat ping failed: ${e.message}")
-                }
-            }
-        }
-    }
-
-    private fun stopHeartbeat() {
-        heartbeatJob?.cancel()
-        heartbeatJob = null
+    fun isConnected(): Boolean {
+        return channels.values.any { it.state == SubscriptionState.SUBSCRIBED }
     }
 }
 
-// ── Real-time Event Data Classes ──────────────────────
-
 data class SignalRealtimeEvent(
-    val id: Long,
-    val no: Int,
-    val pair: String,
-    val direction: String,
-    val entry1: Double,
-    val entry2: Double,
-    val sl: Double,
-    val tp1: Double,
-    val tp2: Double,
-    val tp3: Double,
-    val tp4: Double,
-    val pips: Double,
-    val profit: Double,
-    val result: String,
-    val channel: String,
-    val date: String,
-    val hitLevel: String,
-    val status: String,
-    val thumbsCount: Int,
-    val fireCount: Int,
-    val rocketCount: Int,
-    val brokenHeartCount: Int,
-    val eventType: String,
-    val action: String
-)
+    val id: Long = 0,
+    val no: Int = 0,
+    val pair: String = "",
+    val direction: String = "",
+    val entry1: Double = 0.0,
+    val entry2: Double = 0.0,
+    val sl: Double = 0.0,
+    val tp1: Double = 0.0,
+    val tp2: Double = 0.0,
+    val tp3: Double = 0.0,
+    val tp4: Double = 0.0,
+    val pips: Double = Double.NaN,
+    val profit: Double = Double.NaN,
+    val result: String = "RUNNING",
+    val channel: String = "VIP",
+    val date: String = "",
+    val hitLevel: String = "",
+    val status: String = "active",
+    val thumbsCount: Int = -1,
+    val fireCount: Int = -1,
+    val rocketCount: Int = -1,
+    val brokenHeartCount: Int = -1,
+    val type: String = "signal",
+    val action: String = ""
+) {
+    val eventType: String get() = type
+}
 
 data class TradeRealtimeEvent(
-    val id: Long,
-    val no: Int,
-    val pair: String,
-    val direction: String,
-    val result: String,
-    val pips: Double,
-    val profit: Double,
-    val hitLevel: String,
-    val eventType: String,
-    val action: String
-)
+    val id: Long = 0,
+    val no: Int = 0,
+    val pair: String = "",
+    val direction: String = "",
+    val result: String = "RUNNING",
+    val pips: Double = Double.NaN,
+    val profit: Double = Double.NaN,
+    val hitLevel: String = "",
+    val type: String = "trade",
+    val action: String = ""
+) {
+    val eventType: String get() = type
+}
 
 data class NewsRealtimeEvent(
-    val id: Long,
-    val currency: String,
-    val title: String,
-    val impact: String,
-    val forecast: String,
-    val previous: String,
-    val actual: String
+    val id: Long = 0,
+    val currency: String = "",
+    val title: String = "",
+    val impact: String = "",
+    val forecast: String = "",
+    val previous: String = "",
+    val actual: String = ""
 )
 
 data class CommunityRealtimeEvent(
-    val id: Long,
-    val authorName: String,
-    val postType: String,
-    val content: String,
-    val pair: String,
-    val profitAmount: Double,
-    val pipsGain: Int
-)
+    val id: Long = 0,
+    val author_name: String = "",
+    val post_type: String = "",
+    val content: String = "",
+    val pair: String = "",
+    val profit_amount: Double = 0.0,
+    val pips_gain: Int = 0
+) {
+    val authorName: String get() = author_name
+    val postType: String get() = post_type
+    val profitAmount: Double get() = profit_amount
+    val pipsGain: Int get() = pips_gain
+}
 
 data class NotificationEvent(
-    val id: String,
-    val title: String,
-    val body: String,
-    val type: String,
-    val signalId: Long = 0,
-    val tradeId: Long = 0,
+    val id: String = "",
+    val title: String = "",
+    val body: String = "",
+    val type: String = "info",
+    val signal_id: Long = 0,
+    val trade_id: Long = 0,
     val result: String = ""
-)
+) {
+    val signalId: Long get() = signal_id
+    val tradeId: Long get() = trade_id
+}

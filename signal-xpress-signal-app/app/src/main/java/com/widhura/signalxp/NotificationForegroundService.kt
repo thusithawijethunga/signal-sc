@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,6 +45,8 @@ class NotificationForegroundService : Service() {
         private const val ACTION_START = "ACTION_START"
         private const val ACTION_STOP = "ACTION_STOP"
         private const val EXTRA_USER_ID = "user_id"
+        private const val RETRY_DELAY_MS = 5_000L
+        private const val API_KEY = "Eky8ml0WwPG0Hp2swTtDgpugjtRX9NNa"
 
         fun start(context: Context, userId: String) {
             val intent = Intent(context, NotificationForegroundService::class.java).apply {
@@ -70,6 +73,7 @@ class NotificationForegroundService : Service() {
     private var centrifugoService: CentrifugoWebSocketService? = null
     private var wsToken: String? = null
     private var wsUrl: String? = null
+    private var isActivelyConnected = false
 
     var onSignalUpdate: ((SignalRealtimeEvent) -> Unit)? = null
     var onTradeUpdate: ((TradeRealtimeEvent) -> Unit)? = null
@@ -111,8 +115,9 @@ class NotificationForegroundService : Service() {
         scope.launch {
             try {
                 val request = Request.Builder()
-                    .url("https://backend.signalxpress.com/api/websocket/token")
+                    .url("https://market.signalxpress.com/api/mobile/centrifugo/token?user_id=$userId")
                     .header("Authorization", "Bearer $authToken")
+                    .header("X-API-KEY", API_KEY)
                     .header("Accept", "application/json")
                     .build()
 
@@ -121,8 +126,22 @@ class NotificationForegroundService : Service() {
                 if (response.isSuccessful) {
                     val body = response.body?.string() ?: return@launch
                     val json = JSONObject(body)
-                    wsToken = json.getString("token")
-                    wsUrl = json.optString("ws_url", "wss://socket.signalxpress.com/connection/websocket")
+
+                    if (json.optBoolean("error", true)) {
+                        Log.e(TAG, "Token endpoint returned error: ${json.optString("message")}")
+                        scheduleRetry(userId)
+                        return@launch
+                    }
+
+                    val data = json.optJSONObject("data")
+                    if (data == null) {
+                        Log.e(TAG, "Token response missing data field")
+                        scheduleRetry(userId)
+                        return@launch
+                    }
+
+                    wsToken = data.getString("token")
+                    wsUrl = "wss://socket.signalxpress.com/connection/websocket"
 
                     createCentrifugoService()
                     centrifugoService?.connect(wsUrl!!, wsToken!!)
@@ -177,6 +196,7 @@ class NotificationForegroundService : Service() {
             },
             onConnectionChange = { connected ->
                 Log.d(TAG, "Connection changed: $connected")
+                isActivelyConnected = connected
                 CentrifugoEventBus.emitConnectionState(connected)
                 updateNotification(if (connected) "Connected to Signal Xpress" else "Reconnecting...")
                 onConnectionChange?.invoke(connected)
@@ -322,12 +342,13 @@ class NotificationForegroundService : Service() {
     private fun refreshAndReconnect(userId: String) {
         centrifugoService?.destroy()
         centrifugoService = null
+        isActivelyConnected = false
         connectWebSocket(userId)
     }
 
     private fun scheduleRetry(userId: String) {
         scope.launch {
-            kotlinx.coroutines.delay(5000L)
+            delay(RETRY_DELAY_MS)
             connectWebSocket(userId)
         }
     }
@@ -337,11 +358,12 @@ class NotificationForegroundService : Service() {
         centrifugoService?.refreshToken(token)
     }
 
-    fun isConnected(): Boolean = centrifugoService != null
+    fun isConnected(): Boolean = isActivelyConnected
 
     private fun disconnectWebSocket() {
         centrifugoService?.destroy()
         centrifugoService = null
+        isActivelyConnected = false
     }
 
     private fun buildNotification(text: String): android.app.Notification {
