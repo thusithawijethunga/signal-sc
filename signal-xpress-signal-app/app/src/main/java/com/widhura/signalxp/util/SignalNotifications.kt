@@ -76,10 +76,14 @@ object SignalNotifications {
         if (eventType == "signal_reaction") return
         if (eventTitle.isBlank() && eventBody.isBlank()) return
 
+        // Deduplicate by signal number — when the same signal arrives from both
+        // the trading:signals and trading:trades channels we only show one.
+        // Use signalNo (unique per signal) instead of eventId (a new UUID per broadcast).
+        val dedupeKey = if (signalNo > 0) "sig_$signalNo" else eventId
         synchronized(recentIds) {
-            if (eventId.isNotBlank() && recentIds.contains(eventId)) return
-            if (eventId.isNotBlank()) {
-                recentIds.addLast(eventId)
+            if (dedupeKey.isNotBlank() && recentIds.contains(dedupeKey)) return
+            if (dedupeKey.isNotBlank()) {
+                recentIds.addLast(dedupeKey)
                 while (recentIds.size > MAX_RECENT) recentIds.removeFirst()
             }
         }
@@ -126,6 +130,10 @@ object SignalNotifications {
         val title = "${emoji} ${eventTitle.ifBlank { "Signal Update" }}"
         val body = eventBody
 
+        // Use signalNo as notification ID so the same signal replaces its
+        // previous notification instead of stacking duplicates.
+        val notifId = if (signalNo > 0) signalNo else eventId.hashCode()
+
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
@@ -140,7 +148,7 @@ object SignalNotifications {
 
         try {
             NotificationManagerCompat.from(context)
-                .notify(eventId.hashCode(), notification)
+                .notify(notifId, notification)
         } catch (_: SecurityException) {
             // Permission revoked
         }

@@ -56,7 +56,7 @@ class PublishSignalUpdateToWebSocket
             $label,
             $signal->pair . ' ' . $signal->direction . ' | ' . ($signal->pips ?? 0) . ' pips',
             'signal_update',
-            ['signal_id' => $signal->id, 'action' => $action]
+            ['signal_id' => $signal->id, 'signal_no' => $signal->no, 'action' => $action]
         );
     }
 }

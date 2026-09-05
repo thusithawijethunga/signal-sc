@@ -48,11 +48,19 @@ class PublishTradeUpdateToWebSocket
                 'BE' => '⚖️ BE Hit!',
                 default => '📊 Result Update',
             };
+
+            // Include signal_id and signal_no so the Android app can deduplicate notifications
+            // (the same hit arrives from both trading:trades and trading:signals channels).
+            $signalId = \App\Models\Signal::where('no', $trade->no)->value('id');
+
             $this->centrifugo->broadcastNotification(
                 $label,
                 $trade->pair . ' ' . $trade->direction . ' | ' . $trade->pips . ' pips | $' . $trade->profit,
                 'trade_hit',
-                ['trade_id' => $trade->id, 'result' => $trade->result]
+                array_merge(
+                    ['trade_id' => $trade->id, 'result' => $trade->result, 'signal_no' => $trade->no],
+                    $signalId ? ['signal_id' => $signalId] : []
+                )
             );
         }
     }

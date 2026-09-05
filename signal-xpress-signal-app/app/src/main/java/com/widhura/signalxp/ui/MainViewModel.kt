@@ -138,8 +138,9 @@ class MainViewModel @Inject constructor(
             CentrifugoEventBus.notificationEvents.collect { event ->
                 Log.d("Centrifugo", "Notification: ${event.title} - ${event.body} type=${event.type}")
                 withContext(Dispatchers.IO) {
-                    var signalNo = 0
-                    if (event.signalId != 0L) {
+                    var signalNo = event.signalNo
+                    // Fallback: look up from DB if signal_no not included in the broadcast
+                    if (signalNo == 0 && event.signalId != 0L) {
                         try {
                             signalNo = AppDatabase.getDatabase(getApplication())
                                 .signalDao().getSignalById(event.signalId)?.no ?: 0

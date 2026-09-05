@@ -350,8 +350,9 @@ class NotificationForegroundService : Service() {
     }
 
     private suspend fun handleNotification(event: NotificationEvent) {
-        var signalNo = 0
-        if (event.signalId != 0L) {
+        var signalNo = event.signalNo
+        // Fallback: look up from DB if signal_no not included in the broadcast
+        if (signalNo == 0 && event.signalId != 0L) {
             try {
                 signalNo = AppDatabase.getDatabase(applicationContext)
                     .signalDao().getSignalById(event.signalId)?.no ?: 0
