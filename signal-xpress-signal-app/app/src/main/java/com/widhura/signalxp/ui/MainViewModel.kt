@@ -139,13 +139,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             },
             onNotification = { event ->
-                Log.d("Centrifugo", "Notification: ${event.title} - ${event.body}")
-                viewModelScope.launch(Dispatchers.Main) {
-                    _activeNotification.value = NotificationMessage(
-                        title = event.title,
-                        body = event.body,
-                        type = event.type
-                    )
+                Log.d("Centrifugo", "Notification: ${event.title} - ${event.body} type=${event.type}")
+                viewModelScope.launch(Dispatchers.IO) {
+                    // Resolve signal number for tap-to-focus, then post system tray
+                    // notification (skips noisy reaction broadcasts internally).
+                    var signalNo = 0
+                    if (event.signalId != 0L) {
+                        try {
+                            signalNo = AppDatabase.getDatabase(getApplication())
+                                .signalDao().getSignalById(event.signalId)?.no ?: 0
+                        } catch (e: Exception) {
+                            Log.d("Centrifugo", "signalNo lookup failed: ${e.message}")
+                        }
+                    }
+                    try {
+                        com.widhura.signalxp.util.SignalNotifications.showIfImportant(
+                            getApplication(), event, signalNo
+                        )
+                    } catch (e: Exception) {
+                        Log.d("Centrifugo", "system notification failed: ${e.message}")
+                    }
+                    withContext(Dispatchers.Main) {
+                        _activeNotification.value = NotificationMessage(
+                            title = event.title,
+                            body = event.body,
+                            type = event.type
+                        )
+                    }
                 }
             },
             onConnectionChange = { connected ->
@@ -207,6 +227,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearHighlight() {
         _highlightedSignal.value = null
+    }
+
+    /** Jump to a signal (used by system-notification tap). */
+    fun focusSignal(signalId: Long, signalNo: Int) {
+        if (signalId == 0L && signalNo == 0) return
+        _highlightedSignal.value = HighlightedSignal(
+            signalId = signalId,
+            signalNo = signalNo,
+            action = "updated"
+        )
     }
 
     fun clearNotification() {

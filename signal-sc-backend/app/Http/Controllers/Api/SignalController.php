@@ -28,6 +28,9 @@ class SignalController extends Controller
             if ($request->filled('direction')) {
                 $query->where('direction', $request->direction);
             }
+            if ($request->filled('no')) {
+                $query->where('no', $request->no);
+            }
             if ($request->filled('date_from')) {
                 $query->whereDate('date', '>=', $request->date_from);
             }

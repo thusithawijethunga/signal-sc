@@ -61,6 +61,35 @@ class ApiRepository(
         }
     }
 
+    /**
+     * Fetch one signal by its trade number and upsert it locally.
+     * Used as the REST confirm behind WebSocket hit/update events.
+     */
+    suspend fun refreshSignalByNo(no: Int): Result<Unit> {
+        return try {
+            val response = api.getSignals(no = no, perPage = 1)
+            if (response.isSuccessful) {
+                val dto = response.body()?.data?.firstOrNull()
+                if (dto != null) {
+                    val entity = dto.toEntity()
+                    val existing = signalDao.getSignalById(entity.id)
+                        ?: signalDao.getSignalByNo(entity.no)
+                    if (existing != null && existing.id != entity.id) {
+                        signalDao.deleteSignalById(existing.id)
+                    }
+                    signalDao.insertSignal(
+                        entity.copy(userReactedEmoji = existing?.userReactedEmoji)
+                    )
+                }
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("refresh failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun createSignal(request: SignalStoreRequest): Result<SignalEntity> {
         return try {
             val response = api.createSignal(request)

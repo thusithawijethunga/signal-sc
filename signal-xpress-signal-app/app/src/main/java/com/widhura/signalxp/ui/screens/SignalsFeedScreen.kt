@@ -203,9 +203,12 @@ fun SignalsFeedScreen(
                     fontWeight = FontWeight.Bold
                 )
 
+                val isConnected by viewModel.isWebSocketConnected.collectAsState()
                 Text(
-                    text = "● Live Feed",
-                    color = accentEmerald,
+                    text = if (isConnected) "● Live Feed" else "● Connecting…",
+                    color = if (isConnected) accentEmerald else androidx.compose.ui.graphics.Color(
+                        0xFFF59E0B
+                    ),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
