@@ -16,13 +16,15 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 
-// WebSocket token: supports both session auth (admin panel) and Bearer token (mobile app).
-// Placed outside api.auth so the controller can check both auth methods.
-Route::get('/websocket/token', [WebSocketController::class, 'token']);
+
 
 Route::middleware('api.auth')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    // WebSocket token: supports both session auth (admin panel) and Bearer token (mobile app).
+    // Placed outside api.auth so the controller can check both auth methods.
+    Route::get('/websocket/token', [WebSocketController::class, 'token']);
 
     Route::get('/signals', [SignalController::class, 'index']);
     Route::post('/signals', [SignalController::class, 'store']);

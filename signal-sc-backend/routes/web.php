@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\WebSocketController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\IbPartnerPageController;
@@ -21,6 +22,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/websocket/token', [WebSocketController::class, 'token']);
 });
 
 Route::middleware('auth')->group(function () {

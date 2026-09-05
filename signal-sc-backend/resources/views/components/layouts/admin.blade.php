@@ -332,7 +332,7 @@ window.wsStore = { signals: [], trades: [], news: [], community: [], lastTrade: 
 
   async function connectWebSocket() {
     try {
-      const resp = await fetch('/api/websocket/token');
+      const resp = await fetch('/websocket/token');
       const data = await resp.json();
       if (!data.token) return;
 
