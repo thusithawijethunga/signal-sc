@@ -1,8 +1,9 @@
 package com.widhura.signalxp.data.api
 
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
+import com.squareup.moshi.Json
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.github.centrifugal.centrifuge.Client
 import io.github.centrifugal.centrifuge.ConnectedEvent
 import io.github.centrifugal.centrifuge.ConnectingEvent
@@ -41,7 +42,14 @@ class CentrifugoWebSocketService(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var client: Client? = null
-    private val gson = Gson()
+    private val moshi = Moshi.Builder()
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
+    private val signalAdapter = moshi.adapter(SignalRealtimeEvent::class.java)
+    private val tradeAdapter = moshi.adapter(TradeRealtimeEvent::class.java)
+    private val newsAdapter = moshi.adapter(NewsRealtimeEvent::class.java)
+    private val communityAdapter = moshi.adapter(CommunityRealtimeEvent::class.java)
+    private val notificationAdapter = moshi.adapter(NotificationEvent::class.java)
 
     private var wsUrl: String = "wss://socket.signalxpress.com/connection/websocket"
     private var token: String = ""
@@ -104,8 +112,8 @@ class CentrifugoWebSocketService(
     private fun subscribeToAllChannels() {
         subscribeChannel("trading:signals") { json ->
             try {
-                val event = gson.fromJson(json, SignalRealtimeEvent::class.java)
-                onSignalUpdate(event)
+                val event = signalAdapter.fromJson(json)
+                if (event != null) onSignalUpdate(event)
             } catch (e: Exception) {
                 Log.e(TAG, "Signal parse error: ${e.message}")
             }
@@ -113,8 +121,8 @@ class CentrifugoWebSocketService(
 
         subscribeChannel("trading:trades") { json ->
             try {
-                val event = gson.fromJson(json, TradeRealtimeEvent::class.java)
-                onTradeUpdate(event)
+                val event = tradeAdapter.fromJson(json)
+                if (event != null) onTradeUpdate(event)
             } catch (e: Exception) {
                 Log.e(TAG, "Trade parse error: ${e.message}")
             }
@@ -122,8 +130,8 @@ class CentrifugoWebSocketService(
 
         subscribeChannel("trading:news") { json ->
             try {
-                val event = gson.fromJson(json, NewsRealtimeEvent::class.java)
-                onNewsUpdate(event)
+                val event = newsAdapter.fromJson(json)
+                if (event != null) onNewsUpdate(event)
             } catch (e: Exception) {
                 Log.e(TAG, "News parse error: ${e.message}")
             }
@@ -131,8 +139,8 @@ class CentrifugoWebSocketService(
 
         subscribeChannel("trading:community") { json ->
             try {
-                val event = gson.fromJson(json, CommunityRealtimeEvent::class.java)
-                onCommunityUpdate(event)
+                val event = communityAdapter.fromJson(json)
+                if (event != null) onCommunityUpdate(event)
             } catch (e: Exception) {
                 Log.e(TAG, "Community parse error: ${e.message}")
             }
@@ -140,8 +148,8 @@ class CentrifugoWebSocketService(
 
         subscribeChannel("notifications:broadcast") { json ->
             try {
-                val event = gson.fromJson(json, NotificationEvent::class.java)
-                onNotification(event)
+                val event = notificationAdapter.fromJson(json)
+                if (event != null) onNotification(event)
             } catch (e: Exception) {
                 Log.e(TAG, "Notification parse error: ${e.message}")
             }
@@ -242,12 +250,12 @@ data class SignalRealtimeEvent(
     val result: String = "RUNNING",
     val channel: String = "VIP",
     val date: String = "",
-    @SerializedName("hit_level") val hitLevel: String = "",
+    @Json(name = "hit_level") val hitLevel: String = "",
     val status: String = "active",
-    @SerializedName("thumbs_count") val thumbsCount: Int = -1,
-    @SerializedName("fire_count") val fireCount: Int = -1,
-    @SerializedName("rocket_count") val rocketCount: Int = -1,
-    @SerializedName("broken_heart_count") val brokenHeartCount: Int = -1,
+    @Json(name = "thumbs_count") val thumbsCount: Int = -1,
+    @Json(name = "fire_count") val fireCount: Int = -1,
+    @Json(name = "rocket_count") val rocketCount: Int = -1,
+    @Json(name = "broken_heart_count") val brokenHeartCount: Int = -1,
     val type: String = "signal",
     val action: String = ""
 ) {
@@ -262,7 +270,7 @@ data class TradeRealtimeEvent(
     val result: String = "RUNNING",
     val pips: Double = Double.NaN,
     val profit: Double = Double.NaN,
-    @SerializedName("hit_level") val hitLevel: String = "",
+    @Json(name = "hit_level") val hitLevel: String = "",
     val type: String = "trade",
     val action: String = ""
 ) {
@@ -281,12 +289,12 @@ data class NewsRealtimeEvent(
 
 data class CommunityRealtimeEvent(
     val id: Long = 0,
-    @SerializedName("author_name") val author_name: String = "",
-    @SerializedName("post_type") val post_type: String = "",
+    @Json(name = "author_name") val author_name: String = "",
+    @Json(name = "post_type") val post_type: String = "",
     val content: String = "",
     val pair: String = "",
-    @SerializedName("profit_amount") val profit_amount: Double = 0.0,
-    @SerializedName("pips_gain") val pips_gain: Int = 0
+    @Json(name = "profit_amount") val profit_amount: Double = 0.0,
+    @Json(name = "pips_gain") val pips_gain: Int = 0
 ) {
     val authorName: String get() = author_name
     val postType: String get() = post_type
@@ -299,8 +307,8 @@ data class NotificationEvent(
     val title: String = "",
     val body: String = "",
     val type: String = "info",
-    @SerializedName("signal_id") val signal_id: Long = 0,
-    @SerializedName("trade_id") val trade_id: Long = 0,
+    @Json(name = "signal_id") val signal_id: Long = 0,
+    @Json(name = "trade_id") val trade_id: Long = 0,
     val result: String = ""
 ) {
     val signalId: Long get() = signal_id
