@@ -69,11 +69,14 @@ import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.SignalXpressTheme
 import com.widhura.signalxp.ui.theme.TextSecondary
+import com.widhura.signalxp.util.SignalNotifications
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class NavTab { SIGNALS, SUMMARY, NEWS, COMMUNITY, VIP_LEADERBOARD }
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
@@ -89,6 +92,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         requestNotificationPermission()
         handleNotificationIntent(intent)
+        SignalNotifications.createAllChannels(applicationContext)
 
         themePreferences = ThemePreferences(applicationContext)
 

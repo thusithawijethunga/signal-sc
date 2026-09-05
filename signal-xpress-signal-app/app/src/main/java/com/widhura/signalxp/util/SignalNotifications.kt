@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -14,29 +16,58 @@ import androidx.core.content.ContextCompat
 import com.widhura.signalxp.R
 import com.widhura.signalxp.data.api.NotificationEvent
 
-/**
- * Local Android (system-tray) notifications for real-time backend events.
- *
- * The in-app banner only works while the app is in the foreground. This posts
- * a heads-up system notification so TP/SL/BE hits are seen even when the user
- * is on another tab or the app is backgrounded (process alive — theSocket
- * connection lives in the app process; true killed-app push needs FCM).
- *
- * Posted ONLY from the `notifications:broadcast` channel (one per admin
- * action) to avoid triple-posting for signal + trade + broadcast events.
- * Reaction broadcasts are skipped — they would spam the tray.
- */
 object SignalNotifications {
 
-    const val CHANNEL_ID = "signal_hits"
-    private const val CHANNEL_NAME = "Signal Hits"
+    const val CHANNEL_SIGNAL_HITS = "signal_hits"
+    const val CHANNEL_CENTRIFUGO_MESSAGES = "centrifugo_messages"
+    const val CHANNEL_SERVICE = "centrifugo_service"
 
-    // Dedupe replayed broadcasts (Centrifugo resends on resubscribe)
+    private const val CHANNEL_SIGNAL_HITS_NAME = "Signal Hits"
+    private const val CHANNEL_CENTRIFUGO_MESSAGES_NAME = "Live Notifications"
+    private const val CHANNEL_SERVICE_NAME = "Background Connection"
+
+    // Dedupe replayed broadcasts
     private val recentIds = ArrayDeque<String>()
     private const val MAX_RECENT = 30
 
+    fun createAllChannels(context: Context) {
+        if (Build.VERSION.SDK_INT < 26) return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val signalChannel = NotificationChannel(
+            CHANNEL_SIGNAL_HITS,
+            CHANNEL_SIGNAL_HITS_NAME,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Take-profit, stop-loss and signal updates"
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 300, 200, 300)
+            setShowBadge(true)
+        }
+
+        val messageChannel = NotificationChannel(
+            CHANNEL_CENTRIFUGO_MESSAGES,
+            CHANNEL_CENTRIFUGO_MESSAGES_NAME,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Real-time trading notifications"
+            enableVibration(true)
+            setShowBadge(true)
+        }
+
+        val serviceChannel = NotificationChannel(
+            CHANNEL_SERVICE,
+            CHANNEL_SERVICE_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Keeps signal updates flowing in background"
+            setShowBadge(false)
+        }
+
+        manager.createNotificationChannels(listOf(signalChannel, messageChannel, serviceChannel))
+    }
+
     fun showIfImportant(context: Context, event: NotificationEvent, signalNo: Int = 0) {
-        // Too noisy for the system tray — in-app banner still shows these.
         if (event.type == "signal_reaction") return
         if (event.title.isBlank() && event.body.isBlank()) return
 
@@ -56,7 +87,7 @@ object SignalNotifications {
             return
         }
 
-        ensureChannel(context)
+        createAllChannels(context)
 
         val tapIntent = Intent(context, com.widhura.signalxp.ui.MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -65,42 +96,52 @@ object SignalNotifications {
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            (event.id.hashCode()),
+            event.id.hashCode(),
             tapIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        // Determine channel and style based on event type
+        val (channelId, priority, emoji) = when {
+            event.type.contains("signal", ignoreCase = true) ||
+            event.type.contains("trade", ignoreCase = true) -> {
+                val emoji = when {
+                    event.body.contains("BUY", ignoreCase = true) -> "\uD83D\uDFE2"
+                    event.body.contains("SELL", ignoreCase = true) -> "\uD83D\uDD34"
+                    event.body.contains("HOLD", ignoreCase = true) -> "\uD83D\uDFE1"
+                    event.body.contains("WIN", ignoreCase = true) -> "\uD83C\uDFC6"
+                    event.body.contains("LOSS", ignoreCase = true) -> "\uD83D\uDEA8"
+                    else -> "\uD83D\uDCE1"
+                }
+                Triple(CHANNEL_SIGNAL_HITS, NotificationCompat.PRIORITY_HIGH, emoji)
+            }
+            else -> Triple(CHANNEL_CENTRIFUGO_MESSAGES, NotificationCompat.PRIORITY_DEFAULT, "\uD83D\uDD14")
+        }
+
+        val title = "${emoji} ${event.title.ifBlank { "Signal Update" }}"
+        val body = event.body
+
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(event.title.ifBlank { "Signal Update" })
-            .setContentText(event.body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(event.body))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setGroup("signal_updates")
             .build()
 
         try {
             NotificationManagerCompat.from(context)
                 .notify(event.id.hashCode(), notification)
         } catch (_: SecurityException) {
-            // Permission revoked between check and post — ignore.
+            // Permission revoked
         }
     }
 
-    private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < 26) return
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Take-profit, stop-loss and signal updates"
-            }
-        )
+    fun cancelAll(context: Context) {
+        NotificationManagerCompat.from(context).cancelAll()
     }
 }

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.widhura.signalxp.BuildConfig
+import com.widhura.signalxp.NotificationForegroundService
 import com.widhura.signalxp.data.AppDatabase
 import com.widhura.signalxp.data.CommunityCommentEntity
 import com.widhura.signalxp.data.CommunityPostEntity
@@ -15,7 +16,6 @@ import com.widhura.signalxp.data.VipMemberEntity
 import com.widhura.signalxp.data.api.ApiClient
 import com.widhura.signalxp.data.api.ApiRepository
 import com.widhura.signalxp.data.api.AuthRepository
-import com.widhura.signalxp.data.api.CentrifugoWebSocketService
 import com.widhura.signalxp.data.api.CommunityPostStoreRequest
 import com.widhura.signalxp.data.api.SignalStoreRequest
 import com.widhura.signalxp.data.api.CommunityRealtimeEvent
@@ -43,6 +43,8 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
 
 enum class TimeFilter { ALL, DAILY, WEEKLY, MONTHLY, CUSTOM }
 enum class ResultFilter { ALL, WIN, LOSS }
@@ -62,11 +64,15 @@ data class NotificationMessage(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository: SignalRepository
-    private val apiRepository: ApiRepository
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    application: Application,
+    private val signalRepository: SignalRepository,
+    private val apiRepository: ApiRepository,
     private val authRepository: AuthRepository
+) : AndroidViewModel(application) {
+
+    private val repository: SignalRepository = signalRepository
     val okHttpClient = OkHttpClient()
 
     // ── WebSocket State ───────────────────────────────
@@ -87,24 +93,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeNotification = MutableStateFlow<NotificationMessage?>(null)
     val activeNotification: StateFlow<NotificationMessage?> = _activeNotification.asStateFlow()
 
-    private var centrifugoService: CentrifugoWebSocketService? = null
-
     init {
-        val db = AppDatabase.getDatabase(application)
-        repository = SignalRepository(db.signalDao(), db.newsDao(), db.communityDao(), db.vipMemberDao())
-        apiRepository = ApiRepository(
-            application,
-            db.signalDao(),
-            db.newsDao(),
-            db.communityDao(),
-            db.vipMemberDao()
-        )
-        authRepository = AuthRepository(application)
-
         viewModelScope.launch {
-            // Auto-sync from API on startup
             syncAllFromApi()
-            // Connect WebSocket after sync
             connectWebSocket()
         }
     }
@@ -114,115 +105,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun connectWebSocket() {
         val context = getApplication<Application>()
         val token = ApiClient.getToken(context) ?: return
+        val userId = ApiClient.getCurrentUserId(context).toString()
 
-        centrifugoService?.destroy()
-
-        centrifugoService = CentrifugoWebSocketService(
-            onSignalUpdate = { event ->
-                viewModelScope.launch(Dispatchers.IO) {
-                    handleRealtimeSignalUpdate(event)
-                }
-            },
-            onTradeUpdate = { event ->
-                viewModelScope.launch(Dispatchers.IO) {
-                    handleRealtimeTradeUpdate(event)
-                }
-            },
-            onNewsUpdate = { event ->
-                viewModelScope.launch(Dispatchers.IO) {
-                    handleRealtimeNewsUpdate(event)
-                }
-            },
-            onCommunityUpdate = { event ->
-                viewModelScope.launch(Dispatchers.IO) {
-                    handleRealtimeCommunityUpdate(event)
-                }
-            },
-            onNotification = { event ->
-                Log.d("Centrifugo", "Notification: ${event.title} - ${event.body} type=${event.type}")
-                viewModelScope.launch(Dispatchers.IO) {
-                    // Resolve signal number for tap-to-focus, then post system tray
-                    // notification (skips noisy reaction broadcasts internally).
-                    var signalNo = 0
-                    if (event.signalId != 0L) {
-                        try {
-                            signalNo = AppDatabase.getDatabase(getApplication())
-                                .signalDao().getSignalById(event.signalId)?.no ?: 0
-                        } catch (e: Exception) {
-                            Log.d("Centrifugo", "signalNo lookup failed: ${e.message}")
-                        }
-                    }
-                    try {
-                        com.widhura.signalxp.util.SignalNotifications.showIfImportant(
-                            getApplication(), event, signalNo
-                        )
-                    } catch (e: Exception) {
-                        Log.d("Centrifugo", "system notification failed: ${e.message}")
-                    }
-                    withContext(Dispatchers.Main) {
-                        _activeNotification.value = NotificationMessage(
-                            title = event.title,
-                            body = event.body,
-                            type = event.type
-                        )
-                    }
-                }
-            },
-            onConnectionChange = { connected ->
-                _isWebSocketConnected.value = connected
-            },
-            onAuthFailed = {
-                // WS token expired/invalid — re-fetch fresh token and reconnect (debounced)
-                refreshWsToken()
-            }
-        )
-
-        // Fetch WebSocket token from backend then connect
-        fetchWsTokenAndConnect(token)
-    }
-
-    private var lastWsTokenRefresh = 0L
-
-    private fun refreshWsToken() {
-        val now = System.currentTimeMillis()
-        if (now - lastWsTokenRefresh < 10000) return // debounce: max once per 10s
-        lastWsTokenRefresh = now
-        val context = getApplication<Application>()
-        val token = ApiClient.getToken(context) ?: return
-        Log.d("Centrifugo", "Refreshing expired WS token...")
-        fetchWsTokenAndConnect(token)
-    }
-
-    private fun fetchWsTokenAndConnect(authToken: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val wsTokenRequest = Request.Builder()
-                    .url("https://backend.signalxpress.com/api/websocket/token")
-                    .header("Authorization", "Bearer $authToken")
-                    .header("Accept", "application/json")
-                    .build()
-
-                val response = okHttpClient.newCall(wsTokenRequest).execute()
-                if (response.isSuccessful) {
-                    val body = response.body?.string() ?: return@launch
-                    val json = JSONObject(body)
-                    val wsToken = json.getString("token")
-                    val wsUrl = json.optString("ws_url", "wss://socket.signalxpress.com/connection/websocket")
-                    // If already connected, just swap the token; else full connect
-                    if (_isWebSocketConnected.value) {
-                        centrifugoService?.refreshToken(wsToken)
-                    } else {
-                        centrifugoService?.connect(wsUrl, wsToken)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("Centrifugo", "Failed to get WS token: ${e.message}")
-            }
-        }
+        // Start foreground service to manage WebSocket lifecycle in background
+        NotificationForegroundService.start(context, userId)
     }
 
     fun disconnectWebSocket() {
-        centrifugoService?.disconnect()
+        val context = getApplication<Application>()
+        NotificationForegroundService.stop(context)
     }
 
     fun clearHighlight() {
@@ -1167,7 +1058,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        centrifugoService?.destroy()
+        // Foreground service manages its own lifecycle
     }
 }
 
