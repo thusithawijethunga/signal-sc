@@ -41,4 +41,7 @@ interface SignalDao {
 
     @Query("SELECT COUNT(*) FROM signals")
     suspend fun getCount(): Int
+
+    @Query("SELECT * FROM signals ORDER BY id DESC LIMIT 1")
+    suspend fun getLatestSignal(): SignalEntity?
 }

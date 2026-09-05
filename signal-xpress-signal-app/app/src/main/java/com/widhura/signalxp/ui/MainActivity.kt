@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,6 +70,8 @@ import com.widhura.signalxp.ui.theme.LightTheme
 import com.widhura.signalxp.ui.theme.PrimarySky
 import com.widhura.signalxp.ui.theme.SignalXpressTheme
 import com.widhura.signalxp.ui.theme.TextSecondary
+import com.widhura.signalxp.NotificationForegroundService
+import com.widhura.signalxp.data.api.ApiClient
 import com.widhura.signalxp.util.SignalNotifications
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -93,6 +96,20 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
         handleNotificationIntent(intent)
         SignalNotifications.createAllChannels(applicationContext)
+
+        // Start foreground service immediately so WebSocket stays alive
+        // even when the user minimizes or "closes" the app (like WhatsApp/Telegram).
+        val userId = ApiClient.getCurrentUserId(this).toString()
+        if (userId.isNotEmpty() && userId != "0") {
+            NotificationForegroundService.start(this, userId)
+        }
+
+        // Minimize instead of close on back press (move task to back)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                moveTaskToBack(true)
+            }
+        })
 
         themePreferences = ThemePreferences(applicationContext)
 

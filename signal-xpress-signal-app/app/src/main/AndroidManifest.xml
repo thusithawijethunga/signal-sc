@@ -36,6 +36,19 @@
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:stopWithTask="false" />
+
+        <receiver
+            android:name=".SignalWidgetProvider"
+            android:exported="true"
+            android:label="Signal Xpress Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.widhura.signalxp.UPDATE_SIGNAL_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/signal_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

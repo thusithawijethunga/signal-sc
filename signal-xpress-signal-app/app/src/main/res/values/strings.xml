@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Signal Xpress</string>
+    <string name="widget_description">Live signal feed — shows your latest trading signal on the home screen.</string>
+    <string name="widget_launch_intent">com.widhura.signalxp.OPEN_FROM_WIDGET</string>
+    <string name="widget_initial_pair">--</string>
+    <string name="widget_initial_status">Waiting for signal…</string>
 </resources>

@@ -300,6 +300,8 @@ class NotificationForegroundService : Service() {
         } else {
             db.signalDao().updateSignal(entity)
         }
+
+        SignalWidgetProvider.triggerUpdate(applicationContext)
     }
 
     private suspend fun handleRealtimeTrade(event: TradeRealtimeEvent) {
@@ -338,6 +340,7 @@ class NotificationForegroundService : Service() {
             } else {
                 db.signalDao().updateSignal(entity)
             }
+            SignalWidgetProvider.triggerUpdate(applicationContext)
         } else if (existing != null) {
             val updated = existing.copy(
                 result = event.result ?: existing.result,
@@ -346,6 +349,7 @@ class NotificationForegroundService : Service() {
                 hitLevel = event.hitLevel ?: existing.hitLevel
             )
             db.signalDao().updateSignal(updated)
+            SignalWidgetProvider.triggerUpdate(applicationContext)
         }
     }
 
