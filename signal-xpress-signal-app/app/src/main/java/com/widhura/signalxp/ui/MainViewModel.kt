@@ -16,10 +16,12 @@ import com.widhura.signalxp.data.VipMemberEntity
 import com.widhura.signalxp.data.api.ApiClient
 import com.widhura.signalxp.data.api.ApiRepository
 import com.widhura.signalxp.data.api.AuthRepository
+import com.widhura.signalxp.data.api.CentrifugoEventBus
 import com.widhura.signalxp.data.api.CommunityPostStoreRequest
 import com.widhura.signalxp.data.api.SignalStoreRequest
 import com.widhura.signalxp.data.api.CommunityRealtimeEvent
 import com.widhura.signalxp.data.api.NewsRealtimeEvent
+import com.widhura.signalxp.data.api.NotificationEvent
 import com.widhura.signalxp.data.api.SignalRealtimeEvent
 import com.widhura.signalxp.data.api.TradeRealtimeEvent
 import kotlinx.coroutines.Dispatchers
@@ -98,16 +100,78 @@ class MainViewModel @Inject constructor(
             syncAllFromApi()
             connectWebSocket()
         }
+
+        viewModelScope.launch {
+            CentrifugoEventBus.connectionState.collect { connected ->
+                _isWebSocketConnected.value = connected
+            }
+        }
+        viewModelScope.launch {
+            CentrifugoEventBus.signalEvents.collect { event ->
+                withContext(Dispatchers.IO) {
+                    handleRealtimeSignalUpdate(event)
+                }
+            }
+        }
+        viewModelScope.launch {
+            CentrifugoEventBus.tradeEvents.collect { event ->
+                withContext(Dispatchers.IO) {
+                    handleRealtimeTradeUpdate(event)
+                }
+            }
+        }
+        viewModelScope.launch {
+            CentrifugoEventBus.newsEvents.collect { event ->
+                withContext(Dispatchers.IO) {
+                    handleRealtimeNewsUpdate(event)
+                }
+            }
+        }
+        viewModelScope.launch {
+            CentrifugoEventBus.communityEvents.collect { event ->
+                withContext(Dispatchers.IO) {
+                    handleRealtimeCommunityUpdate(event)
+                }
+            }
+        }
+        viewModelScope.launch {
+            CentrifugoEventBus.notificationEvents.collect { event ->
+                Log.d("Centrifugo", "Notification: ${event.title} - ${event.body} type=${event.type}")
+                withContext(Dispatchers.IO) {
+                    var signalNo = 0
+                    if (event.signalId != 0L) {
+                        try {
+                            signalNo = AppDatabase.getDatabase(getApplication())
+                                .signalDao().getSignalById(event.signalId)?.no ?: 0
+                        } catch (e: Exception) {
+                            Log.d("Centrifugo", "signalNo lookup failed: ${e.message}")
+                        }
+                    }
+                    try {
+                        com.widhura.signalxp.util.SignalNotifications.showIfImportant(
+                            getApplication(), event, signalNo
+                        )
+                    } catch (e: Exception) {
+                        Log.d("Centrifugo", "system notification failed: ${e.message}")
+                    }
+                    withContext(Dispatchers.Main) {
+                        _activeNotification.value = NotificationMessage(
+                            title = event.title,
+                            body = event.body,
+                            type = event.type
+                        )
+                    }
+                }
+            }
+        }
     }
 
     // ── WebSocket Connection ──────────────────────────
 
     fun connectWebSocket() {
         val context = getApplication<Application>()
-        val token = ApiClient.getToken(context) ?: return
         val userId = ApiClient.getCurrentUserId(context).toString()
 
-        // Start foreground service to manage WebSocket lifecycle in background
         NotificationForegroundService.start(context, userId)
     }
 

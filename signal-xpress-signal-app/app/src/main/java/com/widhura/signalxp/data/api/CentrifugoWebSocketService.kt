@@ -167,6 +167,13 @@ class CentrifugoWebSocketService(
             if (json.has("pong")) {
                 Log.d("Centrifugo", "Pong received")
             }
+
+            // Handle server ping - respond with pong
+            if (json.has("ping")) {
+                Log.d("Centrifugo", "Ping received, sending pong")
+                val pongMsg = JSONObject().apply { put("pong", 1) }
+                webSocket?.send(pongMsg.toString())
+            }
         } catch (e: Exception) {
             Log.e("Centrifugo", "Parse error: ${e.message}")
         }

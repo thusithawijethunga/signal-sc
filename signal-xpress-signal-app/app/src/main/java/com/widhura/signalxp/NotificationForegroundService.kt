@@ -13,12 +13,14 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.widhura.signalxp.data.AppDatabase
 import com.widhura.signalxp.data.api.ApiClient
+import com.widhura.signalxp.data.api.CentrifugoEventBus
 import com.widhura.signalxp.data.api.CentrifugoWebSocketService
 import com.widhura.signalxp.data.api.CommunityRealtimeEvent
 import com.widhura.signalxp.data.api.NewsRealtimeEvent
 import com.widhura.signalxp.data.api.NotificationEvent
 import com.widhura.signalxp.data.api.SignalRealtimeEvent
 import com.widhura.signalxp.data.api.TradeRealtimeEvent
+import com.widhura.signalxp.ui.MainActivity
 import com.widhura.signalxp.util.SignalNotifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +33,6 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
 class NotificationForegroundService : Service() {
 
@@ -70,7 +71,6 @@ class NotificationForegroundService : Service() {
     private var wsToken: String? = null
     private var wsUrl: String? = null
 
-    // Callbacks for ViewModel to receive events
     var onSignalUpdate: ((SignalRealtimeEvent) -> Unit)? = null
     var onTradeUpdate: ((TradeRealtimeEvent) -> Unit)? = null
     var onNewsUpdate: ((NewsRealtimeEvent) -> Unit)? = null
@@ -86,7 +86,7 @@ class NotificationForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        SignalNotifications.createAllChannels(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -145,6 +145,7 @@ class NotificationForegroundService : Service() {
         centrifugoService = CentrifugoWebSocketService(
             onSignalUpdate = { event ->
                 Log.d(TAG, "Signal received: ${event.pair} ${event.direction}")
+                CentrifugoEventBus.emitSignal(event)
                 scope.launch(Dispatchers.IO) {
                     handleRealtimeSignal(event)
                 }
@@ -152,19 +153,23 @@ class NotificationForegroundService : Service() {
             },
             onTradeUpdate = { event ->
                 Log.d(TAG, "Trade received: ${event.pair} ${event.result}")
+                CentrifugoEventBus.emitTrade(event)
                 scope.launch(Dispatchers.IO) {
                     handleRealtimeTrade(event)
                 }
                 onTradeUpdate?.invoke(event)
             },
             onNewsUpdate = { event ->
+                CentrifugoEventBus.emitNews(event)
                 onNewsUpdate?.invoke(event)
             },
             onCommunityUpdate = { event ->
+                CentrifugoEventBus.emitCommunity(event)
                 onCommunityUpdate?.invoke(event)
             },
             onNotification = { event ->
                 Log.d(TAG, "Notification: ${event.title}")
+                CentrifugoEventBus.emitNotification(event)
                 scope.launch(Dispatchers.IO) {
                     handleNotification(event)
                 }
@@ -172,6 +177,7 @@ class NotificationForegroundService : Service() {
             },
             onConnectionChange = { connected ->
                 Log.d(TAG, "Connection changed: $connected")
+                CentrifugoEventBus.emitConnectionState(connected)
                 updateNotification(if (connected) "Connected to Signal Xpress" else "Reconnecting...")
                 onConnectionChange?.invoke(connected)
             },
@@ -183,7 +189,7 @@ class NotificationForegroundService : Service() {
         )
     }
 
-    private fun handleRealtimeSignal(event: SignalRealtimeEvent) {
+    private suspend fun handleRealtimeSignal(event: SignalRealtimeEvent) {
         val db = AppDatabase.getDatabase(applicationContext)
 
         if (event.action == "deleted") {
@@ -255,7 +261,7 @@ class NotificationForegroundService : Service() {
         }
     }
 
-    private fun handleRealtimeTrade(event: TradeRealtimeEvent) {
+    private suspend fun handleRealtimeTrade(event: TradeRealtimeEvent) {
         val db = AppDatabase.getDatabase(applicationContext)
 
         if (event.action == "deleted") {
@@ -300,7 +306,7 @@ class NotificationForegroundService : Service() {
         }
     }
 
-    private fun handleNotification(event: NotificationEvent) {
+    private suspend fun handleNotification(event: NotificationEvent) {
         var signalNo = 0
         if (event.signalId != 0L) {
             try {
@@ -336,21 +342,6 @@ class NotificationForegroundService : Service() {
     private fun disconnectWebSocket() {
         centrifugoService?.destroy()
         centrifugoService = null
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Keeps signal updates flowing in background"
-                setShowBadge(false)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
     }
 
     private fun buildNotification(text: String): android.app.Notification {
