@@ -6,15 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Services\CentrifugoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class WebSocketController extends Controller
 {
     public function token(Request $request, CentrifugoService $centrifugo): JsonResponse
     {
-        // Route is now behind the api.auth middleware, so $request->user() is
-        // guaranteed to be the real authenticated user - no more anonymous
-        // 'web_xxxxxxxx' fallback id.
-        $user = $request->user();
+        // Support both auth methods:
+        // 1. Bearer token auth (mobile app via api.auth middleware)
+        // 2. Session/cookie auth (admin panel — Laravel web session)
+        $user = $request->user() ?? Auth::user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
 
         $token = $centrifugo->generateConnectionToken((string) $user->id, [
             'name' => $user->name,
