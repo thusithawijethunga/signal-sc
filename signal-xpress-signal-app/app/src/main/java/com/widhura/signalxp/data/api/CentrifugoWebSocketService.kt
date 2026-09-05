@@ -234,83 +234,83 @@ class CentrifugoWebSocketService(
 }
 
 data class SignalRealtimeEvent(
-    val id: Long = 0,
-    val no: Int = 0,
-    val pair: String = "",
-    val direction: String = "",
-    val entry1: Double = 0.0,
-    val entry2: Double = 0.0,
-    val sl: Double = 0.0,
-    val tp1: Double = 0.0,
-    val tp2: Double = 0.0,
-    val tp3: Double = 0.0,
-    val tp4: Double = 0.0,
-    val pips: Double = Double.NaN,
-    val profit: Double = Double.NaN,
-    val result: String = "RUNNING",
-    val channel: String = "VIP",
-    val date: String = "",
-    @Json(name = "hit_level") val hitLevel: String = "",
-    val status: String = "active",
-    @Json(name = "thumbs_count") val thumbsCount: Int = -1,
-    @Json(name = "fire_count") val fireCount: Int = -1,
-    @Json(name = "rocket_count") val rocketCount: Int = -1,
-    @Json(name = "broken_heart_count") val brokenHeartCount: Int = -1,
-    val type: String = "signal",
-    val action: String = ""
+    val id: Long? = null,
+    val no: Int? = null,
+    val pair: String? = null,
+    val direction: String? = null,
+    val entry1: Double? = null,
+    val entry2: Double? = null,
+    val sl: Double? = null,
+    val tp1: Double? = null,
+    val tp2: Double? = null,
+    val tp3: Double? = null,
+    val tp4: Double? = null,
+    val pips: Double? = null,
+    val profit: Double? = null,
+    val result: String? = null,
+    val channel: String? = null,
+    val date: String? = null,
+    @Json(name = "hit_level") val hitLevel: String? = null,
+    val status: String? = null,
+    @Json(name = "thumbs_count") val thumbsCount: Int? = null,
+    @Json(name = "fire_count") val fireCount: Int? = null,
+    @Json(name = "rocket_count") val rocketCount: Int? = null,
+    @Json(name = "broken_heart_count") val brokenHeartCount: Int? = null,
+    val type: String? = null,
+    val action: String? = null
 ) {
-    val eventType: String get() = type
+    val eventType: String get() = type ?: "signal"
 }
 
 data class TradeRealtimeEvent(
-    val id: Long = 0,
-    val no: Int = 0,
-    val pair: String = "",
-    val direction: String = "",
-    val result: String = "RUNNING",
-    val pips: Double = Double.NaN,
-    val profit: Double = Double.NaN,
-    @Json(name = "hit_level") val hitLevel: String = "",
-    val type: String = "trade",
-    val action: String = ""
+    val id: Long? = null,
+    val no: Int? = null,
+    val pair: String? = null,
+    val direction: String? = null,
+    val result: String? = null,
+    val pips: Double? = null,
+    val profit: Double? = null,
+    @Json(name = "hit_level") val hitLevel: String? = null,
+    val type: String? = null,
+    val action: String? = null
 ) {
-    val eventType: String get() = type
+    val eventType: String get() = type ?: "trade"
 }
 
 data class NewsRealtimeEvent(
-    val id: Long = 0,
-    val currency: String = "",
-    val title: String = "",
-    val impact: String = "",
-    val forecast: String = "",
-    val previous: String = "",
-    val actual: String = ""
+    val id: Long? = null,
+    val currency: String? = null,
+    val title: String? = null,
+    val impact: String? = null,
+    val forecast: String? = null,
+    val previous: String? = null,
+    val actual: String? = null
 )
 
 data class CommunityRealtimeEvent(
-    val id: Long = 0,
-    @Json(name = "author_name") val author_name: String = "",
-    @Json(name = "post_type") val post_type: String = "",
-    val content: String = "",
-    val pair: String = "",
-    @Json(name = "profit_amount") val profit_amount: Double = 0.0,
-    @Json(name = "pips_gain") val pips_gain: Int = 0
+    val id: Long? = null,
+    @Json(name = "author_name") val author_name: String? = null,
+    @Json(name = "post_type") val post_type: String? = null,
+    val content: String? = null,
+    val pair: String? = null,
+    @Json(name = "profit_amount") val profit_amount: Double? = null,
+    @Json(name = "pips_gain") val pips_gain: Int? = null
 ) {
-    val authorName: String get() = author_name
-    val postType: String get() = post_type
-    val profitAmount: Double get() = profit_amount
-    val pipsGain: Int get() = pips_gain
+    val authorName: String get() = author_name ?: ""
+    val postType: String get() = post_type ?: ""
+    val profitAmount: Double get() = profit_amount ?: 0.0
+    val pipsGain: Int get() = pips_gain ?: 0
 }
 
 data class NotificationEvent(
-    val id: String = "",
-    val title: String = "",
-    val body: String = "",
-    val type: String = "info",
-    @Json(name = "signal_id") val signal_id: Long = 0,
-    @Json(name = "trade_id") val trade_id: Long = 0,
-    val result: String = ""
+    val id: String? = null,
+    val title: String? = null,
+    val body: String? = null,
+    val type: String? = null,
+    @Json(name = "signal_id") val signal_id: Long? = null,
+    @Json(name = "trade_id") val trade_id: Long? = null,
+    val result: String? = null
 ) {
-    val signalId: Long get() = signal_id
-    val tradeId: Long get() = trade_id
+    val signalId: Long get() = signal_id ?: 0
+    val tradeId: Long get() = trade_id ?: 0
 }

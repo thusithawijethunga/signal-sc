@@ -68,13 +68,18 @@ object SignalNotifications {
     }
 
     fun showIfImportant(context: Context, event: NotificationEvent, signalNo: Int = 0) {
-        if (event.type == "signal_reaction") return
-        if (event.title.isBlank() && event.body.isBlank()) return
+        val eventType = event.type ?: ""
+        val eventTitle = event.title ?: ""
+        val eventBody = event.body ?: ""
+        val eventId = event.id ?: ""
+
+        if (eventType == "signal_reaction") return
+        if (eventTitle.isBlank() && eventBody.isBlank()) return
 
         synchronized(recentIds) {
-            if (event.id.isNotBlank() && recentIds.contains(event.id)) return
-            if (event.id.isNotBlank()) {
-                recentIds.addLast(event.id)
+            if (eventId.isNotBlank() && recentIds.contains(eventId)) return
+            if (eventId.isNotBlank()) {
+                recentIds.addLast(eventId)
                 while (recentIds.size > MAX_RECENT) recentIds.removeFirst()
             }
         }
@@ -96,21 +101,21 @@ object SignalNotifications {
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            event.id.hashCode(),
+            eventId.hashCode(),
             tapIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         // Determine channel and style based on event type
         val (channelId, priority, emoji) = when {
-            event.type.contains("signal", ignoreCase = true) ||
-            event.type.contains("trade", ignoreCase = true) -> {
+            eventType.contains("signal", ignoreCase = true) ||
+            eventType.contains("trade", ignoreCase = true) -> {
                 val emoji = when {
-                    event.body.contains("BUY", ignoreCase = true) -> "\uD83D\uDFE2"
-                    event.body.contains("SELL", ignoreCase = true) -> "\uD83D\uDD34"
-                    event.body.contains("HOLD", ignoreCase = true) -> "\uD83D\uDFE1"
-                    event.body.contains("WIN", ignoreCase = true) -> "\uD83C\uDFC6"
-                    event.body.contains("LOSS", ignoreCase = true) -> "\uD83D\uDEA8"
+                    eventBody.contains("BUY", ignoreCase = true) -> "\uD83D\uDFE2"
+                    eventBody.contains("SELL", ignoreCase = true) -> "\uD83D\uDD34"
+                    eventBody.contains("HOLD", ignoreCase = true) -> "\uD83D\uDFE1"
+                    eventBody.contains("WIN", ignoreCase = true) -> "\uD83C\uDFC6"
+                    eventBody.contains("LOSS", ignoreCase = true) -> "\uD83D\uDEA8"
                     else -> "\uD83D\uDCE1"
                 }
                 Triple(CHANNEL_SIGNAL_HITS, NotificationCompat.PRIORITY_HIGH, emoji)
@@ -118,8 +123,8 @@ object SignalNotifications {
             else -> Triple(CHANNEL_CENTRIFUGO_MESSAGES, NotificationCompat.PRIORITY_DEFAULT, "\uD83D\uDD14")
         }
 
-        val title = "${emoji} ${event.title.ifBlank { "Signal Update" }}"
-        val body = event.body
+        val title = "${emoji} ${eventTitle.ifBlank { "Signal Update" }}"
+        val body = eventBody
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -135,7 +140,7 @@ object SignalNotifications {
 
         try {
             NotificationManagerCompat.from(context)
-                .notify(event.id.hashCode(), notification)
+                .notify(eventId.hashCode(), notification)
         } catch (_: SecurityException) {
             // Permission revoked
         }

@@ -30,12 +30,12 @@ class PublishSignalReactionToWebSocket
             'emoji' => $event->emoji,
             'emoji_display' => $emojiDisplay,
             'user_name' => $event->userName,
-            'pair' => $signal->pair,
-            'direction' => $signal->direction,
-            'thumbs_count' => $signal->thumbs_count,
-            'fire_count' => $signal->fire_count,
-            'rocket_count' => $signal->rocket_count,
-            'broken_heart_count' => $signal->broken_heart_count,
+            'pair' => $signal->pair ?? '',
+            'direction' => $signal->direction ?? '',
+            'thumbs_count' => $signal->thumbs_count ?? 0,
+            'fire_count' => $signal->fire_count ?? 0,
+            'rocket_count' => $signal->rocket_count ?? 0,
+            'broken_heart_count' => $signal->broken_heart_count ?? 0,
             'timestamp' => now()->toISOString(),
         ]);
 

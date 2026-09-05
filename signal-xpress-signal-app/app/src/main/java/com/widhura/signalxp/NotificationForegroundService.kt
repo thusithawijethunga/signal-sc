@@ -227,66 +227,71 @@ class NotificationForegroundService : Service() {
 
     private suspend fun handleRealtimeSignal(event: SignalRealtimeEvent) {
         val db = AppDatabase.getDatabase(applicationContext)
+        val eventNo = event.no ?: 0
+        val eventId = event.id ?: 0L
+        val eventAction = event.action ?: ""
 
-        if (event.action == "deleted") {
-            if (event.id != 0L) db.signalDao().deleteSignalById(event.id)
-            if (event.no != 0) {
-                db.signalDao().getSignalByNo(event.no)?.let {
-                    if (it.id != event.id) db.signalDao().deleteSignalById(it.id)
+        if (eventAction == "deleted") {
+            if (eventId != 0L) db.signalDao().deleteSignalById(eventId)
+            if (eventNo != 0) {
+                db.signalDao().getSignalByNo(eventNo)?.let {
+                    if (it.id != eventId) db.signalDao().deleteSignalById(it.id)
                 }
             }
             return
         }
 
-        val byId = if (event.id != 0L) db.signalDao().getSignalById(event.id) else null
-        val byNo = if (event.no != 0) db.signalDao().getSignalByNo(event.no) else null
+        val byId = if (eventId != 0L) db.signalDao().getSignalById(eventId) else null
+        val byNo = if (eventNo != 0) db.signalDao().getSignalByNo(eventNo) else null
         val existing = byId ?: byNo
 
-        if (event.action == "reaction") {
+        if (eventAction == "reaction") {
             if (existing != null) {
                 val updated = existing.copy(
-                    thumbsCount = if (event.thumbsCount >= 0) event.thumbsCount else existing.thumbsCount,
-                    fireCount = if (event.fireCount >= 0) event.fireCount else existing.fireCount,
-                    rocketCount = if (event.rocketCount >= 0) event.rocketCount else existing.rocketCount,
-                    brokenHeartCount = if (event.brokenHeartCount >= 0) event.brokenHeartCount else existing.brokenHeartCount
+                    thumbsCount = event.thumbsCount ?: existing.thumbsCount,
+                    fireCount = event.fireCount ?: existing.fireCount,
+                    rocketCount = event.rocketCount ?: existing.rocketCount,
+                    brokenHeartCount = event.brokenHeartCount ?: existing.brokenHeartCount
                 )
                 db.signalDao().updateSignal(updated)
             }
             return
         }
 
-        val entry = if (event.entry2 > 0) "${event.entry1} / ${event.entry2}"
-                    else if (event.entry1 > 0) event.entry1.toString()
+        val e1 = event.entry1 ?: 0.0
+        val e2 = event.entry2 ?: 0.0
+        val entry = if (e2 > 0) "$e1 / $e2"
+                    else if (e1 > 0) e1.toString()
                     else existing?.entry ?: ""
 
         val resolvedId = when {
-            byId != null -> event.id
-            byNo != null && event.id != 0L -> event.id
+            byId != null -> eventId
+            byNo != null && eventId != 0L -> eventId
             byNo != null -> byNo.id
-            else -> event.id
+            else -> eventId
         }
 
         val entity = com.widhura.signalxp.data.SignalEntity(
             id = resolvedId,
-            no = event.no,
-            date = event.date.ifBlank { existing?.date ?: "" },
-            pair = event.pair.ifBlank { existing?.pair ?: "" },
-            type = event.direction.ifBlank { existing?.type ?: "BUY" },
+            no = eventNo,
+            date = event.date ?: existing?.date ?: "",
+            pair = event.pair ?: existing?.pair ?: "",
+            type = event.direction ?: existing?.type ?: "BUY",
             entry = entry,
-            tp1 = if (event.tp1 > 0) event.tp1.toString() else existing?.tp1 ?: "",
-            tp2 = if (event.tp2 > 0) event.tp2.toString() else existing?.tp2 ?: "",
-            tp3 = if (event.tp3 > 0) event.tp3.toString() else existing?.tp3 ?: "",
-            tp4 = if (event.tp4 > 0) event.tp4.toString() else existing?.tp4 ?: "",
-            sl = if (event.sl > 0) event.sl.toString() else existing?.sl ?: "",
-            pips = if (!event.pips.isNaN()) event.pips.toInt() else existing?.pips ?: 0,
-            profit = if (!event.profit.isNaN()) event.profit else existing?.profit ?: 0.0,
-            hitLevel = event.hitLevel.ifBlank { existing?.hitLevel ?: "NONE" },
-            status = event.status.ifBlank { existing?.status ?: "active" },
-            result = event.result.ifBlank { existing?.result ?: "RUNNING" },
-            thumbsCount = if (event.thumbsCount >= 0) event.thumbsCount else existing?.thumbsCount ?: 0,
-            fireCount = if (event.fireCount >= 0) event.fireCount else existing?.fireCount ?: 0,
-            rocketCount = if (event.rocketCount >= 0) event.rocketCount else existing?.rocketCount ?: 0,
-            brokenHeartCount = if (event.brokenHeartCount >= 0) event.brokenHeartCount else existing?.brokenHeartCount ?: 0,
+            tp1 = if ((event.tp1 ?: 0.0) > 0) event.tp1.toString() else existing?.tp1 ?: "",
+            tp2 = if ((event.tp2 ?: 0.0) > 0) event.tp2.toString() else existing?.tp2 ?: "",
+            tp3 = if ((event.tp3 ?: 0.0) > 0) event.tp3.toString() else existing?.tp3 ?: "",
+            tp4 = if ((event.tp4 ?: 0.0) > 0) event.tp4.toString() else existing?.tp4 ?: "",
+            sl = if ((event.sl ?: 0.0) > 0) event.sl.toString() else existing?.sl ?: "",
+            pips = if (event.pips != null) event.pips.toInt() else existing?.pips ?: 0,
+            profit = event.profit ?: existing?.profit ?: 0.0,
+            hitLevel = event.hitLevel ?: existing?.hitLevel ?: "NONE",
+            status = event.status ?: existing?.status ?: "active",
+            result = event.result ?: existing?.result ?: "RUNNING",
+            thumbsCount = event.thumbsCount ?: existing?.thumbsCount ?: 0,
+            fireCount = event.fireCount ?: existing?.fireCount ?: 0,
+            rocketCount = event.rocketCount ?: existing?.rocketCount ?: 0,
+            brokenHeartCount = event.brokenHeartCount ?: existing?.brokenHeartCount ?: 0,
             userReactedEmoji = existing?.userReactedEmoji
         )
 
@@ -299,32 +304,34 @@ class NotificationForegroundService : Service() {
 
     private suspend fun handleRealtimeTrade(event: TradeRealtimeEvent) {
         val db = AppDatabase.getDatabase(applicationContext)
+        val eventNo = event.no ?: 0
+        val eventAction = event.action ?: ""
 
-        if (event.action == "deleted") {
-            val existing = db.signalDao().getSignalByNo(event.no)
+        if (eventAction == "deleted") {
+            val existing = db.signalDao().getSignalByNo(eventNo)
             if (existing != null) db.signalDao().deleteSignalById(existing.id)
             return
         }
 
-        val existing = db.signalDao().getSignalByNo(event.no)
+        val existing = db.signalDao().getSignalByNo(eventNo)
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
-        if (event.action == "created") {
+        if (eventAction == "created") {
             val entity = com.widhura.signalxp.data.SignalEntity(
                 id = existing?.id ?: 0,
-                no = event.no,
+                no = eventNo,
                 date = existing?.date ?: todayStr,
-                pair = event.pair.ifBlank { existing?.pair ?: "" },
-                type = event.direction.ifBlank { existing?.type ?: "BUY" },
+                pair = event.pair ?: existing?.pair ?: "",
+                type = event.direction ?: existing?.type ?: "BUY",
                 entry = existing?.entry ?: "",
                 tp1 = existing?.tp1 ?: "", tp2 = existing?.tp2 ?: "",
                 tp3 = existing?.tp3 ?: "", tp4 = existing?.tp4 ?: "",
                 sl = existing?.sl ?: "",
-                pips = if (!event.pips.isNaN()) event.pips.toInt() else existing?.pips ?: 0,
-                profit = if (!event.profit.isNaN()) event.profit else existing?.profit ?: 0.0,
-                hitLevel = event.hitLevel.ifBlank { existing?.hitLevel ?: "NONE" },
+                pips = if (event.pips != null) event.pips.toInt() else existing?.pips ?: 0,
+                profit = event.profit ?: existing?.profit ?: 0.0,
+                hitLevel = event.hitLevel ?: existing?.hitLevel ?: "NONE",
                 status = existing?.status ?: "active",
-                result = event.result.ifBlank { existing?.result ?: "RUNNING" }
+                result = event.result ?: existing?.result ?: "RUNNING"
             )
             if (existing == null) {
                 db.signalDao().insertSignal(entity)
@@ -333,10 +340,10 @@ class NotificationForegroundService : Service() {
             }
         } else if (existing != null) {
             val updated = existing.copy(
-                result = event.result.ifBlank { existing.result },
-                pips = if (!event.pips.isNaN()) event.pips.toInt() else existing.pips,
-                profit = if (!event.profit.isNaN()) event.profit else existing.profit,
-                hitLevel = event.hitLevel.ifBlank { existing.hitLevel }
+                result = event.result ?: existing.result,
+                pips = if (event.pips != null) event.pips.toInt() else existing.pips,
+                profit = event.profit ?: existing.profit,
+                hitLevel = event.hitLevel ?: existing.hitLevel
             )
             db.signalDao().updateSignal(updated)
         }
