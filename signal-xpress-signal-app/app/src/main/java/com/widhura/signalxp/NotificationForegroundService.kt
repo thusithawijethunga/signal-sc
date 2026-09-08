@@ -79,6 +79,7 @@ class NotificationForegroundService : Service() {
     private var wsToken: String? = null
     private var wsUrl: String? = null
     private var isActivelyConnected = false
+    private var wasConnectedOnce = false
 
     var onSignalUpdate: ((SignalRealtimeEvent) -> Unit)? = null
     var onTradeUpdate: ((TradeRealtimeEvent) -> Unit)? = null
@@ -212,9 +213,18 @@ class NotificationForegroundService : Service() {
             },
             onConnectionChange = { connected ->
                 Log.d(TAG, "Connection changed: $connected")
+                val wasDisconnected = !isActivelyConnected && wasConnectedOnce
                 isActivelyConnected = connected
+                if (connected) wasConnectedOnce = true
                 CentrifugoEventBus.emitConnectionState(connected)
                 updateNotification(if (connected) "Connected to Signal Xpress" else "Reconnecting...")
+                // After reconnecting from a disconnection, sync to catch any missed signals
+                if (connected && wasDisconnected) {
+                    Log.d(TAG, "Reconnected - syncing to catch missed signals")
+                    scope.launch(Dispatchers.IO) {
+                        syncAfterReconnect()
+                    }
+                }
                 onConnectionChange?.invoke(connected)
             },
             onAuthFailed = {
@@ -375,6 +385,44 @@ class NotificationForegroundService : Service() {
         centrifugoService = null
         isActivelyConnected = false
         connectWebSocket(userId)
+    }
+
+    private suspend fun syncAfterReconnect() {
+        try {
+            val api = com.widhura.signalxp.data.api.ApiClient.getApiService(applicationContext)
+            val signalResponse = api.getSignals(perPage = 100)
+            if (signalResponse.isSuccessful) {
+                val db = AppDatabase.getDatabase(applicationContext)
+                val signals = signalResponse.body()?.data?.map { dto ->
+                    com.widhura.signalxp.data.SignalEntity(
+                        id = dto.id,
+                        no = dto.no,
+                        date = dto.date,
+                        pair = dto.pair,
+                        type = dto.direction,
+                        entry = if (dto.entry2 != null && dto.entry2 > 0) "${dto.entry1} / ${dto.entry2}" else dto.entry1?.toString() ?: "",
+                        tp1 = dto.tp1?.toString() ?: "", tp2 = dto.tp2?.toString() ?: "",
+                        tp3 = dto.tp3?.toString() ?: "", tp4 = dto.tp4?.toString() ?: "",
+                        sl = dto.sl?.toString() ?: "",
+                        pips = (dto.pips ?: 0.0).toInt(),
+                        profit = dto.profit ?: 0.0,
+                        hitLevel = dto.hitLevel ?: "NONE",
+                        status = dto.status,
+                        result = dto.result,
+                        thumbsCount = dto.thumbsCount,
+                        fireCount = dto.fireCount,
+                        rocketCount = dto.rocketCount,
+                        brokenHeartCount = dto.brokenHeartCount
+                    )
+                } ?: emptyList()
+                if (signals.isNotEmpty()) {
+                    db.signalDao().replaceAllSignals(signals)
+                }
+                Log.d(TAG, "Post-reconnect sync: ${signals.size} signals")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Post-reconnect sync failed: ${e.message}")
+        }
     }
 
     private fun scheduleRetry(userId: String) {

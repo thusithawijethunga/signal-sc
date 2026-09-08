@@ -52,6 +52,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.widhura.signalxp.BuildConfig
 import com.widhura.signalxp.data.ThemePreferences
 import com.widhura.signalxp.data.api.AuthViewModel
@@ -188,6 +191,7 @@ fun MainAppContent(
     var showProfile by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val bg = if (isDarkMode) DarkBackground else LightTheme.Background
     val headerBg = if (isDarkMode) CardHeaderBackground else LightTheme.CardHeaderBackground
@@ -195,6 +199,16 @@ fun MainAppContent(
     val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
 
     val activeNotification by viewModel.activeNotification.collectAsState()
+
+    // Auto-sync when app resumes to foreground
+    LaunchedEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.syncAllFromApi()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+    }
 
     LaunchedEffect(activeNotification) {
         activeNotification?.let {

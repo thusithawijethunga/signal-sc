@@ -23,8 +23,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,6 +60,7 @@ import com.widhura.signalxp.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignalsFeedScreen(
     viewModel: MainViewModel,
@@ -67,6 +71,7 @@ fun SignalsFeedScreen(
     val signals by viewModel.filteredSignals.collectAsState()
     val selectedPair by viewModel.selectedPairFilter.collectAsState()
     val highlightedSignal by viewModel.highlightedSignal.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     var tapCount by remember { mutableIntStateOf(0) }
 
     val listState = rememberLazyListState()
@@ -243,32 +248,39 @@ fun SignalsFeedScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Signals Feed List
-            if (signals.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No signals available for selected pair.",
-                        color = textSec,
-                        fontSize = 13.sp
-                    )
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(signals, key = { it.id }) { signal ->
-                        SignalCard(
-                            signal = signal,
-                            isHighlighted = highlightedSignal?.signalId == signal.id,
-                            onReactionToggle = { emoji -> viewModel.toggleReaction(signal, emoji) }
+            // Signals Feed List with Pull-to-Refresh
+            val pullRefreshState = rememberPullToRefreshState()
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { viewModel.refreshSignals() },
+                state = pullRefreshState,
+                modifier = Modifier.weight(1f)
+            ) {
+                if (signals.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No signals available for selected pair.",
+                            color = textSec,
+                            fontSize = 13.sp
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(signals, key = { it.id }) { signal ->
+                            SignalCard(
+                                signal = signal,
+                                isHighlighted = highlightedSignal?.signalId == signal.id,
+                                onReactionToggle = { emoji -> viewModel.toggleReaction(signal, emoji) }
+                            )
+                        }
                     }
                 }
             }

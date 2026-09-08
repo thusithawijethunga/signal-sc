@@ -84,6 +84,9 @@ class MainViewModel @Inject constructor(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private val _lastSyncTime = MutableStateFlow("")
     val lastSyncTime: StateFlow<String> = _lastSyncTime.asStateFlow()
 
@@ -496,6 +499,25 @@ class MainViewModel @Inject constructor(
                 Log.e("Sync", "Full sync failed: ${e.message}")
             } finally {
                 _isSyncing.value = false
+            }
+        }
+    }
+
+    fun refreshSignals() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isRefreshing.value = true
+            try {
+                apiRepository.fullSync()
+                withContext(Dispatchers.Main) {
+                    val sdf = SimpleDateFormat("hh:mm a", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("Asia/Colombo")
+                    }
+                    _lastSyncTime.value = "Refreshed \u2022 ${sdf.format(Date())} (SLST)"
+                }
+            } catch (e: Exception) {
+                Log.e("Sync", "Refresh failed: ${e.message}")
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
