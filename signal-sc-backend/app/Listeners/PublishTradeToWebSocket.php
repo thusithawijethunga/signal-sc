@@ -18,34 +18,28 @@ class PublishTradeToWebSocket
             'no' => $trade->no,
             'type' => 'trade',
             'action' => 'created',
-            'pair' => $trade->pair ?? '',
-            'direction' => $trade->direction ?? '',
-            'entry1' => $trade->entry1 ?? 0,
-            'entry2' => $trade->entry2 ?? 0,
-            'sl' => $trade->sl ?? 0,
-            'tp1' => $trade->tp1 ?? 0,
-            'tp2' => $trade->tp2 ?? 0,
-            'tp3' => $trade->tp3 ?? 0,
-            'tp4' => $trade->tp4 ?? 0,
-            'pips' => $trade->pips ?? 0,
-            'profit' => $trade->profit ?? 0,
-            'result' => $trade->result ?? 'RUNNING',
-            'channel' => $trade->channel ?? 'VIP',
-            'date' => $trade->date?->format('Y-m-d') ?? '',
+            'pair' => $trade->pair,
+            'direction' => $trade->direction,
+            'entry1' => $trade->entry1,
+            'entry2' => $trade->entry2,
+            'sl' => $trade->sl,
+            'tp1' => $trade->tp1,
+            'tp2' => $trade->tp2,
+            'tp3' => $trade->tp3,
+            'tp4' => $trade->tp4,
+            'pips' => $trade->pips,
+            'profit' => $trade->profit,
+            'result' => $trade->result,
+            'channel' => $trade->channel,
+            'date' => $trade->date?->format('Y-m-d'),
             'timestamp' => now()->toISOString(),
         ]);
-
-        // Include signal_id and signal_no in broadcast so Android can deduplicate notifications
-        $signalId = \App\Models\Signal::where('no', $trade->no)->value('id');
 
         $this->centrifugo->broadcastNotification(
             '📊 New Trade: ' . $trade->pair,
             $trade->direction . ' ' . $trade->pair . ' | ' . $trade->result,
             'trade',
-            array_merge(
-                ['trade_id' => $trade->id, 'signal_no' => $trade->no],
-                $signalId ? ['signal_id' => $signalId] : []
-            )
+            ['trade_id' => $trade->id]
         );
     }
 }

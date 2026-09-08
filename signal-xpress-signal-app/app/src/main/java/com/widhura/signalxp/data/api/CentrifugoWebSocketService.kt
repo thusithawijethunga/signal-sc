@@ -51,7 +51,7 @@ class CentrifugoWebSocketService(
     private val communityAdapter = moshi.adapter(CommunityRealtimeEvent::class.java)
     private val notificationAdapter = moshi.adapter(NotificationEvent::class.java)
 
-    private var wsUrl: String = "wss://socket.signalxpress.com/connection/websocket"
+    private var wsUrl: String = "wss://socket.hadawatha.lk/connection/websocket"
     private var token: String = ""
     private var shouldReconnect = false
     private var reconnectAttempt = 0
