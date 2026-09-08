@@ -1,7 +1,13 @@
-package com.widhura.signalxp
+package com.signalxpress.app
 
 import android.app.Application
+import com.signalxpress.app.data.AdManager
+import com.signalxpress.app.data.AppConfigManager
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
-class RealtimeNotificationsApp : Application()
+class RealtimeNotificationsApp : Application() {
+    @Inject lateinit var configManager: AppConfigManager
+    @Inject lateinit var adManager: AdManager
+}
