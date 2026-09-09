@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\IbPartnerController;
 use App\Http\Controllers\Api\CsvController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\WebSocketController;
+use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\AdminCommunityController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,10 @@ Route::middleware('api.auth')->group(function () {
     // WebSocket token: supports both session auth (admin panel) and Bearer token (mobile app).
     // Placed outside api.auth so the controller can check both auth methods.
     Route::get('/websocket/token', [WebSocketController::class, 'token']);
+
+    // FCM push device registry (always-notify in any app state).
+    Route::post('/devices', [DeviceController::class, 'store']);
+    Route::delete('/devices', [DeviceController::class, 'destroy']);
 
     Route::get('/signals', [SignalController::class, 'index']);
     Route::post('/signals', [SignalController::class, 'store']);

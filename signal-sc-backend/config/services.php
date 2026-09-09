@@ -51,4 +51,11 @@ return [
     'fmp' => [
         'api_key' => env('FMP_API_KEY', ''),
     ],
+
+    'fcm' => [
+        // Path to the Firebase service-account JSON (FCM HTTP v1).
+        // Place the file at storage/app/firebase-credentials.json (gitignored)
+        // and keep this env pointing at it.
+        'credentials_file' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase-credentials.json')),
+    ],
 ];

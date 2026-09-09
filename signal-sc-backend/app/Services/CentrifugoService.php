@@ -97,7 +97,17 @@ class CentrifugoService
             'timestamp' => now()->toISOString(),
         ], $extra);
 
-        return $this->publish(self::CHANNEL_BROADCAST, $data);
+        $published = $this->publish(self::CHANNEL_BROADCAST, $data);
+
+        // FCM fallback: reaches devices even when the app is closed/killed.
+        // Failures here must never break the WebSocket broadcast.
+        try {
+            app(FcmService::class)->pushBroadcast($title, $body, $type, $data);
+        } catch (\Throwable $e) {
+            Log::warning('FCM: fan-out failed: ' . $e->getMessage());
+        }
+
+        return $published;
     }
 
     public function getChannelInfo(string $channel): array
