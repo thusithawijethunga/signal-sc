@@ -39,7 +39,7 @@ class PublishTradeToWebSocket
             '📊 New Trade: ' . $trade->pair,
             $trade->direction . ' ' . $trade->pair . ' | ' . $trade->result,
             'trade',
-            ['trade_id' => $trade->id, 'signal_no' => $trade->no]
+            ['trade_id' => $trade->id]
         );
     }
 }

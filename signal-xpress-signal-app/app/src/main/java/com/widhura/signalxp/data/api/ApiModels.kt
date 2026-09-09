@@ -418,3 +418,10 @@ data class SyncResult(
     val result: Map<String, Any>? = null,
     val message: String? = null
 )
+
+// ── Push devices (FCM) ──────────────────────────────
+@JsonClass(generateAdapter = true)
+data class DeviceRegisterRequest(
+    val token: String,
+    val platform: String = "android"
+)

@@ -45,7 +45,7 @@ class PublishSignalToWebSocket
             '📡 New Signal: ' . $signal->pair,
             $signal->direction . ' ' . $signal->pair . ' | Entry: ' . ($signal->entry1 ?? '—'),
             'signal',
-            ['signal_id' => $signal->id, 'signal_no' => $signal->no]
+            ['signal_id' => $signal->id]
         );
     }
 }

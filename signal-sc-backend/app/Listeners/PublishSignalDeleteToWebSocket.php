@@ -23,7 +23,7 @@ class PublishSignalDeleteToWebSocket
             '🗑️ Signal Deleted',
             'Signal #' . $event->signalNo . ' has been removed',
             'signal_delete',
-            ['signal_id' => $event->signalId, 'signal_no' => $event->signalNo]
+            ['signal_id' => $event->signalId]
         );
     }
 }

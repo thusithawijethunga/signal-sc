@@ -218,4 +218,11 @@ interface ApiService {
     suspend fun syncPull(
         @Query("since") since: String? = null
     ): Response<SyncPullResponse>
+
+    // ── Push devices (FCM) ──────────────────────────
+    @POST("devices")
+    suspend fun registerDevice(@Body request: DeviceRegisterRequest): Response<Map<String, Any>>
+
+    @DELETE("devices")
+    suspend fun unregisterDevice(@Body request: DeviceRegisterRequest): Response<Map<String, Any>>
 }

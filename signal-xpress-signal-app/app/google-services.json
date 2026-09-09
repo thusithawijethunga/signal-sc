@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "139480726256",
+    "project_id": "signalxpress-vip",
+    "storage_bucket": "signalxpress-vip.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:139480726256:android:409b37bbdb14a60ef66035",
+        "android_client_info": {
+          "package_name": "com.widhura.signalxp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEa7ULivQDnqTko0BQIk4IuHCx3bOsWz0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -57,6 +57,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.widhura.signalxp.BuildConfig
+import com.widhura.signalxp.data.OnboardingPreferences
 import com.widhura.signalxp.data.ThemePreferences
 import com.widhura.signalxp.data.api.AuthViewModel
 import com.widhura.signalxp.ui.screens.AnalyticsSummaryScreen
@@ -64,8 +65,10 @@ import com.widhura.signalxp.ui.screens.CommunityScreen
 import com.widhura.signalxp.ui.screens.SettingsScreen
 import com.widhura.signalxp.ui.screens.LoginScreen
 import com.widhura.signalxp.ui.screens.MarketNewsScreen
+import com.widhura.signalxp.ui.screens.OnboardingScreen
 import com.widhura.signalxp.ui.screens.ProfileScreen
 import com.widhura.signalxp.ui.screens.SignalsFeedScreen
+import com.widhura.signalxp.ui.screens.SplashScreen
 import com.widhura.signalxp.ui.screens.VipLeaderboardScreen
 import com.widhura.signalxp.ui.theme.BorderColor
 import com.widhura.signalxp.ui.theme.CardHeaderBackground
@@ -76,6 +79,7 @@ import com.widhura.signalxp.ui.theme.SignalXpressTheme
 import com.widhura.signalxp.ui.theme.TextSecondary
 import com.widhura.signalxp.NotificationForegroundService
 import com.widhura.signalxp.data.api.ApiClient
+import com.widhura.signalxp.data.api.FcmTokenRegistrar
 import com.widhura.signalxp.util.SignalNotifications
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -89,6 +93,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
     private lateinit var themePreferences: ThemePreferences
+    private lateinit var onboardingPreferences: OnboardingPreferences
 
     private val notifPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
@@ -131,14 +136,48 @@ class MainActivity : ComponentActivity() {
         })
 
         themePreferences = ThemePreferences(applicationContext)
+        onboardingPreferences = OnboardingPreferences(applicationContext)
 
         setContent {
             val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = true)
             val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+            val onboardingDone by onboardingPreferences.isOnboardingDone.collectAsState(initial = false)
+            var showSplash by remember { mutableStateOf(true) }
             val scope = rememberCoroutineScope()
 
+            LaunchedEffect(Unit) {
+                delay(1200)
+                showSplash = false
+            }
+
+            // Keep the backend's FCM device registry in sync so push
+            // notifications arrive in any app state (open/closed/killed).
+            var wasLoggedIn by remember { mutableStateOf(isLoggedIn) }
+            LaunchedEffect(isLoggedIn) {
+                if (isLoggedIn) {
+                    FcmTokenRegistrar.refresh(this@MainActivity)
+                } else if (wasLoggedIn) {
+                    FcmTokenRegistrar.unregister(this@MainActivity)
+                }
+                wasLoggedIn = isLoggedIn
+            }
+
             SignalXpressTheme(darkTheme = isDarkMode) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                when {
+                    showSplash -> SplashScreen(isDarkMode = isDarkMode)
+                    !isLoggedIn -> LoginScreen(
+                        authViewModel = authViewModel,
+                        onLoginSuccess = { /* isLoggedIn state handles navigation */ }
+                    )
+                    !onboardingDone -> OnboardingScreen(
+                        isDarkMode = isDarkMode,
+                        onComplete = {
+                            scope.launch {
+                                onboardingPreferences.setOnboardingDone()
+                            }
+                        }
+                    )
+                    else -> Column(modifier = Modifier.fillMaxSize()) {
                     if (notifBannerVisible) {
                         NotificationPermissionBanner(
                             onEnable = {
@@ -157,7 +196,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                if (isLoggedIn) {
                     MainAppContent(
                         viewModel = viewModel,
                         authViewModel = authViewModel,
@@ -168,12 +206,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
-                } else {
-                    LoginScreen(
-                        authViewModel = authViewModel,
-                        onLoginSuccess = { /* isLoggedIn state handles navigation */ }
-                    )
-                }
+                    }
                     }
                 }
             }
