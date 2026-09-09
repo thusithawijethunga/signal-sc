@@ -425,3 +425,25 @@ data class DeviceRegisterRequest(
     val token: String,
     val platform: String = "android"
 )
+
+// ── Live presence (admin board) ─────────────────────
+@JsonClass(generateAdapter = true)
+data class PresenceDeviceInfo(
+    val brand: String = "",
+    val model: String = "",
+    val android: String = "",
+    val sdk: Int = 0,
+    @Json(name = "app_version") val appVersion: String = ""
+)
+
+@JsonClass(generateAdapter = true)
+data class PresenceHeartbeatRequest(
+    @Json(name = "device_key") val deviceKey: String,
+    val state: String = "online",
+    val device: PresenceDeviceInfo = PresenceDeviceInfo()
+)
+
+@JsonClass(generateAdapter = true)
+data class PresenceOfflineRequest(
+    @Json(name = "device_key") val deviceKey: String
+)

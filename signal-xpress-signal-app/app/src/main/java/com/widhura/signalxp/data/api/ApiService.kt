@@ -225,4 +225,11 @@ interface ApiService {
 
     @DELETE("devices")
     suspend fun unregisterDevice(@Body request: DeviceRegisterRequest): Response<Map<String, Any>>
+
+    // ── Live presence (admin board) ─────────────────
+    @POST("presence/heartbeat")
+    suspend fun presenceHeartbeat(@Body request: PresenceHeartbeatRequest): Response<Map<String, Any>>
+
+    @POST("presence/offline")
+    suspend fun presenceOffline(@Body request: PresenceOfflineRequest): Response<Map<String, Any>>
 }

@@ -72,6 +72,8 @@ class NotificationForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val httpClient = OkHttpClient()
     private var centrifugoService: CentrifugoWebSocketService? = null
+    private var heartbeatJob: kotlinx.coroutines.Job? = null
+    private var foregroundWatchJob: kotlinx.coroutines.Job? = null
     private var wsToken: String? = null
     private var wsUrl: String? = null
     private var isActivelyConnected = false
@@ -108,6 +110,7 @@ class NotificationForegroundService : Service() {
                 connectWebSocket(userId)
             }
             ACTION_STOP -> {
+                sayGoodbye()
                 disconnectWebSocket()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -189,7 +192,49 @@ class NotificationForegroundService : Service() {
             centrifugoService?.connect(wsUrl!!, wsToken!!)
 
             updateNotification("Connected to Signal Xpress")
+            startPresenceHeartbeat()
         }
+    }
+
+    /**
+     * Admin presence board: immediate heartbeat, re-ping on every
+     * foreground/background switch, and every 60s (server TTL is 150s).
+     */
+    private fun startPresenceHeartbeat() {
+        heartbeatJob?.cancel()
+        foregroundWatchJob?.cancel()
+        heartbeatJob = scope.launch {
+            com.widhura.signalxp.data.api.PresenceReporter.heartbeat(
+                this@NotificationForegroundService,
+                com.widhura.signalxp.data.api.PresenceReporter.currentState(
+                    com.widhura.signalxp.AppForeground.isForeground.value
+                )
+            )
+            while (true) {
+                delay(60_000)
+                com.widhura.signalxp.data.api.PresenceReporter.heartbeat(
+                    this@NotificationForegroundService,
+                    com.widhura.signalxp.data.api.PresenceReporter.currentState(
+                        com.widhura.signalxp.AppForeground.isForeground.value
+                    )
+                )
+            }
+        }
+        foregroundWatchJob = scope.launch {
+            com.widhura.signalxp.AppForeground.isForeground.collect { foreground ->
+                com.widhura.signalxp.data.api.PresenceReporter.heartbeat(
+                    this@NotificationForegroundService,
+                    com.widhura.signalxp.data.api.PresenceReporter.currentState(foreground)
+                )
+            }
+        }
+    }
+
+    private fun stopPresenceHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        foregroundWatchJob?.cancel()
+        foregroundWatchJob = null
     }
 
     private fun createCentrifugoService() {
@@ -475,9 +520,19 @@ class NotificationForegroundService : Service() {
     fun isConnected(): Boolean = isActivelyConnected
 
     private fun disconnectWebSocket() {
+        stopPresenceHeartbeat()
         centrifugoService?.destroy()
         centrifugoService = null
         isActivelyConnected = false
+    }
+
+    /** Explicit goodbye for the admin board (logout / manual stop). */
+    private fun sayGoodbye() {
+        scope.launch {
+            com.widhura.signalxp.data.api.PresenceReporter.markOffline(
+                this@NotificationForegroundService
+            )
+        }
     }
 
     private fun buildNotification(text: String): android.app.Notification {

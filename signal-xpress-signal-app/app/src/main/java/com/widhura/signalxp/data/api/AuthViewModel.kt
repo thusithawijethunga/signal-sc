@@ -97,6 +97,8 @@ class AuthViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
+            // Say goodbye to the admin board BEFORE the token is cleared.
+            com.widhura.signalxp.data.api.PresenceReporter.markOffline(getApplication())
             authRepository.logout()
             _isLoggedIn.value = false
             wipeLocalHistory()

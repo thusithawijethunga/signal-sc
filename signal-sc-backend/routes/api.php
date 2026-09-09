@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CsvController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\WebSocketController;
 use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\AdminCommunityController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,10 @@ Route::middleware('api.auth')->group(function () {
     // FCM push device registry (always-notify in any app state).
     Route::post('/devices', [DeviceController::class, 'store']);
     Route::delete('/devices', [DeviceController::class, 'destroy']);
+
+    // Live presence: login/heartbeat/offline pings from the app.
+    Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
+    Route::post('/presence/offline', [PresenceController::class, 'offline']);
 
     Route::get('/signals', [SignalController::class, 'index']);
     Route::post('/signals', [SignalController::class, 'store']);

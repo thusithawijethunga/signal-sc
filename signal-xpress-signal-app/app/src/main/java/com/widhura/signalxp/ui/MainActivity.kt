@@ -156,6 +156,11 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(isLoggedIn) {
                 if (isLoggedIn) {
                     FcmTokenRegistrar.refresh(this@MainActivity)
+                    // Announce to the admin presence board right away
+                    // (the foreground service heartbeat covers the rest).
+                    com.widhura.signalxp.data.api.PresenceReporter.heartbeat(
+                        this@MainActivity, "online"
+                    )
                 } else if (wasLoggedIn) {
                     FcmTokenRegistrar.unregister(this@MainActivity)
                     // Local history is wiped by AuthViewModel — also stop the

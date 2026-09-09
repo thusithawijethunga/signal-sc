@@ -12,6 +12,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminCommunityController;
 use App\Http\Controllers\AdminNewsController;
 use App\Http\Controllers\AdminChatController;
+use App\Http\Controllers\PresenceBoardController;
 use App\Http\Controllers\AdminFeedController;
 use App\Http\Controllers\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
@@ -69,6 +70,10 @@ Route::middleware('auth')->group(function () {
 
     // Real-time Chat (kept for API compatibility)
     Route::get('/admin/chat/token', [AdminChatController::class, 'getToken'])->name('admin.chat.token');
+
+    // Live presence board — who is online right now.
+    Route::get('/admin/presence', [PresenceBoardController::class, 'index'])->name('admin.presence');
+    Route::get('/admin/presence/data', [PresenceBoardController::class, 'data'])->name('admin.presence.data');
 
     // Unified Feed (Telegram-like)
     Route::get('/admin/feed', [AdminFeedController::class, 'index'])->name('admin.feed');
