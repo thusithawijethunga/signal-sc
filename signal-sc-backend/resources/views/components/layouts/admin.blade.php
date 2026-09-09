@@ -305,6 +305,9 @@
         <li class="nav-item m-0">
           <a href="{{ route('admin.db-backup') }}" class="nav-link {{ request()->routeIs('admin.db-backup') ? 'active' : '' }}">🗄️ DB Backup</a>
         </li>
+        <li class="nav-item m-0">
+          <a href="{{ route('admin.presence') }}" class="nav-link {{ request()->routeIs('admin.presence*') ? 'active' : '' }}">🛰️ Live Presence <span id="presenceCount" class="badge bg-success ms-1" style="font-size:9px; display:none;">0</span></a>
+        </li>
       </ul>
     </div>
   </div>
@@ -406,6 +409,23 @@ window.wsStore = { signals: [], trades: [], news: [], community: [], lastTrade: 
   }
 
   connectWebSocket();
+})();
+
+// Live Presence nav badge — online device count, refreshed every 30s.
+(function() {
+  const badge = document.getElementById('presenceCount');
+  if (!badge) return;
+  async function refreshPresenceCount() {
+    try {
+      const r = await fetch('/admin/presence/data', { headers: { 'Accept': 'application/json' } });
+      if (!r.ok) return;
+      const n = (await r.json()).devices_online || 0;
+      badge.textContent = n;
+      badge.style.display = n > 0 ? '' : 'none';
+    } catch (e) { /* offline — leave last value */ }
+  }
+  refreshPresenceCount();
+  setInterval(refreshPresenceCount, 30000);
 })();
 </script>
 
