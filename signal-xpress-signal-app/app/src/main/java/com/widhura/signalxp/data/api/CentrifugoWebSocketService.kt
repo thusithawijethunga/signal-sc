@@ -383,7 +383,11 @@ data class NotificationEvent(
     @Json(name = "signal_id") val signal_id: Long? = null,
     @Json(name = "trade_id") val trade_id: Long? = null,
     @Json(name = "signal_no") val signal_no: Int? = null,
-    val result: String? = null
+    val result: String? = null,
+    // Broadcast action (created, TP1..TP4, SL, BE, ...). Used to dedupe per
+    // update: BE then TP1 then TP2 must EACH notify, while re-deliveries of
+    // the same broadcast (WS x N + FCM) collapse into one.
+    val action: String? = null
 ) {
     val signalId: Long get() = signal_id ?: 0
     val tradeId: Long get() = trade_id ?: 0

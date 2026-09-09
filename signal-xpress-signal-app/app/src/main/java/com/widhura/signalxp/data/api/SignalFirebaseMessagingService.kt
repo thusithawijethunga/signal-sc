@@ -46,6 +46,7 @@ class SignalFirebaseMessagingService : FirebaseMessagingService() {
                     trade_id = data["trade_id"]?.toLongOrNull(),
                     signal_no = data["signal_no"]?.toIntOrNull(),
                     result = data["result"],
+                    action = data["action"],
                 )
                 var signalNo = event.signalNo
                 if (signalNo == 0 && event.signalId != 0L) {

@@ -29,7 +29,7 @@ object SignalNotifications {
 
     // Dedupe replayed broadcasts
     private val recentIds = ArrayDeque<String>()
-    private const val MAX_RECENT = 30
+    private const val MAX_RECENT = 100
 
     fun createAllChannels(context: Context) {
         if (Build.VERSION.SDK_INT < 26) return
@@ -80,13 +80,21 @@ object SignalNotifications {
             return
         }
 
-        // Deduplicate by signal number — when the same signal arrives from both
-        // the trading:signals and trading:trades channels we only show one.
-        // Use signalNo (unique per signal) instead of eventId (a new UUID per broadcast).
-        val dedupeKey = if (signalNo > 0) "sig_$signalNo" else eventId
+        // Deduplicate re-deliveries of the SAME broadcast — one signal event
+        // fans out over WS subscriptions + FCM, each redelivered, so the same
+        // payload can arrive 5+ times. Key includes the broadcast action so
+        // distinct updates (BE → TP1 → TP2 …) EACH notify exactly once, while
+        // repeats of the same broadcast collapse. The notification id below
+        // stays per-signal, so updates replace one notification (no stacking).
+        val action = (event.action ?: "").uppercase()
+        val dedupeKey = when {
+            signalNo > 0 && action.isNotBlank() -> "sig_${signalNo}_$action"
+            signalNo > 0 -> "sig_$signalNo"
+            else -> eventId
+        }
         synchronized(recentIds) {
             if (dedupeKey.isNotBlank() && recentIds.contains(dedupeKey)) {
-                android.util.Log.d(TAG, "Dropped duplicate notification: key=$dedupeKey")
+                android.util.Log.d(TAG, "Suppressed repeat delivery (already notified): key=$dedupeKey")
                 return
             }
             if (dedupeKey.isNotBlank()) {
