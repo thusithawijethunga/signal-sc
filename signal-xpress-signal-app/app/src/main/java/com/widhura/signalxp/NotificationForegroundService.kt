@@ -20,7 +20,6 @@ import com.widhura.signalxp.data.api.NewsRealtimeEvent
 import com.widhura.signalxp.data.api.NotificationEvent
 import com.widhura.signalxp.data.api.SignalRealtimeEvent
 import com.widhura.signalxp.data.api.TradeRealtimeEvent
-import com.widhura.signalxp.ui.MainActivity
 import com.widhura.signalxp.util.SignalNotifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,10 +46,6 @@ class NotificationForegroundService : Service() {
         private const val EXTRA_USER_ID = "user_id"
         private const val RETRY_DELAY_MS = 5_000L
 
-        // Real token endpoint lives on the same backend as everything else in
-        // ApiClient/ApiService (Route::get('/websocket/token', ...) in routes/api.php,
-        // now behind the api.auth middleware). There is no separate
-        // market.signalxpress.com mobile gateway and no X-API-KEY check on this route.
         private val WS_TOKEN_URL = ApiClient.BASE_URL + "websocket/token"
 
         fun start(context: Context, userId: String) {
@@ -75,6 +70,7 @@ class NotificationForegroundService : Service() {
 
     private val binder = LocalBinder()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val httpClient = OkHttpClient()
     private var centrifugoService: CentrifugoWebSocketService? = null
     private var wsToken: String? = null
     private var wsUrl: String? = null
@@ -125,53 +121,60 @@ class NotificationForegroundService : Service() {
         return START_STICKY
     }
 
-    private fun connectWebSocket(userId: String) {
-        val authToken = ApiClient.getToken(this) ?: return
+    /**
+     * Fetches a fresh Centrifugo token/ws_url pair from the backend.
+     * Used both for the initial connect and for every reconnect attempt
+     * (the WS JWT has a TTL — see config/centrifugo.php token_ttl — so a
+     * long-lived background socket WILL need this refreshed periodically).
+     */
+    private fun fetchWsToken(): Pair<String, String>? {
+        val authToken = ApiClient.getToken(this) ?: return null
+        return try {
+            val request = Request.Builder()
+                .url(WS_TOKEN_URL)
+                .header("Authorization", "Bearer $authToken")
+                .header("Accept", "application/json")
+                .build()
 
-        scope.launch {
-            try {
-                val request = Request.Builder()
-                    .url(WS_TOKEN_URL)
-                    .header("Authorization", "Bearer $authToken")
-                    .header("Accept", "application/json")
-                    .build()
-
-                val client = OkHttpClient()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val body = response.body?.string() ?: run {
-                        Log.e(TAG, "Token endpoint returned an empty body")
-                        scheduleRetry(userId)
-                        return@launch
-                    }
-                    val json = JSONObject(body)
-
-                    // WebSocketController::token() returns a flat object:
-                    // { "token": "...", "ws_url": "...", "channels": {...}, ... }
-                    val tokenValue = json.optString("token", "")
-                    val urlValue = json.optString("ws_url", "")
-
-                    if (tokenValue.isBlank() || urlValue.isBlank()) {
-                        Log.e(TAG, "Token response missing token/ws_url: $body")
-                        scheduleRetry(userId)
-                        return@launch
-                    }
-
-                    wsToken = tokenValue
-                    wsUrl = urlValue
-
-                    createCentrifugoService()
-                    centrifugoService?.connect(wsUrl!!, wsToken!!)
-
-                    updateNotification("Connected to Signal Xpress")
-                } else {
-                    Log.e(TAG, "Failed to fetch WS token: ${response.code} ${response.body?.string()}")
-                    scheduleRetry(userId)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to connect: ${e.message}")
-                scheduleRetry(userId)
+            val response = httpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Log.e(TAG, "fetchWsToken failed: ${response.code} ${response.body?.string()}")
+                return null
             }
+            val body = response.body?.string() ?: run {
+                Log.e(TAG, "Token endpoint returned an empty body")
+                return null
+            }
+            val json = JSONObject(body)
+            val tokenValue = json.optString("token", "")
+            val urlValue = json.optString("ws_url", "")
+
+            if (tokenValue.isBlank() || urlValue.isBlank()) {
+                Log.e(TAG, "Token response missing token/ws_url: $body")
+                return null
+            }
+            tokenValue to urlValue
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchWsToken exception: ${e.message}")
+            null
+        }
+    }
+
+    private fun connectWebSocket(userId: String) {
+        scope.launch {
+            val pair = fetchWsToken()
+            if (pair == null) {
+                scheduleRetry(userId)
+                return@launch
+            }
+            val (tokenValue, urlValue) = pair
+            wsToken = tokenValue
+            wsUrl = urlValue
+
+            createCentrifugoService()
+            centrifugoService?.connect(wsUrl!!, wsToken!!)
+
+            updateNotification("Connected to Signal Xpress")
         }
     }
 
@@ -231,6 +234,20 @@ class NotificationForegroundService : Service() {
                 Log.w(TAG, "Auth failed, refreshing token...")
                 val userId = ApiClient.getCurrentUserId(this@NotificationForegroundService).toString()
                 refreshAndReconnect(userId)
+            },
+            // Called by CentrifugoWebSocketService before every reconnect attempt.
+            // This is the actual fix: a socket that's been down/backgrounded past
+            // the token TTL was previously reconnecting with a stale JWT forever.
+            onRefreshToken = {
+                val pair = fetchWsToken()
+                if (pair != null) {
+                    wsToken = pair.first
+                    wsUrl = pair.second
+                    pair.first
+                } else {
+                    Log.w(TAG, "onRefreshToken: fetchWsToken returned null, keeping old token")
+                    null
+                }
             }
         )
     }
@@ -271,8 +288,8 @@ class NotificationForegroundService : Service() {
         val e1 = event.entry1 ?: 0.0
         val e2 = event.entry2 ?: 0.0
         val entry = if (e2 > 0) "$e1 / $e2"
-                    else if (e1 > 0) e1.toString()
-                    else existing?.entry ?: ""
+        else if (e1 > 0) e1.toString()
+        else existing?.entry ?: ""
 
         val resolvedId = when {
             byId != null -> eventId
@@ -368,7 +385,6 @@ class NotificationForegroundService : Service() {
 
     private suspend fun handleNotification(event: NotificationEvent) {
         var signalNo = event.signalNo
-        // Fallback: look up from DB if signal_no not included in the broadcast
         if (signalNo == 0 && event.signalId != 0L) {
             try {
                 signalNo = AppDatabase.getDatabase(applicationContext)
@@ -446,7 +462,7 @@ class NotificationForegroundService : Service() {
     }
 
     private fun buildNotification(text: String): android.app.Notification {
-        val tapIntent = Intent(this, MainActivity::class.java).apply {
+        val tapIntent = Intent(this, com.widhura.signalxp.ui.MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
@@ -467,6 +483,18 @@ class NotificationForegroundService : Service() {
     private fun updateNotification(text: String) {
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, buildNotification(text))
+    }
+
+    // Android 15+ (API 35+) foreground-service time limits: a "dataSync" FGS
+    // can be killed by the OS after ~6h cumulative runtime in a 24h window.
+    // The system calls this right before killing it — clean up and let
+    // START_STICKY bring the service back so it can reconnect with a fresh token.
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Log.w(TAG, "Foreground service hit system time limit (fgsType=$fgsType) — stopping cleanly")
+        disconnectWebSocket()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onDestroy() {

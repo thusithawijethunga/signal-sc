@@ -1,6 +1,7 @@
 package com.widhura.signalxp.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -97,6 +98,7 @@ class MainActivity : ComponentActivity() {
         applyScreenshotPolicy()
         enableEdgeToEdge()
         requestNotificationPermission()
+        requestBatteryOptimizationExemption()
         handleNotificationIntent(intent)
         SignalNotifications.createAllChannels(applicationContext)
 
@@ -167,6 +169,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun requestBatteryOptimizationExemption() {
+        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val pkg = packageName
+        if (!pm.isIgnoringBatteryOptimizations(pkg)) {
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = android.net.Uri.parse("package:$pkg")
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Some OEMs block this intent — fail silently, not critical path
+            }
+        }
+    }
     private fun applyScreenshotPolicy() {
         if (BuildConfig.SCREENSHOT_DISABLED) {
             window.setFlags(

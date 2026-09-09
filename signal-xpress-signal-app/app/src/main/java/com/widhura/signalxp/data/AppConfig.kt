@@ -1,4 +1,4 @@
-package com.signalxpress.app.data
+package com.widhura.signalxp.data
 
 import com.google.gson.annotations.SerializedName
 

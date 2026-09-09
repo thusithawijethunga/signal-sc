@@ -1,6 +1,5 @@
-package com.signalxpress.app.data
+package com.widhura.signalxp.data
 
-import com.signalxpress.app.BuildConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject

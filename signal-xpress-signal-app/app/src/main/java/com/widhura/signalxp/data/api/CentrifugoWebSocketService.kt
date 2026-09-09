@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.min
 
 class CentrifugoWebSocketService(
@@ -33,11 +34,15 @@ class CentrifugoWebSocketService(
     private val onCommunityUpdate: (CommunityRealtimeEvent) -> Unit,
     private val onNotification: (NotificationEvent) -> Unit,
     private val onConnectionChange: (Boolean) -> Unit,
-    private val onAuthFailed: (() -> Unit)? = null
+    private val onAuthFailed: (() -> Unit)? = null,
+    // Called before every reconnect attempt to obtain a fresh, valid token.
+    // Return null to fall back to reusing the last known token.
+    private val onRefreshToken: (suspend () -> String?)? = null
 ) {
 
     companion object {
         private const val TAG = "CentrifugoClient"
+        private const val TOKEN_REFRESH_TIMEOUT_MS = 15_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -93,7 +98,8 @@ class CentrifugoWebSocketService(
                     Log.e(TAG, "Error: ${event.error?.message}")
                     val msg = event.error?.message ?: ""
                     if (msg.contains("unauthorized", ignoreCase = true) ||
-                        msg.contains("invalid token", ignoreCase = true)) {
+                        msg.contains("invalid token", ignoreCase = true) ||
+                        msg.contains("token expired", ignoreCase = true)) {
                         try { onAuthFailed?.invoke() } catch (e: Exception) {
                             Log.e(TAG, "onAuthFailed callback failed: ${e.message}")
                         }
@@ -195,13 +201,31 @@ class CentrifugoWebSocketService(
 
         reconnectJob = scope.launch {
             delay(delayMs)
-            if (shouldReconnect) {
-                client?.setToken(token)
-                client?.connect()
-                channels.forEach { (_, sub) ->
-                    if (sub.state != SubscriptionState.SUBSCRIBED) {
-                        sub.subscribe()
-                    }
+            if (!shouldReconnect) return@launch
+
+            // The socket may have been down long enough for the JWT to expire
+            // (e.g. app backgrounded past the token TTL). Always try to pull a
+            // fresh token before reconnecting instead of reusing a stale one —
+            // reusing a stale token here is what causes "works after reopening
+            // the app but silently stops receiving signals/TP/SL after a while".
+            val freshToken = try {
+                withTimeoutOrNull(TOKEN_REFRESH_TIMEOUT_MS) { onRefreshToken?.invoke() }
+            } catch (e: Exception) {
+                Log.w(TAG, "Token refresh failed, reusing last token: ${e.message}")
+                null
+            }
+            if (!freshToken.isNullOrBlank()) {
+                Log.i(TAG, "Reconnecting with refreshed token")
+                token = freshToken
+            } else {
+                Log.w(TAG, "Token refresh returned null, reconnecting with existing token")
+            }
+
+            client?.setToken(token)
+            client?.connect()
+            channels.forEach { (_, sub) ->
+                if (sub.state != SubscriptionState.SUBSCRIBED) {
+                    sub.subscribe()
                 }
             }
         }

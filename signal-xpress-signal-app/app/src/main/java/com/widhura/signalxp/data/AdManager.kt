@@ -1,4 +1,4 @@
-package com.signalxpress.app.data
+package com.widhura.signalxp.data
 
 import android.app.Activity
 import android.content.Context

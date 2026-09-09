@@ -1,4 +1,4 @@
-package com.signalxpress.app
+package com.widhura.signalxp
 
 import android.app.Application
 import com.signalxpress.app.data.AdManager
