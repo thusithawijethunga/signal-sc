@@ -48,4 +48,9 @@ object WidgetPreferences {
     fun getHitLevel(context: Context) = prefs(context).getString(KEY_HIT_LEVEL, "") ?: ""
     fun getSignalNo(context: Context) = prefs(context).getInt(KEY_SIGNAL_NO, 0)
     fun getDate(context: Context) = prefs(context).getString(KEY_DATE, "") ?: ""
+
+    /** Clears the cached widget signal (call on logout so the next account starts clean). */
+    fun clear(context: Context) {
+        prefs(context).edit().clear().apply()
+    }
 }

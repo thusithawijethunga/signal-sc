@@ -158,6 +158,9 @@ class MainActivity : ComponentActivity() {
                     FcmTokenRegistrar.refresh(this@MainActivity)
                 } else if (wasLoggedIn) {
                     FcmTokenRegistrar.unregister(this@MainActivity)
+                    // Local history is wiped by AuthViewModel — also stop the
+                    // live connection so no other account's data flows in.
+                    NotificationForegroundService.stop(this@MainActivity)
                 }
                 wasLoggedIn = isLoggedIn
             }
@@ -283,6 +286,14 @@ fun MainAppContent(
     val primary = if (isDarkMode) PrimarySky else LightTheme.PrimarySky
 
     val activeNotification by viewModel.activeNotification.collectAsState()
+
+    // Fresh login lands here with the previous account's in-memory lists
+    // (DB was wiped) — pull the new account's data immediately.
+    LaunchedEffect(Unit) {
+        if (authViewModel.isLoggedIn.value) {
+            viewModel.syncAllFromApi()
+        }
+    }
 
     // Auto-sync when app resumes to foreground
     LaunchedEffect(lifecycleOwner) {

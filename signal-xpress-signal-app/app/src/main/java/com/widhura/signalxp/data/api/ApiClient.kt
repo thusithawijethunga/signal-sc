@@ -3,12 +3,17 @@ package com.widhura.signalxp.data.api
 import android.content.Context
 import android.content.SharedPreferences
 import com.squareup.moshi.Moshi
+import okhttp3.Authenticator
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.Route
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 object ApiClient {
 
@@ -72,8 +77,10 @@ object ApiClient {
     fun getApiService(context: Context): ApiService {
         if (apiService != null) return apiService!!
 
+        val appContext = context.applicationContext
+
         val authInterceptor = Interceptor { chain ->
-            val token = getToken(context)
+            val token = getToken(appContext)
             val request = chain.request().newBuilder()
                 .header("Accept", "application/json")
                 .header("User-Agent", "SignalXpress/1.0 (Android ${android.os.Build.VERSION.RELEASE}; ${android.os.Build.MODEL})")
@@ -84,12 +91,30 @@ object ApiClient {
             chain.proceed(request.build())
         }
 
+        // The backend rotates api_token on every login and nulls it on logout,
+        // so a stored token can die at any time. On the first 401 for a call
+        // that carried a token: drop the token and tell the app to log out
+        // instead of retrying with a dead credential forever.
+        // Skips auth/login + auth/register (a 401 there is just bad credentials).
+        val authExpired = AtomicBoolean(false)
+        val authenticator = Authenticator { _: Route?, response: Response ->
+            val hadToken = response.request.header("Authorization") != null
+            val path = response.request.url.encodedPath
+            val isAuthCall = path.endsWith("auth/login") || path.endsWith("auth/register")
+            if (hadToken && !isAuthCall && authExpired.compareAndSet(false, true)) {
+                clearAuth(appContext)
+                AuthExpiredBus.emit()
+            }
+            null // don't retry — the credential is dead
+        }
+
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .authenticator(authenticator)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

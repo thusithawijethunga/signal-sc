@@ -76,6 +76,10 @@ class NotificationForegroundService : Service() {
     private var wsUrl: String? = null
     private var isActivelyConnected = false
     private var wasConnectedOnce = false
+    // Set when the backend rejects our api_token (401): the credential is dead
+    // (rotated by another login / logged out elsewhere). Stop hammering the
+    // token endpoint until an explicit fresh start; AuthViewModel drops to login.
+    private var authInvalidated = false
 
     var onSignalUpdate: ((SignalRealtimeEvent) -> Unit)? = null
     var onTradeUpdate: ((TradeRealtimeEvent) -> Unit)? = null
@@ -99,6 +103,7 @@ class NotificationForegroundService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val userId = intent.getStringExtra(EXTRA_USER_ID) ?: return START_STICKY
+                authInvalidated = false
                 startForeground(NOTIFICATION_ID, buildNotification("Connecting..."))
                 connectWebSocket(userId)
             }
@@ -139,8 +144,13 @@ class NotificationForegroundService : Service() {
             val response = httpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 Log.e(TAG, "fetchWsToken failed: ${response.code} ${response.body?.string()}")
+                if (response.code == 401) {
+                    authInvalidated = true
+                    com.widhura.signalxp.data.api.AuthExpiredBus.emit()
+                }
                 return null
             }
+            authInvalidated = false
             val body = response.body?.string() ?: run {
                 Log.e(TAG, "Token endpoint returned an empty body")
                 return null
@@ -161,10 +171,14 @@ class NotificationForegroundService : Service() {
     }
 
     private fun connectWebSocket(userId: String) {
+        if (authInvalidated) {
+            Log.w(TAG, "Skipping connect: api_token rejected by backend, waiting for fresh login")
+            return
+        }
         scope.launch {
             val pair = fetchWsToken()
             if (pair == null) {
-                scheduleRetry(userId)
+                if (!authInvalidated) scheduleRetry(userId)
                 return@launch
             }
             val (tokenValue, urlValue) = pair
@@ -239,14 +253,19 @@ class NotificationForegroundService : Service() {
             // This is the actual fix: a socket that's been down/backgrounded past
             // the token TTL was previously reconnecting with a stale JWT forever.
             onRefreshToken = {
-                val pair = fetchWsToken()
-                if (pair != null) {
-                    wsToken = pair.first
-                    wsUrl = pair.second
-                    pair.first
-                } else {
-                    Log.w(TAG, "onRefreshToken: fetchWsToken returned null, keeping old token")
+                if (authInvalidated) {
+                    Log.w(TAG, "onRefreshToken: api_token rejected, skipping fetch")
                     null
+                } else {
+                    val pair = fetchWsToken()
+                    if (pair != null) {
+                        wsToken = pair.first
+                        wsUrl = pair.second
+                        pair.first
+                    } else {
+                        Log.w(TAG, "onRefreshToken: fetchWsToken returned null, keeping old token")
+                        null
+                    }
                 }
             }
         )
