@@ -156,14 +156,14 @@ class DatabaseSeeder extends Seeder
         // ═══════════════════════════════════════════════════════════════
         // 6. IB MEMBERS
         // ═══════════════════════════════════════════════════════════════
-        $ibMembers = [
-            ['sx_id' => 'SX00001', 'name' => 'Kumara Perera', 'broker' => 'XM', 'account_id' => 'ACC001', 'nic' => '92xxxxxxx', 'whatsapp' => '0771234567', 'telegram' => '@kumara', 'partner_id' => $partners['Tharindu']->id],
-            ['sx_id' => 'SX00002', 'name' => 'Silva Fernando', 'broker' => 'XM', 'account_id' => 'ACC002', 'nic' => '93xxxxxxx', 'whatsapp' => '0771234568', 'telegram' => '@silva', 'partner_id' => $partners['Malaka']->id],
-            ['sx_id' => 'SX00003', 'name' => 'Raj Kumar', 'broker' => 'XM', 'account_id' => 'ACC003', 'nic' => '91xxxxxxx', 'whatsapp' => '0771234569', 'telegram' => '@rajk', 'partner_id' => $partners['Asanka']->id],
-        ];
-        foreach ($ibMembers as $member) {
-            IbMember::create($member);
-        }
+        // $ibMembers = [
+        //     ['sx_id' => 'SX00001', 'name' => 'Kumara Perera', 'broker' => 'XM', 'account_id' => 'ACC001', 'nic' => '92xxxxxxx', 'whatsapp' => '0771234567', 'telegram' => '@kumara', 'partner_id' => $partners['Tharindu']->id],
+        //     ['sx_id' => 'SX00002', 'name' => 'Silva Fernando', 'broker' => 'XM', 'account_id' => 'ACC002', 'nic' => '93xxxxxxx', 'whatsapp' => '0771234568', 'telegram' => '@silva', 'partner_id' => $partners['Malaka']->id],
+        //     ['sx_id' => 'SX00003', 'name' => 'Raj Kumar', 'broker' => 'XM', 'account_id' => 'ACC003', 'nic' => '91xxxxxxx', 'whatsapp' => '0771234569', 'telegram' => '@rajk', 'partner_id' => $partners['Asanka']->id],
+        // ];
+        // foreach ($ibMembers as $member) {
+        //     // IbMember::create($member);
+        // }
 
         // ═══════════════════════════════════════════════════════════════
         // 7. VIP MEMBERS (mobile app top 10 + old backend)
