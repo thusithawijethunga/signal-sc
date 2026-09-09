@@ -7,10 +7,13 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.github.centrifugal.centrifuge.Client
 import io.github.centrifugal.centrifuge.ConnectedEvent
 import io.github.centrifugal.centrifuge.ConnectingEvent
+import io.github.centrifugal.centrifuge.ConnectionTokenEvent
+import io.github.centrifugal.centrifuge.ConnectionTokenGetter
 import io.github.centrifugal.centrifuge.DisconnectedEvent
 import io.github.centrifugal.centrifuge.ErrorEvent
 import io.github.centrifugal.centrifuge.EventListener
 import io.github.centrifugal.centrifuge.Options
+import io.github.centrifugal.centrifuge.TokenCallback
 import io.github.centrifugal.centrifuge.PublicationEvent
 import io.github.centrifugal.centrifuge.Subscription
 import io.github.centrifugal.centrifuge.SubscribedEvent
@@ -76,6 +79,39 @@ class CentrifugoWebSocketService(
     private fun doConnect() {
         try {
             val opts = Options()
+            // The server expires connection JWTs (see backend token_ttl). When it
+            // demands a refresh mid-session the SDK calls this getter — without it
+            // the client errors with "tokenGetter function should be provided" and
+            // drops into an unauthorized reconnect loop.
+            opts.setTokenGetter(object : ConnectionTokenGetter() {
+                override fun getConnectionToken(event: ConnectionTokenEvent, cb: TokenCallback) {
+                    scope.launch {
+                        try {
+                            val fresh = withTimeoutOrNull(TOKEN_REFRESH_TIMEOUT_MS) {
+                                onRefreshToken?.invoke()
+                            }
+                            if (!fresh.isNullOrBlank()) {
+                                token = fresh
+                                Log.i(TAG, "TokenGetter: refreshed connection token")
+                                cb.Done(null, fresh)
+                            } else if (token.isNotBlank()) {
+                                Log.w(TAG, "TokenGetter: refresh empty, reusing current token")
+                                cb.Done(null, token)
+                            } else {
+                                Log.e(TAG, "TokenGetter: no token available")
+                                cb.Done(Exception("empty refreshed token"), "")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "TokenGetter refresh failed: ${e.message}")
+                            if (token.isNotBlank()) {
+                                cb.Done(null, token)
+                            } else {
+                                cb.Done(e, "")
+                            }
+                        }
+                    }
+                }
+            })
             client = Client(wsUrl, opts, object : EventListener() {
                 override fun onConnecting(c: Client, event: ConnectingEvent) {
                     Log.i(TAG, "Connecting to $wsUrl")
@@ -163,6 +199,19 @@ class CentrifugoWebSocketService(
     }
 
     private fun subscribeChannel(channel: String, onMessage: (String) -> Unit) {
+        // Guard against duplicate subscriptions: onConnected fires on every
+        // (re)connect and would otherwise pile a new Subscription onto the same
+        // channel each time, delivering every publication N times.
+        channels[channel]?.let { existing ->
+            if (existing.state == SubscriptionState.SUBSCRIBED ||
+                existing.state == SubscriptionState.SUBSCRIBING
+            ) {
+                Log.d(TAG, "Already subscribed to: $channel")
+                return
+            }
+            try { existing.unsubscribe() } catch (_: Exception) { }
+            channels.remove(channel)
+        }
         val sub = client?.newSubscription(channel, object : SubscriptionEventListener() {
             override fun onPublication(sub: Subscription, event: PublicationEvent) {
                 try {

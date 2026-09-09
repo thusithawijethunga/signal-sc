@@ -91,13 +91,27 @@ class MainActivity : ComponentActivity() {
     private lateinit var themePreferences: ThemePreferences
 
     private val notifPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            updateNotifBanner()
+        }
+
+    private var notifBannerVisible by mutableStateOf(false)
+
+    private fun updateNotifBanner() {
+        notifBannerVisible = !SignalNotifications.isPermissionGranted(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateNotifBanner()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyScreenshotPolicy()
         enableEdgeToEdge()
         requestNotificationPermission()
+        updateNotifBanner()
         requestBatteryOptimizationExemption()
         handleNotificationIntent(intent)
         SignalNotifications.createAllChannels(applicationContext)
@@ -124,6 +138,25 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             SignalXpressTheme(darkTheme = isDarkMode) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (notifBannerVisible) {
+                        NotificationPermissionBanner(
+                            onEnable = {
+                                if (Build.VERSION.SDK_INT >= 33 &&
+                                    androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+                                        this@MainActivity,
+                                        Manifest.permission.POST_NOTIFICATIONS
+                                    )
+                                ) {
+                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    SignalNotifications.openNotificationSettings(this@MainActivity)
+                                }
+                            },
+                            onDismiss = { notifBannerVisible = false }
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
                 if (isLoggedIn) {
                     MainAppContent(
                         viewModel = viewModel,
@@ -140,6 +173,8 @@ class MainActivity : ComponentActivity() {
                         authViewModel = authViewModel,
                         onLoginSuccess = { /* isLoggedIn state handles navigation */ }
                     )
+                }
+                    }
                 }
             }
         }
@@ -332,6 +367,55 @@ fun MainAppContent(
                 }
             }
         }
+        }
+    }
+}
+
+@Composable
+fun NotificationPermissionBanner(onEnable: () -> Unit, onDismiss: () -> Unit) {
+    Surface(
+        color = Color(0xFFB45309),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Notifications off",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "You won't get signal alerts in background.",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 11.sp
+                )
+            }
+            Text(
+                text = "ENABLE",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.2f))
+                    .clickable { onEnable() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(0.dp))
+            Text(
+                text = "✕",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .clickable { onDismiss() }
+                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+            )
         }
     }
 }

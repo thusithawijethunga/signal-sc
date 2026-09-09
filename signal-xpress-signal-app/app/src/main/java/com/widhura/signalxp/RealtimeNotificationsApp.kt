@@ -1,8 +1,8 @@
 package com.widhura.signalxp
 
 import android.app.Application
-import com.signalxpress.app.data.AdManager
-import com.signalxpress.app.data.AppConfigManager
+import com.widhura.signalxp.data.AdManager
+import com.widhura.signalxp.data.AppConfigManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 

@@ -18,6 +18,7 @@ import com.widhura.signalxp.data.api.NotificationEvent
 
 object SignalNotifications {
 
+    private const val TAG = "SignalNotifications"
     const val CHANNEL_SIGNAL_HITS = "signal_hits"
     const val CHANNEL_CENTRIFUGO_MESSAGES = "centrifugo_messages"
     const val CHANNEL_SERVICE = "centrifugo_service"
@@ -74,14 +75,20 @@ object SignalNotifications {
         val eventId = event.id ?: ""
 
         if (eventType == "signal_reaction") return
-        if (eventTitle.isBlank() && eventBody.isBlank()) return
+        if (eventTitle.isBlank() && eventBody.isBlank()) {
+            android.util.Log.d(TAG, "Dropped notification: blank title+body (type=$eventType)")
+            return
+        }
 
         // Deduplicate by signal number — when the same signal arrives from both
         // the trading:signals and trading:trades channels we only show one.
         // Use signalNo (unique per signal) instead of eventId (a new UUID per broadcast).
         val dedupeKey = if (signalNo > 0) "sig_$signalNo" else eventId
         synchronized(recentIds) {
-            if (dedupeKey.isNotBlank() && recentIds.contains(dedupeKey)) return
+            if (dedupeKey.isNotBlank() && recentIds.contains(dedupeKey)) {
+                android.util.Log.d(TAG, "Dropped duplicate notification: key=$dedupeKey")
+                return
+            }
             if (dedupeKey.isNotBlank()) {
                 recentIds.addLast(dedupeKey)
                 while (recentIds.size > MAX_RECENT) recentIds.removeFirst()
@@ -93,6 +100,7 @@ object SignalNotifications {
                 context, Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            android.util.Log.w(TAG, "Dropped notification: POST_NOTIFICATIONS not granted")
             return
         }
 
@@ -149,12 +157,39 @@ object SignalNotifications {
         try {
             NotificationManagerCompat.from(context)
                 .notify(notifId, notification)
-        } catch (_: SecurityException) {
-            // Permission revoked
+            android.util.Log.d(TAG, "Posted notification id=$notifId channel=$channelId title=$title")
+        } catch (e: SecurityException) {
+            android.util.Log.e(TAG, "Failed to post notification: permission revoked", e)
         }
     }
 
     fun cancelAll(context: Context) {
         NotificationManagerCompat.from(context).cancelAll()
+    }
+
+    /** API 33+ runtime permission check. Below 33 notifications are granted at install. */
+    fun isPermissionGranted(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return true
+        return ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /** Opens the system notification-settings screen for this app. */
+    fun openNotificationSettings(context: Context) {
+        try {
+            val intent = if (Build.VERSION.SDK_INT >= 26) {
+                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                }
+            } else {
+                Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+            }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Failed to open notification settings", e)
+        }
     }
 }

@@ -1,15 +1,19 @@
 // android/app/src/main/java/com/appjuk/centrifugo/data/CentrifugoClient.kt
-package com.signalxpress.app.data
+package com.widhura.signalxp.data
 
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import io.github.centrifugal.centrifuge.Client
 import io.github.centrifugal.centrifuge.ConnectedEvent
 import io.github.centrifugal.centrifuge.ConnectingEvent
+import io.github.centrifugal.centrifuge.ConnectionTokenEvent
+import io.github.centrifugal.centrifuge.ConnectionTokenGetter
 import io.github.centrifugal.centrifuge.DisconnectedEvent
 import io.github.centrifugal.centrifuge.ErrorEvent
 import io.github.centrifugal.centrifuge.EventListener
 import io.github.centrifugal.centrifuge.Options
+import io.github.centrifugal.centrifuge.TokenCallback
 import io.github.centrifugal.centrifuge.PublicationEvent
 import io.github.centrifugal.centrifuge.Subscription
 import io.github.centrifugal.centrifuge.SubscribedEvent
@@ -39,6 +43,12 @@ sealed interface ConnectionState {
     data class Error(val message: String) : ConnectionState
 }
 
+data class NotificationPayload(
+    @SerializedName("title") val title: String = "",
+    @SerializedName("body") val body: String = "",
+    @SerializedName("data") val data: Map<String, String> = emptyMap(),
+)
+
 @Singleton
 class CentrifugoClient @Inject constructor(
     private val gson: Gson,
@@ -55,6 +65,13 @@ class CentrifugoClient @Inject constructor(
     private var shouldReconnect = false
     private var reconnectAttempt = 0
     private var reconnectJob: kotlinx.coroutines.Job? = null
+    // Optional hook to fetch a fresh JWT when the server demands a mid-session
+    // refresh. Set via setTokenProvider(); falls back to reusing lastToken.
+    private var tokenProvider: (suspend () -> String?)? = null
+
+    fun setTokenProvider(provider: (suspend () -> String?)?) {
+        tokenProvider = provider
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -71,6 +88,33 @@ class CentrifugoClient @Inject constructor(
         shouldReconnect = true
 
         val opts = Options()
+        // Required: without this the SDK fails with
+        // "tokenGetter function should be provided in Client options to handle
+        // token refresh" as soon as the server expires the JWT mid-session.
+        opts.setTokenGetter(object : ConnectionTokenGetter() {
+            override fun getConnectionToken(event: ConnectionTokenEvent, cb: TokenCallback) {
+                scope.launch {
+                    try {
+                        val fresh = try {
+                            tokenProvider?.invoke()
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Token provider failed: ${e.message}")
+                            null
+                        }
+                        if (!fresh.isNullOrBlank()) {
+                            lastToken = fresh
+                            cb.Done(null, fresh)
+                        } else if (!lastToken.isNullOrBlank()) {
+                            cb.Done(null, lastToken!!)
+                        } else {
+                            cb.Done(Exception("empty refreshed token"), "")
+                        }
+                    } catch (e: Exception) {
+                        cb.Done(e, "")
+                    }
+                }
+            }
+        })
         client = Client(wsUrl, opts, object : EventListener() {
             override fun onConnecting(client: Client, event: ConnectingEvent) {
                 Log.i(TAG, "Connecting")

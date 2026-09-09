@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Signal Xpress</string>
+    <!-- Test AdMob App ID (Google sample). Replace with real ID before release. -->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
     <string name="widget_description">Live signal feed — shows your latest trading signal on the home screen.</string>
     <string name="widget_initial_pair">--</string>
     <string name="widget_initial_status">Waiting for signal…</string>

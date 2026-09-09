@@ -10,6 +10,7 @@ import com.widhura.signalxp.data.VipMemberDao
 import com.widhura.signalxp.data.api.ApiRepository
 import com.widhura.signalxp.data.api.AuthRepository
 import com.squareup.moshi.Moshi
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -83,5 +84,11 @@ object AppModule {
     @Singleton
     fun provideMoshi(): Moshi {
         return Moshi.Builder().build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return Gson()
     }
 }

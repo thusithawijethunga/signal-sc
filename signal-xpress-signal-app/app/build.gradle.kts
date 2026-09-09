@@ -124,6 +124,8 @@ dependencies {
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
   implementation(libs.centrifuge.java)
+  implementation(libs.gson)
+  implementation(libs.play.services.ads)
   implementation(libs.hilt.android)
   "ksp"(libs.hilt.compiler)
   testImplementation(libs.androidx.compose.ui.test.junit4)
